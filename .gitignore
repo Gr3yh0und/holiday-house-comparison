@@ -1,0 +1,36 @@
+# Personal data — copy input.template.json to input.json and fill in your data
+input.json
+
+# Claude Code settings (may contain API keys or personal config)
+.claude/
+
+# Python
+.venv/
+__pycache__/
+*.pyc
+
+# Generated output
+public/index.html
+public/data.json
+
+# Scraped cache
+cache/
+
+# Webdriver binary
+webdriver/
+
+# Example HTML snapshots
+examples/
+
+# OS / editor noise
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+.idea/
+.vscode/
+
+# Environment / secrets
+.env
+.env.*
+secrets.*

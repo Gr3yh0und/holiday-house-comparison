@@ -1,0 +1,28 @@
+{
+    "title": "Urlaub 2027",
+    "trips": [
+        {
+            "name": "Option A - 4 Nächte",
+            "checkin": "2027-02-17",
+            "checkout": "2027-02-21",
+            "houses": [
+                {
+                    "name": "Name des Hauses - Ort",
+                    "lat": 47.0,
+                    "lon": 11.0,
+                    "image_url": "",
+                    "house_url": "https://www.fewo-direkt.de/...",
+                    "direct_url": "https://gastgeber-website.de/",
+                    "supermarket": "1 km (Spar)",
+                    "pois": [
+                        { "type": "train", "label": "Bahnhof Ortsname", "lat": 47.0, "lon": 11.01 },
+                        { "type": "supermarket", "label": "Spar Ortsname", "lat": 47.01, "lon": 11.0 }
+                    ],
+                    "sled_run_urls": [
+                        "https://www.rodelwelten.com/rodelbahnen/detail/name-der-route"
+                    ]
+                }
+            ]
+        }
+    ]
+}

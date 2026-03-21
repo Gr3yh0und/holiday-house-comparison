@@ -1,0 +1,43 @@
+{
+    "weekdays": ["Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag", "Samstag", "Sonntag"],
+    "updated_at": "Zuletzt aktualisiert",
+    "house": {
+        "section_title": "Unterkunft",
+        "location": "Ort",
+        "bedrooms": "Schlafzimmer",
+        "persons": "Personen",
+        "sqm": "Fläche",
+        "bathrooms": "Badezimmer",
+        "room_config": "Zimmerkonfiguration",
+        "price": "Gesamtpreis",
+        "availability": "Verfügbarkeit",
+        "train_station": "Bahnhof in Nähe",
+        "supermarket": "Supermarkt in Nähe",
+        "rating": "Bewertung",
+        "booking_link": "Buchungsportal ansehen ↗",
+        "direct_link": "Direkt beim Gastgeber anfragen ↗"
+    },
+    "sled_runs": {
+        "section_title": "Rodelbahnen",
+        "length": "Länge",
+        "difficulty": "Schwierigkeit",
+        "night_sleighing": "Beleuchtung (Nachtrodeln)",
+        "public_transport": "Öffentl. Anreise",
+        "walking_time": "Gehzeit Aufstieg",
+        "sled_rental": "Rodelverleih",
+        "height_top": "Höhe oben",
+        "height_bottom": "Höhe unten",
+        "elevation_diff": "Höhenmeter",
+        "slope": "Gefälle",
+        "separate_ascent": "Aufstieg getrennt",
+        "ascent_aid": "Aufstiegshilfe",
+        "avalanche_danger": "Lawinengefahr",
+        "operator": "Betreiber",
+        "opening_hours": "Öffnungszeiten",
+        "link_label": "↗ Zur Route"
+    },
+    "poi": {
+        "house_label": "Unterkunft",
+        "default_label": "POI"
+    }
+}
