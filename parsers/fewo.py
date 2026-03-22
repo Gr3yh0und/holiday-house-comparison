@@ -96,6 +96,35 @@ def scrape(url, driver=None):
             result['price'] = total_m.group(1).strip() if total_m else 'N/A'
         print(f"  [fewo] price: {result['price']}")
 
+        # Rating: VRBO/Expedia platform shows score in reviews section
+        rating_el = (
+            soup.find(attrs={'data-stid': 'content-hotel-reviews'}) or
+            soup.find(attrs={'data-stid': 'reviews-summary'}) or
+            soup.find(attrs={'data-stid': 'reviews-header'})
+        )
+        if rating_el:
+            src = rating_el.get_text(' ', strip=True)
+            print(f"  [fewo] rating element text: {src[:80]}")
+            score_m = (
+                re.search(r'(\d+[.,]\d+)\s*/\s*10', src) or
+                re.search(r'Ausgezeichnet\s+(\d+[.,]\d+)', src, re.I) or
+                re.search(r'Sehr gut\s+(\d+[.,]\d+)', src, re.I) or
+                re.search(r'(\d+[.,]\d+)', src)
+            )
+        else:
+            score_m = (
+                re.search(r'(\d+[.,]\d+)\s*/\s*10', text) or
+                re.search(r'Ausgezeichnet\s+(\d+[.,]\d+)', text, re.I) or
+                re.search(r'Sehr gut\s+(\d+[.,]\d+)', text, re.I)
+            )
+            src = text
+        count_m = re.search(r'(\d+)\s*Bewertung', src, re.I)
+        if score_m:
+            result['rating'] = score_m.group(1)
+            if count_m:
+                result['rating'] += f' ({count_m.group(1)} Bewertungen)'
+        print(f"  [fewo] rating: {result['rating']}")
+
         result['time'] = 'Available'
         if re.search(r'Bahnhof|train station', text, re.I):
             result['train_station'] = 'Nearby'
