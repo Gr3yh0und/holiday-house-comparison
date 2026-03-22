@@ -30,6 +30,21 @@ def load_translations(lang='de') -> dict:
 _translations: dict = load_translations()
 
 
+@app.template_filter('price_per_person')
+def price_per_person(price, persons):
+    try:
+        p = price.strip().rstrip('€').strip().replace('\xa0', '').replace('\u202f', '')
+        p = p.replace('.', '').replace(',', '.')
+        price_val = float(p)
+        persons_val = int(persons)
+        if persons_val == 0:
+            return None
+        result = round(price_val / persons_val)
+        return f"{result:,} €".replace(',', '.')
+    except (ValueError, AttributeError, TypeError):
+        return None
+
+
 @app.template_filter('dedate')
 def dedate(value):
     try:
@@ -101,10 +116,11 @@ def build_trip_data(data, driver=None, force_refresh=False, broker_filter=None, 
             scraped += 1
             house_info['name'] = house['name']
             house_info['house_url'] = house_url
-            if 'supermarket' in house:
-                house_info['supermarket'] = house['supermarket']
-            if 'train_station' in house:
-                house_info['train_station'] = house['train_station']
+            for field in ('address', 'rooms', 'persons', 'sqm', 'bathrooms',
+                          'room_config', 'price', 'time', 'rating',
+                          'supermarket', 'train_station'):
+                if house.get(field):
+                    house_info[field] = house[field]
             if 'image_url' in house:
                 house_info['image_url'] = house['image_url']
             if 'lat' in house and 'lon' in house:

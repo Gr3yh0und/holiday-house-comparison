@@ -65,6 +65,38 @@ Outputs:
 
 A house can optionally override the trip-level dates with its own `"checkin"` and `"checkout"` fields.
 
+### Overriding scraped house details
+
+Any field normally scraped from the booking page can be overridden directly in `input.json` by adding it to the house entry. Overrides take precedence over scraped values.
+
+| Field | Description | Example |
+|-------|-------------|---------|
+| `address` | Location / address | `"Leutasch, Tirol"` |
+| `rooms` | Number of bedrooms | `"5"` |
+| `persons` | Max. number of persons | `"8"` |
+| `sqm` | Living area | `"120 m²"` |
+| `bathrooms` | Number of bathrooms | `"2"` |
+| `room_config` | List of room descriptions | `["2× Doppelzimmer", "1× Schlafsaal"]` |
+| `price` | Total price | `"2.500 €"` |
+| `time` | Availability status | `"Available"` |
+| `rating` | Rating | `"9.2"` |
+| `supermarket` | Supermarket distance (text) | `"2 km (Spar)"` |
+| `train_station` | Train station distance (text) | `"650 m zu Fuß"` |
+
+Example:
+
+```json
+{
+  "name": "My House",
+  "house_url": "https://...",
+  "price": "2.500 €",
+  "persons": "8",
+  "rooms": "5",
+  "supermarket": "2 km (Spar)",
+  "train_station": "650 m zu Fuß"
+}
+```
+
 ### POI types
 
 Points of interest (`pois`) are shown on the house location map. Supported `type` values:
