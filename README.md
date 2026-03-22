@@ -83,6 +83,7 @@ Any field normally scraped from the booking page can be overridden directly in `
 | `supermarket` | Supermarket distance (text) | `"2 km (Spar)"` |
 | `train_station` | Train station distance (text) | `"650 m zu Fuß"` |
 | `sauna` | Sauna available | `"Ja"` or `"Nein"` |
+| `nearest_sled_run` | Nearest sled run with driving distance/time | `"Hoher Sattel (2,4 km · 4 min)"` |
 
 Example:
 

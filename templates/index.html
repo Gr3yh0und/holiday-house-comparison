@@ -258,6 +258,14 @@
                 <p class="section-title">{{ t.house.prices_section }}</p>
                 <ul class="props">
                     <li>
+                        <span class="label">{{ t.house.availability }}</span>
+                        <span class="value{% if house.time == 'Available' %} good{% elif house.time == 'Unavailable' %} bad{% elif house.time == 'N/A' %} na{% endif %}">{% if house.time == 'Available' %}{{ t.house.available }}{% elif house.time == 'Unavailable' %}{{ t.house.unavailable }}{% else %}{{ house.time }}{% endif %}</span>
+                    </li>
+                    <li>
+                        <span class="label">{{ t.house.rating }}</span>
+                        <span class="value{% if house.rating == 'N/A' %} na{% endif %}">{{ house.rating }}</span>
+                    </li>
+                    <li>
                         <span class="label">{{ t.house.price }}</span>
                         <span class="value{% if house.price == 'N/A' %} na{% endif %}">{{ house.price | normalize_price }}</span>
                     </li>
@@ -273,14 +281,6 @@
                         <span class="value{% if not pp10 %} na{% endif %}">{{ pp10 if pp10 else 'N/A' }}</span>
                     </li>
                     {% endif %}
-                    <li>
-                        <span class="label">{{ t.house.availability }}</span>
-                        <span class="value{% if house.time == 'Available' %} good{% endif %}">{{ house.time }}</span>
-                    </li>
-                    <li>
-                        <span class="label">{{ t.house.rating }}</span>
-                        <span class="value{% if house.rating == 'N/A' %} na{% endif %}">{{ house.rating }}</span>
-                    </li>
                 </ul>
 
                 <p class="section-title">{{ t.house.details_section }}</p>
@@ -305,6 +305,10 @@
                         <span class="label">{{ t.house.bathrooms }}</span>
                         <span class="value{% if house.bathrooms == 'N/A' %} na{% endif %}">{{ house.bathrooms }}{% if house.bathrooms != 'N/A' and house.rooms != 'N/A' and (house.bathrooms | int) * 2 < (house.rooms | int) %} ⚠️{% endif %}</span>
                     </li>
+                    <li>
+                        <span class="label">{{ t.house.sauna }}</span>
+                        <span class="value{% if house.sauna == 'Ja' %} good{% elif house.sauna == 'Nein' %} bad{% else %} na{% endif %}">{% if house.sauna == 'Ja' %}Ja{% elif house.sauna == 'Nein' %}Nein{% else %}{{ house.sauna }}{% endif %}</span>
+                    </li>
                     {% if house.room_config %}
                     <li style="flex-direction: column; align-items: flex-start; gap: 4px;">
                         <span class="label">{{ t.house.room_config }}</span>
@@ -313,14 +317,16 @@
                         {% endfor %}
                     </li>
                     {% endif %}
-                    <li>
-                        <span class="label">{{ t.house.sauna }}</span>
-                        <span class="value{% if house.sauna == 'Ja' %} good{% elif house.sauna == 'Nein' %} bad{% else %} na{% endif %}">{% if house.sauna == 'Ja' %}🧖 Ja{% elif house.sauna == 'Nein' %}Nein{% else %}{{ house.sauna }}{% endif %}</span>
-                    </li>
                 </ul>
 
                 <p class="section-title">{{ t.house.surroundings_section }}</p>
                 <ul class="props">
+                    {% if house.nearest_sled_run and house.nearest_sled_run != 'N/A' %}
+                    <li>
+                        <span class="label">{{ t.house.nearest_sled_run }}</span>
+                        <span class="value">{{ house.nearest_sled_run }}</span>
+                    </li>
+                    {% endif %}
                     <li>
                         <span class="label">{{ t.house.train_station }}</span>
                         <span class="value{% if house.train_station == 'Nearby' %} good{% elif house.train_station == 'N/A' %} na{% endif %}">{{ house.train_station }}</span>

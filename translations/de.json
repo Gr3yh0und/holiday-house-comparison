@@ -17,12 +17,15 @@
         "price_per_person_8": "Preis/Person (8 Pers.)",
         "price_per_person_10": "Preis/Person (10 Pers.)",
         "availability": "Verfügbarkeit",
+        "available": "Verfügbar",
+        "unavailable": "Nicht verfügbar",
         "train_station": "Bahnhof in Nähe",
         "supermarket": "Supermarkt in Nähe",
         "rating": "Bewertung",
         "booking_link": "Buchungsportal ansehen ↗",
         "direct_link": "Direkt beim Gastgeber anfragen ↗",
-        "maps_link": "In Google Maps öffnen ↗"
+        "maps_link": "In Google Maps öffnen ↗",
+        "nearest_sled_run": "Nächste Rodelbahn"
     },
     "sled_runs": {
         "section_title": "Rodelbahnen",
