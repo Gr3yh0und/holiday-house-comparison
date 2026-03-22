@@ -103,6 +103,8 @@ def build_trip_data(data, driver=None, force_refresh=False, broker_filter=None, 
             house_info['house_url'] = house_url
             if 'supermarket' in house:
                 house_info['supermarket'] = house['supermarket']
+            if 'train_station' in house:
+                house_info['train_station'] = house['train_station']
             if 'image_url' in house:
                 house_info['image_url'] = house['image_url']
             if 'lat' in house and 'lon' in house:

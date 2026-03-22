@@ -14,6 +14,7 @@
                     "house_url": "https://www.fewo-direkt.de/...",
                     "direct_url": "https://gastgeber-website.de/",
                     "supermarket": "1 km (Spar)",
+                    "train_station": "2 km (Bahnhof Ortsname)",
                     "pois": [
                         { "type": "train", "label": "Bahnhof Ortsname", "lat": 47.0, "lon": 11.01 },
                         { "type": "supermarket", "label": "Spar Ortsname", "lat": 47.01, "lon": 11.0 }
