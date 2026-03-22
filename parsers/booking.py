@@ -84,8 +84,15 @@ def scrape(url, driver=None):
         if price_el:
             result['price'] = price_el.text.strip()
         else:
-            price_m = re.search(r'(?:EUR|€)\s*[\s\u00a0]*([\d.,]+)', text)
-            result['price'] = f'€ {price_m.group(1)}' if price_m else 'N/A'
+            # Prefer the discounted total from bui-price-display__value; the first
+            # regex match would otherwise land on the strikethrough original price.
+            val_el = soup.find('div', class_='bui-price-display__value')
+            if val_el:
+                span = val_el.find('span', class_='prco-valign-middle-helper')
+                result['price'] = (span or val_el).get_text(strip=True)
+            else:
+                price_m = re.search(r'(?:EUR|€)\s*[\s\u00a0]*([\d.,]+)', text)
+                result['price'] = f'€ {price_m.group(1)}' if price_m else 'N/A'
 
         # get_text() may concatenate "Bahn" + station name without space,
         # then newline before distance: "BahnLengdorf\n650 m"
