@@ -176,7 +176,7 @@
                     {% endif %}
                     <li>
                         <span class="label">{{ t.house.price }}</span>
-                        <span class="value{% if house.price == 'N/A' %} na{% endif %}">{{ house.price }}</span>
+                        <span class="value{% if house.price == 'N/A' %} na{% endif %}">{{ house.price | normalize_price }}</span>
                     </li>
                     <li>
                         <span class="label">{{ t.house.price_per_person_8 }}</span>

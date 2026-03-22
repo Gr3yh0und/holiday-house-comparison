@@ -30,17 +30,35 @@ def load_translations(lang='de') -> dict:
 _translations: dict = load_translations()
 
 
+def _parse_price(price):
+    """Return price as float, or None if unparseable."""
+    try:
+        p = price.strip().lstrip('€').rstrip('€').strip()
+        p = p.replace('\xa0', '').replace('\u202f', '').replace(' ', '')
+        p = p.replace('.', '').replace(',', '.')
+        return float(p)
+    except (ValueError, AttributeError, TypeError):
+        return None
+
+
+@app.template_filter('normalize_price')
+def normalize_price(price):
+    if price in (None, 'N/A', 'Error'):
+        return price
+    val = _parse_price(price)
+    return f"{int(val)}€" if val is not None else price
+
+
 @app.template_filter('price_per_person')
 def price_per_person(price, persons):
     try:
-        p = price.strip().rstrip('€').strip().replace('\xa0', '').replace('\u202f', '')
-        p = p.replace('.', '').replace(',', '.')
-        price_val = float(p)
+        price_val = _parse_price(price)
+        if price_val is None:
+            return None
         persons_val = int(persons)
         if persons_val == 0:
             return None
-        result = round(price_val / persons_val)
-        return f"{result:,} €".replace(',', '.')
+        return f"{round(price_val / persons_val)}€"
     except (ValueError, AttributeError, TypeError):
         return None
 
