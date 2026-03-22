@@ -313,6 +313,10 @@
                         {% endfor %}
                     </li>
                     {% endif %}
+                    <li>
+                        <span class="label">{{ t.house.sauna }}</span>
+                        <span class="value{% if house.sauna == 'Ja' %} good{% elif house.sauna == 'Nein' %} bad{% else %} na{% endif %}">{% if house.sauna == 'Ja' %}🧖 Ja{% elif house.sauna == 'Nein' %}Nein{% else %}{{ house.sauna }}{% endif %}</span>
+                    </li>
                 </ul>
 
                 <p class="section-title">{{ t.house.surroundings_section }}</p>

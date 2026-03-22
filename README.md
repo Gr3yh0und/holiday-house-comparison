@@ -82,6 +82,7 @@ Any field normally scraped from the booking page can be overridden directly in `
 | `rating` | Rating | `"9.2"` |
 | `supermarket` | Supermarket distance (text) | `"2 km (Spar)"` |
 | `train_station` | Train station distance (text) | `"650 m zu Fuß"` |
+| `sauna` | Sauna available | `"Ja"` or `"Nein"` |
 
 Example:
 
@@ -109,7 +110,7 @@ Points of interest (`pois`) are shown on the house location map. Supported `type
 
 ## How It Works
 
-1. **House scraping** — uses headless Chrome (`undetected-chromedriver`) to bypass bot detection on fewo-direkt.de and booking.com, then extracts location, price, bedroom count, bed configuration, and more. Fields present in `input.json` override scraped values.
+1. **House scraping** — uses headless Chrome (`undetected-chromedriver`) to bypass bot detection on fewo-direkt.de and booking.com, then extracts location, price, bedroom count, bed configuration, sauna availability, and more. Fields present in `input.json` override scraped values.
 2. **Sled run scraping** — fetches rodelwelten.com `/detail/` pages with `requests`/BeautifulSoup and parses the details table (length, elevation, night sledding, public transport, sled rental, etc.). Hut/Alm info (name + website) is extracted from the `div.hut-content` blocks on the page. GPX tracks are fetched and downsampled for map display. Results are cached for 24 hours in `cache/sled_runs.json`.
 3. **Date injection** — known date query parameters (`chkin`, `chkout`, `startDate`, `endDate`, `checkin`, `checkout`, etc.) in house URLs are replaced with the configured trip dates before scraping.
 4. **Rendering** — the Jinja2 template in `templates/index.html` renders all trips and houses into a card-based comparison layout with interactive Leaflet maps. Prices are normalised to `XXXX€` format via the `normalize_price` filter. Per-person price is always shown for 8 persons; a second row for 10 persons is shown when `house.persons == "10"`.

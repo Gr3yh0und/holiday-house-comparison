@@ -12,6 +12,7 @@
         "sqm": "Fläche",
         "bathrooms": "Badezimmer",
         "room_config": "Zimmerkonfiguration",
+        "sauna": "Sauna",
         "price": "Gesamtpreis",
         "price_per_person_8": "Preis/Person (8 Pers.)",
         "price_per_person_10": "Preis/Person (10 Pers.)",

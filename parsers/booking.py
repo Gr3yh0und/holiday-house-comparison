@@ -17,6 +17,7 @@ EMPTY = {
     'supermarket': 'N/A',
     'rating': 'N/A',
     'persons': 'N/A',
+    'sauna': 'N/A',
 }
 
 
@@ -131,6 +132,7 @@ def scrape(url, driver=None):
             result['train_station'] = 'Nearby'
         if re.search(r'Supermarkt|supermarket', text, re.I):
             result['supermarket'] = 'Nearby'
+        result['sauna'] = 'Ja' if re.search(r'\bSauna\b', text, re.I) else 'Nein'
 
         print(f"  [booking] address: {result['address']}, rooms: {result['rooms']}, price: {result['price']}, persons: {result['persons']}")
 

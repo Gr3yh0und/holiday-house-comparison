@@ -22,7 +22,9 @@
 - `input.json` uses `sled_run_urls` (not `route_urls`)
 - Cache entries: `{ "fetched_at": "<iso datetime>", "data": { ... } }`
 - House scraping is best-effort — `N/A` is an acceptable fallback
+- Scraped house fields: `address`, `rooms`, `persons`, `sqm`, `bathrooms`, `room_config`, `price`, `time`, `rating`, `supermarket`, `train_station`, `sauna`
 - Any scraped house field can be overridden in `input.json` by adding it directly to the house entry; the override is applied only when the value is truthy (`house.get(field)`)
+- `sauna` is detected via `\bSauna\b` regex on the rendered page text → `'Ja'` / `'Nein'`; defaults to `'N/A'` if the page was not scraped
 - Sled run fields: `length`, `night_sleighing`, `public_transport`, `walking_time`, `sled_rental`, `avalanche_danger`, `height_top`, `height_bottom`, `elevation_diff`, `slope`, `separate_ascent`, `ascent_aid`, `difficulty`, `operator`, `opening_hours`, `track`, `huts`
 - `huts` is a list of `{"name": str, "url": str | None}` dicts scraped from `div.hut-content` blocks on rodelwelten detail pages
 - POI types for house maps: `train`, `supermarket` (custom strings fall back to a pin icon)

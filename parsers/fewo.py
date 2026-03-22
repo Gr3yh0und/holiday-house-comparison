@@ -17,6 +17,7 @@ EMPTY = {
     'supermarket': 'N/A',
     'rating': 'N/A',
     'persons': 'N/A',
+    'sauna': 'N/A',
 }
 
 
@@ -130,6 +131,7 @@ def scrape(url, driver=None):
             result['train_station'] = 'Nearby'
         if re.search(r'Supermarkt|supermarket', text, re.I):
             result['supermarket'] = 'Nearby'
+        result['sauna'] = 'Ja' if re.search(r'\bSauna\b', text, re.I) else 'Nein'
 
     except Exception as e:
         print(f"  [fewo] error scraping {url}: {e}")

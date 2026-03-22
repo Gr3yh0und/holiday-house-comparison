@@ -136,7 +136,7 @@ def build_trip_data(data, driver=None, force_refresh=False, broker_filter=None, 
             house_info['house_url'] = house_url
             for field in ('address', 'rooms', 'persons', 'sqm', 'bathrooms',
                           'room_config', 'price', 'time', 'rating',
-                          'supermarket', 'train_station'):
+                          'supermarket', 'train_station', 'sauna'):
                 if house.get(field):
                     house_info[field] = house[field]
             if 'image_url' in house:
