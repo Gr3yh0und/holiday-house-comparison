@@ -22,8 +22,13 @@
 - `input.json` uses `sled_run_urls` (not `route_urls`)
 - Cache entries: `{ "fetched_at": "<iso datetime>", "data": { ... } }`
 - House scraping is best-effort — `N/A` is an acceptable fallback
-- Sled run fields: `length`, `night_sleighing`, `public_transport`, `walking_time`, `sled_rental`, `avalanche_danger`, `height_top`, `height_bottom`, `elevation_diff`, `slope`, `separate_ascent`, `ascent_aid`, `difficulty`, `operator`, `opening_hours`, `track`
+- Any scraped house field can be overridden in `input.json` by adding it directly to the house entry; the override is applied only when the value is truthy (`house.get(field)`)
+- Sled run fields: `length`, `night_sleighing`, `public_transport`, `walking_time`, `sled_rental`, `avalanche_danger`, `height_top`, `height_bottom`, `elevation_diff`, `slope`, `separate_ascent`, `ascent_aid`, `difficulty`, `operator`, `opening_hours`, `track`, `huts`
+- `huts` is a list of `{"name": str, "url": str | None}` dicts scraped from `div.hut-content` blocks on rodelwelten detail pages
 - POI types for house maps: `train`, `supermarket` (custom strings fall back to a pin icon)
-- Do not scrape `/rodelbahnen/karte` — returns all `N/A`
-- Template is intentionally in German (`lang="de"`)
+- Do not scrape `/rodelbahnen/karte` — returns all `N/A`; only use `/detail/` URLs
+- Template is intentionally in German (`lang="de"`); all UI strings are in `translations/de.json`
+- Prices are normalised to `XXXX€` format via the `normalize_price` Jinja2 filter; `price_per_person` divides by a fixed integer and returns the same format
+- Per-person price is shown for 8 persons always; a second row for 10 persons appears only when `house.persons == "10"`
 - `python app.py --from-cache` re-renders HTML from existing `public/data.json` without scraping
+- Use `--force` to bypass the sled run cache after adding new routes or new scraped fields
