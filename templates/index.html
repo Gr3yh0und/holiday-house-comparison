@@ -124,18 +124,129 @@
             text-align: center;
         }
         .direct-link:hover { background: #bee3f8; }
+
+        .overview-section {
+            display: flex;
+            gap: 20px;
+            margin-bottom: 32px;
+            align-items: stretch;
+        }
+        .trip-list-card {
+            background: #fff;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+            padding: 18px;
+            flex: 0 0 260px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .trip-list-card h2 {
+            font-size: 0.75rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: #888;
+            margin-bottom: 4px;
+        }
+        .trip-list-item {
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+            padding: 8px 10px;
+            border-radius: 6px;
+            background: #f7fafc;
+            border-left: 4px solid #ccc;
+        }
+        .trip-list-item-body { display: flex; flex-direction: column; gap: 2px; }
+        .trip-list-item-name { font-size: 0.88rem; font-weight: 700; color: #1a365d; }
+        .trip-list-item-dates { font-size: 0.78rem; color: #666; }
+        .trip-list-item-count { font-size: 0.75rem; color: #999; }
+        .trip-list-item:hover { background: #ebf4ff; }
+        .overview-map-wrap {
+            flex: 1;
+            min-height: 300px;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+        }
+        #overview-map { width: 100%; height: 100%; min-height: 300px; }
+
+        .trip-group {
+            display: flex;
+            flex-direction: column;
+            gap: 0;
+            flex-shrink: 0;
+        }
+        .trip-header {
+            background: linear-gradient(135deg, #1a365d 0%, #2b6cb0 100%);
+            color: #fff;
+            border-radius: 10px 10px 0 0;
+            padding: 12px 18px;
+            display: flex;
+            flex-direction: column;
+            gap: 3px;
+        }
+        .trip-header-name {
+            font-size: 1rem;
+            font-weight: 700;
+            letter-spacing: 0.02em;
+        }
+        .trip-header-dates {
+            font-size: 0.8rem;
+            opacity: 0.8;
+            font-weight: 400;
+        }
+        .trip-houses {
+            display: flex;
+            flex-direction: row;
+            gap: 16px;
+            background: #dce8f5;
+            border: 2px solid #2b6cb0;
+            border-top: none;
+            border-radius: 0 0 10px 10px;
+            padding: 16px;
+        }
     </style>
 </head>
 <body>
     <h1>{{ title }}</h1>
+
+    {% set trip_colors = ['#2b6cb0','#276749','#c05621','#553c9a','#c53030','#744210','#086f83','#702459'] %}
+    <div class="overview-section">
+        {% if trips | length > 1 %}
+        <div class="trip-list-card">
+            <h2>Optionen</h2>
+            {% for trip in trips %}
+            {% set tc = trip_colors[loop.index0 % trip_colors|length] %}
+            <div class="trip-list-item" style="border-left-color: {{ tc }}; cursor: pointer;" onclick="scrollToTrip('trip-{{ loop.index0 }}')">
+                <div class="trip-list-item-body">
+                    <span class="trip-list-item-name">{{ trip.name }}</span>
+                    <span class="trip-list-item-dates">{{ trip.checkin | dedate }} &rarr; {{ trip.checkout | dedate }}</span>
+                    <span class="trip-list-item-count">{{ trip.houses | length }} Unterkunft{{ 'e' if trip.houses | length != 1 }}</span>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+        <div class="overview-map-wrap">
+            <div id="overview-map"></div>
+        </div>
+    </div>
+
     <div style="width: 100%; overflow-x: auto;">
     <div style="display: flex; gap: 24px; align-items: flex-start; flex-wrap: nowrap; min-width: max-content; padding-bottom: 12px;">
     {% for trip in trips %}
+    {% if trips | length > 1 %}
+    <div class="trip-group" id="trip-{{ loop.index0 }}">
+        <div class="trip-header">
+            {% if trip.name %}<span class="trip-header-name">{{ trip.name }}</span>{% endif %}
+            <span class="trip-header-dates">{{ trip.checkin | dedate }} &rarr; {{ trip.checkout | dedate }}</span>
+        </div>
+        <div class="trip-houses">
+    {% endif %}
     {% for house in trip.houses %}
         <div style="width: 380px; flex-shrink: 0;">
-        <h2 style="margin: 0 0 12px; color: #2b6cb0; font-size: 0.95rem; font-weight: 600;">
-            {% if trip.name %}{{ trip.name }} — {% endif %}{{ trip.checkin | dedate }} &rarr; {{ trip.checkout | dedate }}
-        </h2>
         <div class="card">
             <div class="card-header">
                 <span>{{ house.name }}</span>
@@ -295,6 +406,10 @@
         </div>
         </div>
     {% endfor %}
+    {% if trips | length > 1 %}
+        </div>
+    </div>
+    {% endif %}
     {% endfor %}
     </div>
     </div>
@@ -303,6 +418,95 @@
     </p>
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script>
+        function scrollToTrip(id) {
+            var target = document.getElementById(id);
+            if (!target) return;
+            var container = target.closest('div[style*="overflow-x"]') || target.parentElement;
+            // Scroll the page to the horizontal scroll area
+            container.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            // Scroll horizontally within the container so the trip is at the left edge
+            var containerRect = container.getBoundingClientRect();
+            var targetRect = target.getBoundingClientRect();
+            container.scrollBy({ left: targetRect.left - containerRect.left - 24, behavior: 'smooth' });
+        }
+
+        // Overview map
+        (function() {
+            var TRIP_COLORS = ['#2b6cb0','#276749','#c05621','#553c9a','#c53030','#744210','#086f83','#702459'];
+            var overviewData = [
+                {% for trip in trips %}
+                {
+                    name: {{ trip.name | tojson }},
+                    color: TRIP_COLORS[{{ loop.index0 }} % TRIP_COLORS.length],
+                    houses: [
+                        {% for house in trip.houses %}
+                        {% if house.lat is defined and house.lon is defined and house.lat and house.lon %}
+                        { name: {{ house.name | tojson }}, lat: {{ house.lat }}, lon: {{ house.lon }}, price: {{ (house.price | normalize_price) | tojson }} },
+                        {% endif %}
+                        {% endfor %}
+                    ]
+                }{% if not loop.last %},{% endif %}
+                {% endfor %}
+            ];
+
+            var map = L.map('overview-map');
+            L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
+                attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors © <a href="https://carto.com/">CARTO</a>',
+                subdomains: 'abcd', maxZoom: 19
+            }).addTo(map);
+
+            var bounds = L.latLngBounds();
+            var hasMarkers = false;
+
+            // Group houses by location — same lat/lon may appear in multiple trips
+            var locationMap = {};
+            overviewData.forEach(function(trip) {
+                trip.houses.forEach(function(house) {
+                    var key = house.lat.toFixed(5) + ',' + house.lon.toFixed(5);
+                    if (!locationMap[key]) {
+                        locationMap[key] = { lat: house.lat, lon: house.lon, name: house.name, entries: [] };
+                    }
+                    locationMap[key].entries.push({ tripName: trip.name, color: trip.color, price: house.price });
+                });
+            });
+
+            Object.values(locationMap).forEach(function(loc) {
+                // Use the color of the first trip for the marker; split-color if multiple
+                var firstColor = loc.entries[0].color;
+                var multiTrip = loc.entries.length > 1;
+                var bgStyle = firstColor;
+                if (multiTrip) {
+                    var stops = loc.entries.map(function(e, i) {
+                        var pct1 = Math.round(i * 100 / loc.entries.length);
+                        var pct2 = Math.round((i + 1) * 100 / loc.entries.length);
+                        return e.color + ' ' + pct1 + '% ' + pct2 + '%';
+                    }).join(', ');
+                    bgStyle = 'linear-gradient(135deg, ' + stops + ')';
+                }
+                var icon = L.divIcon({
+                    html: '<div style="background:' + bgStyle + ';color:#fff;width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:14px;box-shadow:0 2px 6px rgba(0,0,0,0.35);border:2px solid #fff;">🏠</div>',
+                    iconSize: [30, 30], iconAnchor: [15, 15], className: ''
+                });
+                var tooltipHtml = '<b>' + loc.name + '</b>';
+                loc.entries.forEach(function(e) {
+                    tooltipHtml += '<br><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:' + e.color + ';margin-right:4px;"></span>'
+                        + '<span style="color:#444;font-size:0.85em;">' + e.tripName + '</span>'
+                        + (e.price && e.price !== 'N/A' ? '<span style="color:#666;font-size:0.85em;"> — ' + e.price + '</span>' : '');
+                });
+                L.marker([loc.lat, loc.lon], { icon: icon })
+                    .addTo(map)
+                    .bindTooltip(tooltipHtml, { direction: 'top', offset: [0, -15] });
+                bounds.extend([loc.lat, loc.lon]);
+                hasMarkers = true;
+            });
+
+            if (hasMarkers) {
+                map.fitBounds(bounds, { padding: [30, 30] });
+            } else {
+                map.setView([47.3, 11.5], 8);
+            }
+        })();
+
         var POI_STYLES = {
             house:       { emoji: '🏠', bg: '#c53030' },
             train:       { emoji: '🚉', bg: '#276749' },
