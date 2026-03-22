@@ -3,6 +3,9 @@
     "updated_at": "Zuletzt aktualisiert",
     "house": {
         "section_title": "Unterkunft",
+        "prices_section": "Preise",
+        "details_section": "Ausstattung",
+        "surroundings_section": "Umgebung",
         "location": "Ort",
         "bedrooms": "Schlafzimmer",
         "persons": "Personen",

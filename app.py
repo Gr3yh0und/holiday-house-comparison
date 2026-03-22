@@ -46,7 +46,7 @@ def normalize_price(price):
     if price in (None, 'N/A', 'Error'):
         return price
     val = _parse_price(price)
-    return f"{int(val)}€" if val is not None else price
+    return f"{int(val)} €" if val is not None else price
 
 
 @app.template_filter('price_per_person')
@@ -58,7 +58,7 @@ def price_per_person(price, persons):
         persons_val = int(persons)
         if persons_val == 0:
             return None
-        return f"{round(price_val / persons_val)}€"
+        return f"{round(price_val / persons_val)} €"
     except (ValueError, AttributeError, TypeError):
         return None
 
