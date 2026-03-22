@@ -176,7 +176,7 @@
                     {% endif %}
                     <li>
                         <span class="label">{{ t.house.price }}</span>
-                        <span class="value{% if house.price == 'N/A' %} na{% endif %}">{{ house.price }}</span>
+                        <span class="value{% if house.price == 'N/A' %} na{% endif %}">{{ house.price }}{% set pp = house.price | price_per_person(house.persons) %}{% if pp %} <span style="font-weight:400; color:#888; font-size:0.82rem;">({{ pp }}/Person)</span>{% endif %}</span>
                     </li>
                     <li>
                         <span class="label">{{ t.house.availability }}</span>
@@ -224,7 +224,8 @@
                             <div class="sled-run-meta">
                                 {% if sled_run.length != 'N/A' %}<span class="sled-meta-chip">{{ sled_run.length }}</span>{% endif %}
                                 {% if sled_run.elevation_diff != 'N/A' %}<span class="sled-meta-chip">↕ {{ sled_run.elevation_diff }}</span>{% endif %}
-                                {% if sled_run.walking_time != 'N/A' %}<span class="sled-meta-chip">🥾 {{ sled_run.walking_time }}</span>{% endif %}
+                                {% if sled_run.height_bottom != 'N/A' %}<span class="sled-meta-chip">⬇ {{ sled_run.height_bottom }}</span>{% endif %}
+                                {% if sled_run.walking_time != 'N/A' %}<span class="sled-meta-chip">🥾 {{ sled_run.walking_time | replace('Minuten', 'min') }}</span>{% endif %}
                                 {% if sled_run.sled_rental == 'Ja' %}<span class="sled-meta-icon" title="{{ t.sled_runs.sled_rental }}">🛷</span>{% endif %}
                                 {% if sled_run.night_sleighing == 'Ja' %}<span class="sled-meta-icon" title="{{ t.sled_runs.night_sleighing }}">🌙</span>{% endif %}                            </div>
                         </div>
