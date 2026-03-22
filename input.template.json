@@ -1,5 +1,5 @@
 {
-    "title": "Urlaub 2027",
+    "title": "Rodelurlaub 2027",
     "trips": [
         {
             "name": "Option A - 4 Nächte",
@@ -7,20 +7,78 @@
             "checkout": "2027-02-21",
             "houses": [
                 {
-                    "name": "Name des Hauses - Ort",
-                    "lat": 47.0,
-                    "lon": 11.0,
-                    "image_url": "",
-                    "house_url": "https://www.fewo-direkt.de/...",
-                    "direct_url": "https://gastgeber-website.de/",
-                    "supermarket": "1 km (Spar)",
-                    "train_station": "2 km (Bahnhof Ortsname)",
+                    "name": "Chalet Alpenstern - Mayrhofen",
+                    "lat": 47.1677,
+                    "lon": 11.8659,
+                    "image_url": "https://example.com/bild.jpg",
+                    "house_url": "https://www.fewo-direkt.de/ferienwohnung-ferienhaus/p123456",
+                    "direct_url": "https://www.chalet-alpenstern.at/",
+                    "supermarket": "500 m (MPreis)",
+                    "train_station": "1,2 km (Bahnhof Mayrhofen)",
+                    "_overrides_comment": "All fields below are optional — they override the scraped values from the booking page",
+                    "address": "Zillertal, Tirol, Österreich",
+                    "rooms": "5",
+                    "persons": "10",
+                    "sqm": "140 m²",
+                    "bathrooms": "3",
+                    "room_config": [
+                        "2× Doppelzimmer",
+                        "1× Dreibettzimmer",
+                        "1× Schlafzimmer (2 Stockbetten)"
+                    ],
+                    "price": "3.200 €",
+                    "time": "Available",
+                    "rating": "9.4",
                     "pois": [
-                        { "type": "train", "label": "Bahnhof Ortsname", "lat": 47.0, "lon": 11.01 },
-                        { "type": "supermarket", "label": "Spar Ortsname", "lat": 47.01, "lon": 11.0 }
+                        {
+                            "type": "train",
+                            "label": "Bahnhof Mayrhofen",
+                            "lat": 47.1652,
+                            "lon": 11.8644
+                        },
+                        {
+                            "type": "supermarket",
+                            "label": "MPreis Mayrhofen",
+                            "lat": 47.1701,
+                            "lon": 11.8623
+                        }
                     ],
                     "sled_run_urls": [
-                        "https://www.rodelwelten.com/rodelbahnen/detail/name-der-route"
+                        "https://www.rodelwelten.com/rodelbahnen/detail/spieljoch",
+                        "https://www.rodelwelten.com/rodelbahnen/detail/goglhof"
+                    ]
+                }
+            ]
+        },
+        {
+            "name": "Option B - 7 Nächte",
+            "checkin": "2027-02-17",
+            "checkout": "2027-02-24",
+            "houses": [
+                {
+                    "name": "Ferienhaus Bergblick - Leutasch",
+                    "lat": 47.3640,
+                    "lon": 11.1420,
+                    "image_url": "https://example.com/bild2.jpg",
+                    "house_url": "https://www.booking.com/hotel/at/ferienhaus-bergblick.de.html",
+                    "direct_url": "https://www.bergblick-leutasch.at/",
+                    "pois": [
+                        {
+                            "type": "train",
+                            "label": "Bahnhof Seefeld",
+                            "lat": 47.3293,
+                            "lon": 11.1897
+                        },
+                        {
+                            "type": "supermarket",
+                            "label": "MPreis Leutasch",
+                            "lat": 47.3715,
+                            "lon": 11.1677
+                        }
+                    ],
+                    "sled_run_urls": [
+                        "https://www.rodelwelten.com/rodelbahnen/detail/haemmermoosalm",
+                        "https://www.rodelwelten.com/rodelbahnen/detail/wetterstein"
                     ]
                 }
             ]
