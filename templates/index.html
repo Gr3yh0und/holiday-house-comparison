@@ -207,6 +207,77 @@
             border-radius: 0 0 10px 10px;
             padding: 16px;
         }
+
+        /* Map gesture hint — shown briefly on single-finger touch */
+        .map-gesture-hint {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0,0,0,0.6);
+            color: #fff;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 0.82rem;
+            pointer-events: none;
+            z-index: 1000;
+            opacity: 0;
+            transition: opacity 0.25s;
+            white-space: nowrap;
+        }
+        .map-gesture-hint.visible { opacity: 1; }
+
+        .house-dots {
+            display: none;
+            gap: 6px;
+            justify-content: center;
+            padding: 8px 0;
+        }
+        .house-dot {
+            width: 8px; height: 8px;
+            border-radius: 50%;
+            background: #a0aec0;
+            transition: background 0.2s, transform 0.2s;
+        }
+        .house-dot.active { background: #2b6cb0; transform: scale(1.3); }
+
+        @media (max-width: 700px) {
+            body { padding: 12px; }
+            .overview-section { flex-direction: column; }
+            .trip-list-card { flex: none; }
+            .overview-map-wrap { min-height: 260px; }
+            #overview-map { min-height: 260px; }
+            /* Trips stack vertically, each takes full width */
+            .trips-scroll { flex-direction: column !important; min-width: unset !important; gap: 20px !important; }
+            .trip-group { width: 100% !important; }
+            /* Houses: horizontal snap scroll */
+            .trip-houses {
+                flex-direction: row !important;
+                overflow-x: scroll;
+                scroll-snap-type: x mandatory;
+                -webkit-overflow-scrolling: touch;
+                scrollbar-width: none;
+                gap: 0 !important;
+                padding: 12px 0 !important;
+                border-radius: 0 0 10px 10px;
+            }
+            .trip-houses::-webkit-scrollbar { display: none; }
+            /* Each slide fills the container */
+            .house-slide {
+                flex: 0 0 100% !important;
+                width: 100% !important;
+                scroll-snap-align: start;
+                padding: 0 12px;
+            }
+            /* Dot indicators */
+            .house-dots { display: flex; }
+            /* Map and tap-target sizes */
+            .house-map { height: 220px; }
+            .sled-run-map { height: 220px; }
+            .sled-run summary { padding: 12px 14px; min-height: 44px; }
+            .sled-run-link { padding: 6px 10px; }
+            .direct-link { padding: 12px; }
+        }
     </style>
 </head>
 <body>
@@ -235,7 +306,7 @@
     </div>
 
     <div style="width: 100%; overflow-x: auto;">
-    <div style="display: flex; gap: 24px; align-items: flex-start; flex-wrap: nowrap; min-width: max-content; padding-bottom: 12px;">
+    <div class="trips-scroll" style="display: flex; gap: 24px; align-items: flex-start; flex-wrap: nowrap; min-width: max-content; padding-bottom: 12px;">
     {% for trip in trips %}
     {% if trips | length > 1 %}
     <div class="trip-group" id="trip-{{ loop.index0 }}">
@@ -246,7 +317,7 @@
         <div class="trip-houses">
     {% endif %}
     {% for house in trip.houses %}
-        <div style="width: 380px; flex-shrink: 0;">
+        <div class="house-slide" style="width: 380px; flex-shrink: 0;">
         <div class="card">
             <div class="card-header">
                 <span>{{ house.name }}</span>
@@ -419,6 +490,11 @@
     {% endfor %}
     {% if trips | length > 1 %}
         </div>
+        {% if trip.houses | length > 1 %}
+        <div class="house-dots">
+            {% for h in trip.houses %}<div class="house-dot{% if loop.first %} active{% endif %}"></div>{% endfor %}
+        </div>
+        {% endif %}
     </div>
     {% endif %}
     {% endfor %}
@@ -439,6 +515,26 @@
             var containerRect = container.getBoundingClientRect();
             var targetRect = target.getBoundingClientRect();
             container.scrollBy({ left: targetRect.left - containerRect.left - 24, behavior: 'smooth' });
+        }
+
+        // Gesture hint for touch devices — shows "two fingers" message on single-finger touch
+        function addGestureHint(mapEl) {
+            if (!('ontouchstart' in window)) return;
+            var hint = document.createElement('div');
+            hint.className = 'map-gesture-hint';
+            hint.textContent = 'Zwei Finger zum Navigieren';
+            mapEl.appendChild(hint);
+            var timer;
+            mapEl.addEventListener('touchstart', function(e) {
+                if (e.touches.length < 2) {
+                    hint.classList.add('visible');
+                    clearTimeout(timer);
+                    timer = setTimeout(function() { hint.classList.remove('visible'); }, 1500);
+                } else {
+                    clearTimeout(timer);
+                    hint.classList.remove('visible');
+                }
+            }, { passive: true });
         }
 
         // Overview map
@@ -471,6 +567,7 @@
             ];
 
             var map = L.map('overview-map');
+            addGestureHint(document.getElementById('overview-map'));
             L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
                 attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors © <a href="https://carto.com/">CARTO</a>',
                 subdomains: 'abcd', maxZoom: 19
@@ -564,6 +661,7 @@
             var lat = parseFloat(el.dataset.lat);
             var lon = parseFloat(el.dataset.lon);
             var map = L.map(el).setView([lat, lon], 13);
+            addGestureHint(el);
             L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
                 attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors © <a href="https://carto.com/">CARTO</a>',
                 subdomains: 'abcd',
@@ -586,6 +684,17 @@
             }
         });
 
+        // Snap-scroll dot indicators
+        document.querySelectorAll('.trip-houses').forEach(function(container) {
+            var dotsEl = container.nextElementSibling;
+            if (!dotsEl || !dotsEl.classList.contains('house-dots')) return;
+            var dots = Array.from(dotsEl.querySelectorAll('.house-dot'));
+            container.addEventListener('scroll', function() {
+                var idx = Math.round(container.scrollLeft / container.clientWidth);
+                dots.forEach(function(d, i) { d.classList.toggle('active', i === idx); });
+            }, { passive: true });
+        });
+
         document.querySelectorAll('details.sled-run').forEach(function(el) {
             el.addEventListener('toggle', function() {
                 if (!el.open || el._mapInit) return;
@@ -594,6 +703,7 @@
                 if (!mapEl) return;
                 var track = JSON.parse(mapEl.dataset.track);
                 var map = L.map(mapEl);
+                addGestureHint(mapEl);
                 L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
                     attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors © <a href="https://carto.com/">CARTO</a>',
                     subdomains: 'abcd',
