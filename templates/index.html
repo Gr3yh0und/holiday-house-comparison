@@ -93,7 +93,11 @@
         }
         .sled-run[open] summary::before { transform: rotate(90deg); }
         .sled-run summary:hover { background: #ebf4ff; }
-        .sled-run-name { flex: 1; }
+        .sled-run-header { flex: 1; display: flex; flex-direction: column; gap: 3px; }
+        .sled-run-name { }
+        .sled-run-meta { display: flex; flex-wrap: wrap; gap: 5px; align-items: center; }
+        .sled-meta-chip { font-size: 0.72rem; font-weight: 400; color: #4a5568; background: #e2e8f0; padding: 1px 7px; border-radius: 10px; white-space: nowrap; }
+        .sled-meta-icon { font-size: 0.95rem; line-height: 1; }
         .sled-run-link {
             font-size: 0.78rem;
             color: #4299e1;
@@ -160,7 +164,7 @@
                     </li>
                     <li>
                         <span class="label">{{ t.house.bathrooms }}</span>
-                        <span class="value{% if house.bathrooms == 'N/A' %} na{% endif %}">{{ house.bathrooms }}</span>
+                        <span class="value{% if house.bathrooms == 'N/A' %} na{% endif %}">{{ house.bathrooms }}{% if house.bathrooms != 'N/A' and house.rooms != 'N/A' and (house.bathrooms | int) * 2 < (house.rooms | int) %} ⚠️{% endif %}</span>
                     </li>
                     {% if house.room_config %}
                     <li style="flex-direction: column; align-items: flex-start; gap: 4px;">
@@ -215,7 +219,15 @@
                 {% for sled_run in house.sled_runs %}
                 <details class="sled-run">
                     <summary>
-                        <span class="sled-run-name">{{ sled_run.name }}</span>
+                        <div class="sled-run-header">
+                            <span class="sled-run-name">{{ sled_run.name }}</span>
+                            <div class="sled-run-meta">
+                                {% if sled_run.length != 'N/A' %}<span class="sled-meta-chip">{{ sled_run.length }}</span>{% endif %}
+                                {% if sled_run.elevation_diff != 'N/A' %}<span class="sled-meta-chip">↕ {{ sled_run.elevation_diff }}</span>{% endif %}
+                                {% if sled_run.walking_time != 'N/A' %}<span class="sled-meta-chip">🥾 {{ sled_run.walking_time }}</span>{% endif %}
+                                {% if sled_run.sled_rental == 'Ja' %}<span class="sled-meta-icon" title="{{ t.sled_runs.sled_rental }}">🛷</span>{% endif %}
+                                {% if sled_run.night_sleighing == 'Ja' %}<span class="sled-meta-icon" title="{{ t.sled_runs.night_sleighing }}">🌙</span>{% endif %}                            </div>
+                        </div>
                     </summary>
                     <div class="sled-run-body">
                     {% if sled_run.track %}

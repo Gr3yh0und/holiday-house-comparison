@@ -77,7 +77,7 @@ def scrape(url, driver=None):
                 result['rating'] = score_el.get('data-review-score')
 
         rooms_m = re.search(r'(\d+)\s*(Schlafzimmer|Bedroom)', text, re.I)
-        result['rooms'] = rooms_m.group(0) if rooms_m else 'N/A'
+        result['rooms'] = rooms_m.group(1) if rooms_m else 'N/A'
 
         price_el = soup.find(attrs={'data-testid': 'price-and-discounts-price'})
         if price_el:

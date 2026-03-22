@@ -57,7 +57,7 @@ def scrape(url, driver=None):
 
         # Rooms, bathrooms, persons, sqm — all in rendered summary text
         rooms_m = re.search(r'(\d+)\s*Schlafzimmer', text, re.I)
-        result['rooms'] = rooms_m.group(0) if rooms_m else 'N/A'
+        result['rooms'] = rooms_m.group(1) if rooms_m else 'N/A'
         print(f"  [fewo] rooms: {result['rooms']}")
 
         bath_m = re.search(r'(\d+)\s*Badezimmer', text, re.I)
