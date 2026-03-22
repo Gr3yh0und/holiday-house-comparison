@@ -452,7 +452,17 @@
                     houses: [
                         {% for house in trip.houses %}
                         {% if house.lat is defined and house.lon is defined and house.lat and house.lon %}
-                        { name: {{ house.name | tojson }}, lat: {{ house.lat }}, lon: {{ house.lon }}, price: {{ (house.price | normalize_price) | tojson }} },
+                        {
+                            name: {{ house.name | tojson }},
+                            lat: {{ house.lat }},
+                            lon: {{ house.lon }},
+                            price: {{ (house.price | normalize_price) | tojson }},
+                            sledRuns: [
+                                {% for run in house.sled_runs %}{% if run.track %}
+                                { url: {{ run.url | tojson }}, name: {{ run.name | tojson }}, track: {{ run.track | tojson }} },
+                                {% endif %}{% endfor %}
+                            ]
+                        },
                         {% endif %}
                         {% endfor %}
                     ]
@@ -509,6 +519,24 @@
                     .bindTooltip(tooltipHtml, { direction: 'top', offset: [0, -15] });
                 bounds.extend([loc.lat, loc.lon]);
                 hasMarkers = true;
+            });
+
+            // Draw sled run tracks — deduplicated by URL, colored by first trip
+            var sledRunMap = {};
+            overviewData.forEach(function(trip) {
+                trip.houses.forEach(function(house) {
+                    (house.sledRuns || []).forEach(function(run) {
+                        if (!sledRunMap[run.url]) {
+                            sledRunMap[run.url] = { name: run.name, track: run.track, color: trip.color };
+                        }
+                    });
+                });
+            });
+            Object.values(sledRunMap).forEach(function(run) {
+                var latlngs = run.track.map(function(pt) { return [pt[0], pt[1]]; });
+                L.polyline(latlngs, { color: run.color, weight: 2.5, opacity: 0.75 })
+                    .addTo(map)
+                    .bindTooltip('🛷 ' + run.name, { sticky: true });
             });
 
             if (hasMarkers) {
