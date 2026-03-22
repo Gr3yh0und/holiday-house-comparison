@@ -124,12 +124,14 @@
 </head>
 <body>
     <h1>{{ title }}</h1>
+    <div style="width: 100%; overflow-x: auto;">
+    <div style="display: flex; gap: 24px; align-items: flex-start; flex-wrap: nowrap; min-width: max-content; padding-bottom: 12px;">
     {% for trip in trips %}
-    <h2 style="margin: 24px 0 12px; color: #2b6cb0; font-size: 1.1rem;">
-        {% if trip.name %}{{ trip.name }} — {% endif %}{{ trip.checkin | dedate }} &rarr; {{ trip.checkout | dedate }}
-    </h2>
-    <div class="grid">
     {% for house in trip.houses %}
+        <div style="width: 380px; flex-shrink: 0;">
+        <h2 style="margin: 0 0 12px; color: #2b6cb0; font-size: 0.95rem; font-weight: 600;">
+            {% if trip.name %}{{ trip.name }} — {% endif %}{{ trip.checkin | dedate }} &rarr; {{ trip.checkout | dedate }}
+        </h2>
         <div class="card">
             <div class="card-header">
                 <span>{{ house.name }}</span>
@@ -198,6 +200,9 @@
                 {% endif %}
 
                 {% if house.lat is defined and house.lon is defined %}
+                <a href="https://www.google.com/maps?q={{ house.lat }},{{ house.lon }}" target="_blank" class="direct-link">{{ t.house.maps_link }}</a>
+                {% endif %}
+                {% if house.lat is defined and house.lon is defined %}
                 <div class="house-map"
                      data-lat="{{ house.lat }}"
                      data-lon="{{ house.lon }}"
@@ -246,9 +251,11 @@
                 {% endif %}
             </div>
         </div>
+        </div>
+    {% endfor %}
     {% endfor %}
     </div>
-    {% endfor %}
+    </div>
     <p style="text-align: center; margin-top: 28px; font-size: 0.8rem; color: #999;">
         {{ t.updated_at }}: {{ updated_at }}
     </p>

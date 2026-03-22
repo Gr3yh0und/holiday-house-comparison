@@ -15,7 +15,8 @@
         "supermarket": "Supermarkt in Nähe",
         "rating": "Bewertung",
         "booking_link": "Buchungsportal ansehen ↗",
-        "direct_link": "Direkt beim Gastgeber anfragen ↗"
+        "direct_link": "Direkt beim Gastgeber anfragen ↗",
+        "maps_link": "In Google Maps öffnen ↗"
     },
     "sled_runs": {
         "section_title": "Rodelbahnen",
