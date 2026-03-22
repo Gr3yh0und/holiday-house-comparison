@@ -10,6 +10,8 @@
         "bathrooms": "Badezimmer",
         "room_config": "Zimmerkonfiguration",
         "price": "Gesamtpreis",
+        "price_per_person_8": "Preis/Person (8 Pers.)",
+        "price_per_person_10": "Preis/Person (10 Pers.)",
         "availability": "Verfügbarkeit",
         "train_station": "Bahnhof in Nähe",
         "supermarket": "Supermarkt in Nähe",
@@ -35,7 +37,8 @@
         "avalanche_danger": "Lawinengefahr",
         "operator": "Betreiber",
         "opening_hours": "Öffnungszeiten",
-        "link_label": "↗ Zur Route"
+        "link_label": "↗ Zur Route",
+        "huts": "Einkehrmöglichkeit"
     },
     "poi": {
         "house_label": "Unterkunft",

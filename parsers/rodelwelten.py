@@ -16,6 +16,7 @@ EMPTY = {k: 'N/A' for k in [
     'separate_ascent', 'ascent_aid', 'difficulty', 'operator', 'opening_hours',
 ]}
 EMPTY['track'] = []
+EMPTY['huts'] = []
 
 
 def load_cache(path):
@@ -78,6 +79,7 @@ def scrape(url, force_refresh=False):
         slope = ('Ø ' + facts[slope_key]) if slope_key else 'N/A'
 
         track = _extract_track(response.text)
+        huts = _extract_huts(response.text)
 
         result = {
             'name':             route_name,
@@ -97,6 +99,7 @@ def scrape(url, force_refresh=False):
             'operator':         operator,
             'opening_hours':    opening_hours,
             'track':            track,
+            'huts':             huts,
         }
         _cache[url] = {'fetched_at': datetime.now().isoformat(), 'data': result}
         return result
@@ -137,3 +140,24 @@ def _extract_track(page_text):
             print(f"  [track] failed to parse inline track: {e}")
 
     return []
+
+
+def _extract_huts(page_text):
+    soup = BeautifulSoup(page_text, 'html.parser')
+    huts = []
+    for div in soup.find_all('div', class_='hut-content'):
+        h4 = div.find('h4')
+        if not h4:
+            continue
+        name = h4.get_text(strip=True)
+        url = None
+        for row in div.find_all('tr'):
+            th = row.find('th')
+            td = row.find('td')
+            if th and td and th.get_text(strip=True).rstrip(':') == 'Web':
+                a = td.find('a', href=True)
+                if a:
+                    url = a['href']
+                break
+        huts.append({'name': name, 'url': url})
+    return huts

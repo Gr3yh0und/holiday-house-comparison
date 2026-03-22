@@ -176,8 +176,20 @@
                     {% endif %}
                     <li>
                         <span class="label">{{ t.house.price }}</span>
-                        <span class="value{% if house.price == 'N/A' %} na{% endif %}">{{ house.price }}{% set pp = house.price | price_per_person(house.persons) %}{% if pp %} <span style="font-weight:400; color:#888; font-size:0.82rem;">({{ pp }}/Person)</span>{% endif %}</span>
+                        <span class="value{% if house.price == 'N/A' %} na{% endif %}">{{ house.price }}</span>
                     </li>
+                    <li>
+                        <span class="label">{{ t.house.price_per_person_8 }}</span>
+                        {% set pp8 = house.price | price_per_person(8) %}
+                        <span class="value{% if not pp8 %} na{% endif %}">{{ pp8 if pp8 else 'N/A' }}</span>
+                    </li>
+                    {% if house.persons == '10' %}
+                    <li>
+                        <span class="label">{{ t.house.price_per_person_10 }}</span>
+                        {% set pp10 = house.price | price_per_person(10) %}
+                        <span class="value{% if not pp10 %} na{% endif %}">{{ pp10 if pp10 else 'N/A' }}</span>
+                    </li>
+                    {% endif %}
                     <li>
                         <span class="label">{{ t.house.availability }}</span>
                         <span class="value{% if house.time == 'Available' %} good{% endif %}">{{ house.time }}</span>
@@ -224,10 +236,10 @@
                             <div class="sled-run-meta">
                                 {% if sled_run.length != 'N/A' %}<span class="sled-meta-chip">{{ sled_run.length }}</span>{% endif %}
                                 {% if sled_run.elevation_diff != 'N/A' %}<span class="sled-meta-chip">↕ {{ sled_run.elevation_diff }}</span>{% endif %}
-                                {% if sled_run.height_bottom != 'N/A' %}<span class="sled-meta-chip">⬇ {{ sled_run.height_bottom }}</span>{% endif %}
-                                {% if sled_run.walking_time != 'N/A' %}<span class="sled-meta-chip">🥾 {{ sled_run.walking_time | replace('Minuten', 'min') }}</span>{% endif %}
+{% if sled_run.walking_time != 'N/A' %}<span class="sled-meta-chip">🥾 {{ sled_run.walking_time | replace('Minuten', 'min') }}</span>{% endif %}
                                 {% if sled_run.sled_rental == 'Ja' %}<span class="sled-meta-icon" title="{{ t.sled_runs.sled_rental }}">🛷</span>{% endif %}
-                                {% if sled_run.night_sleighing == 'Ja' %}<span class="sled-meta-icon" title="{{ t.sled_runs.night_sleighing }}">🌙</span>{% endif %}                            </div>
+                                {% if sled_run.night_sleighing == 'Ja' %}<span class="sled-meta-icon" title="{{ t.sled_runs.night_sleighing }}">🌙</span>{% endif %}
+                                {% if sled_run.huts %}<span class="sled-meta-icon" title="{{ t.sled_runs.huts }}: {{ sled_run.huts | map(attribute='name') | join(', ') }}">🍺</span>{% endif %}                            </div>
                         </div>
                     </summary>
                     <div class="sled-run-body">
@@ -256,6 +268,14 @@
                         <li><span class="label">{{ t.sled_runs.avalanche_danger }}</span><span class="value{% if sled_run.avalanche_danger == 'N/A' %} na{% endif %}">{{ sled_run.avalanche_danger }}</span></li>
                         <li><span class="label">{{ t.sled_runs.operator }}</span><span class="value{% if sled_run.operator == 'N/A' %} na{% endif %}">{{ sled_run.operator }}</span></li>
                         <li><span class="label">{{ t.sled_runs.opening_hours }}</span><span class="value{% if sled_run.opening_hours == 'N/A' %} na{% endif %}">{{ sled_run.opening_hours }}</span></li>
+                        {% if sled_run.huts %}
+                        <li style="flex-direction: column; align-items: flex-start; gap: 4px;">
+                            <span class="label">{{ t.sled_runs.huts }}</span>
+                            {% for hut in sled_run.huts %}
+                            <span class="value" style="font-size: 0.82rem;">🍺 {{ hut.name }}{% if hut.url %} <a href="{{ hut.url }}" target="_blank" class="sled-run-link">↗</a>{% endif %}</span>
+                            {% endfor %}
+                        </li>
+                        {% endif %}
                         <li><span class="label">Rodelwelten</span><span class="value"><a class="sled-run-link" href="{{ sled_run.url }}" target="_blank">{{ t.sled_runs.link_label }}</a></span></li>
                     </ul>
                     </div>
