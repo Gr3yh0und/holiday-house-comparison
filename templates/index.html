@@ -369,6 +369,7 @@
                                 {% if sled_run.sled_rental == 'Ja' %}<span class="sled-meta-icon" title="{{ t.sled_runs.sled_rental }}">🛷</span>{% endif %}
                                 {% if sled_run.night_sleighing == 'Ja' %}<span class="sled-meta-icon" title="{{ t.sled_runs.night_sleighing }}">🌙</span>{% endif %}
                                 {% if sled_run.ascent_aid and sled_run.ascent_aid != 'N/A' and sled_run.ascent_aid | upper != 'NEIN' %}<span class="sled-meta-icon" title="{{ t.sled_runs.ascent_aid }}: {{ sled_run.ascent_aid }}">🚡</span>{% endif %}
+                                {% if sled_run.public_transport == 'Ja' %}<span class="sled-meta-icon" title="{{ t.sled_runs.public_transport }}">🚌</span>{% endif %}
                                 {% if sled_run.huts %}<span class="sled-meta-icon" title="{{ t.sled_runs.huts }}: {{ sled_run.huts | map(attribute='name') | join(', ') }}">🍺</span>{% endif %}                            </div>
                         </div>
                     </summary>
