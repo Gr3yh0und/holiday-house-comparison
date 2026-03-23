@@ -13,7 +13,7 @@ A static site generator for comparing holiday houses suitable for sledding (Rode
 ## Usage
 
 ```
-python app.py [--force] [--broker fewo|booking] [--limit N] [--from-cache]
+python app.py [--force] [--broker fewo|booking] [--limit N] [--from-cache] [--house NAME]
 ```
 
 | Flag | Description |
@@ -22,6 +22,7 @@ python app.py [--force] [--broker fewo|booking] [--limit N] [--from-cache]
 | `--broker fewo\|booking` | Only scrape houses from this broker (skips others) |
 | `--limit N` | Stop after scraping N houses |
 | `--from-cache` | Re-render HTML from existing `public/data.json` without scraping |
+| `--house NAME` | Scrape only one house (case-insensitive substring match), patch `public/data.json`, and re-render |
 
 Outputs:
 - `public/index.html` — the static comparison page
@@ -134,6 +135,8 @@ Each house card shows two types of maps:
 - **House map** — shows the house location (🏠) plus any configured POIs (train stations, supermarkets, etc.)
 - **Sled run maps** — shown per sled run (expand to view); displays the GPX route with the house location (🏠) for distance reference
 
+The overview map at the top groups houses by location. If two or more houses share the same coordinates (to 5 decimal places), they are merged into a single marker with a split-colour gradient and a tooltip listing each house name, trip, and price separately.
+
 ## Notes
 
 - House scraping requires Chrome to be running in non-headless mode to bypass bot detection. A browser window will briefly appear off-screen during scraping.
@@ -141,3 +144,4 @@ Each house card shows two types of maps:
 - For outdooractive.com, use route detail URLs in the form `/de/route/rodeln/.../ID/`. The URL fragment (everything after `#`) is ignored.
 - The Flask `@app.route('/')` enables a live server mode (`flask run`) that scrapes on every request, but the primary workflow is static generation via `python app.py`.
 - After adding new sled runs, run with `--force` to bypass the cache and pick up newly scraped fields (e.g. huts).
+- The footer shows the current version, resolved in order: latest GitHub release tag → latest local git tag → `dev`. Create a GitHub release to have it appear automatically.
