@@ -15,20 +15,24 @@
                     "direct_url": "https://www.chalet-alpenstern.at/",
                     "supermarket": "500 m (MPreis)",
                     "train_station": "1,2 km (Bahnhof Mayrhofen)",
+                    "nearest_sled_run": "Spieljoch (1,2 km · 5 min)",
+                    "notes": "Nur per E-Mail buchbar.",
                     "_overrides_comment": "All fields below are optional — they override the scraped values from the booking page",
-                    "address": "Zillertal, Tirol, Österreich",
+                    "address": "Mayrhofen, Österreich",
                     "rooms": "5",
                     "persons": "10",
                     "sqm": "140 m²",
                     "bathrooms": "3",
                     "room_config": [
-                        "2× Doppelzimmer",
-                        "1× Dreibettzimmer",
-                        "1× Schlafzimmer (2 Stockbetten)"
+                        "1 Doppelbett",
+                        "1 Doppelbett",
+                        "2 Einzelbetten",
+                        "2 Etagenbetten"
                     ],
-                    "price": "3.200 €",
+                    "price": "3200",
                     "time": "Available",
                     "rating": "9.4",
+                    "sauna": "Ja",
                     "pois": [
                         {
                             "type": "train",
@@ -51,10 +55,29 @@
             ]
         },
         {
-            "name": "Option B - 7 Nächte",
+            "name": "Option B - 7 Nächte Sa/Sa",
             "checkin": "2027-02-17",
             "checkout": "2027-02-24",
             "houses": [
+                {
+                    "name": "Hütte Sonnenhang - Krimml",
+                    "lat": 47.2264,
+                    "lon": 12.1821,
+                    "image_url": "https://example.com/bild3.jpg",
+                    "house_url": "https://www.huetten.com/de/huette/sonnenhang.html#/vsc.php?calendar_date_from=2027-02-17&persons_adults=8&calendar_stays=7&c[id_hotel]=9999&set_language=de",
+                    "nearest_sled_run": "Rodelbahn Krimml (1,4 km · 4 min)",
+                    "pois": [
+                        {
+                            "type": "train",
+                            "label": "Bahnhof Krimml",
+                            "lat": 47.2348,
+                            "lon": 12.1960
+                        }
+                    ],
+                    "sled_run_urls": [
+                        "https://www.rodelwelten.com/rodelbahnen/detail/krimml"
+                    ]
+                },
                 {
                     "name": "Ferienhaus Bergblick - Leutasch",
                     "lat": 47.3640,

@@ -13,7 +13,7 @@ A static site generator for comparing holiday houses suitable for sledding (Rode
 ## Usage
 
 ```
-python app.py [--force] [--broker fewo|booking] [--limit N] [--from-cache] [--house NAME]
+python app.py [--force] [--broker fewo|booking|huetten] [--limit N] [--from-cache] [--house NAME]
 ```
 
 | Flag | Description |
@@ -22,7 +22,7 @@ python app.py [--force] [--broker fewo|booking] [--limit N] [--from-cache] [--ho
 | `--broker fewo\|booking\|huetten` | Only scrape houses from this broker (skips others) |
 | `--limit N` | Stop after scraping N houses |
 | `--from-cache` | Re-render HTML from existing `public/data.json` without scraping |
-| `--house NAME` | Scrape only one house (case-insensitive substring match), patch `public/data.json`, and re-render |
+| `--house NAME` | Scrape only one house (case-insensitive substring match), patch `public/data.json`, and re-render. If the house appears in multiple trips with different dates, each trip is scraped separately. |
 
 Outputs:
 - `public/index.html` — the static comparison page
@@ -87,6 +87,7 @@ Any field normally scraped from the booking page can be overridden directly in `
 | `train_station` | Train station distance (text) | `"650 m zu Fuß"` |
 | `sauna` | Sauna available | `"Ja"` or `"Nein"` |
 | `nearest_sled_run` | Nearest sled run with driving distance/time | `"Hoher Sattel (2,4 km · 4 min)"` |
+| `notes` | Free-text note shown on the house card (above the booking buttons) | `"Nur per E-Mail buchbar."` |
 
 Example:
 
@@ -115,15 +116,19 @@ Points of interest (`pois`) are shown on the house location map. Supported `type
 ## How It Works
 
 1. **House scraping** — three parsers are supported, selected automatically by URL:
-   - **fewo-direkt.de / booking.com** — uses headless Chrome (`undetected-chromedriver`) to bypass bot detection, then extracts location, price, bedroom count, bed configuration, sauna availability, and more.
-   - **huetten.com** — uses plain `requests` (no browser needed); extracts all fields from static HTML and the JSON-LD `LodgingBusiness` block. Price is resolved from the on-page weekly price table by matching the checkin date and person count parsed from the URL fragment (`#/vsc.php?calendar_date_from=…&persons_adults=…`).
+   - **fewo-direkt.de / booking.com** — uses headless Chrome (`undetected-chromedriver`) to bypass bot detection, then extracts location, price, bedroom count, bed configuration, sauna availability, and more. Bed entries containing "Schlafsofa" are flagged with ⚠️ in the UI.
+   - **huetten.com** — uses plain `requests` (no browser needed); extracts all fields from static HTML and the JSON-LD `LodgingBusiness` block. Price is resolved from the on-page weekly price table by matching the checkin date and person count parsed from the URL fragment (`#/vsc.php?calendar_date_from=…&persons_adults=…`). Nebenkosten (additional costs) are parsed separately and folded into the displayed Gesamtpreis; Kaution is excluded. Prices for both 8 and 10 persons are looked up from the table directly.
 
    Fields present in `input.json` override scraped values for all brokers.
 2. **Sled run scraping** — two parsers are supported, selected automatically by URL:
    - **rodelwelten.com** — fetches `/detail/` pages with `requests`/BeautifulSoup and parses the details table (length, elevation, night sledding, public transport, sled rental, etc.). Hut/Alm info (name + website) is extracted from `div.hut-content` blocks. GPX tracks are downloaded (or assembled from inline JSON segments) and downsampled for map display. Cached for 24 hours in `cache/sled_runs.json`.
    - **outdooractive.com** — parses JSON-LD structured data embedded in the page for length, elevation, difficulty, ascent aid, and operator. Additional fields (night sledding, public transport, sled rental, opening hours) are inferred from page text. The GPX track is downloaded via the public `download.tour.gpx?i={id}` endpoint and downsampled. Cached for 24 hours in `cache/outdooractive.json`.
 3. **Date injection** — known date query parameters (`chkin`, `chkout`, `startDate`, `endDate`, `checkin`, `checkout`, etc.) in house URLs are replaced with the configured trip dates before scraping.
-4. **Rendering** — the Jinja2 template in `templates/index.html` renders all trips and houses into a card-based comparison layout with interactive Leaflet maps. Prices are normalised to `XXXX€` format via the `normalize_price` filter. Per-person price is always shown for 8 persons; a second row for 10 persons is shown when `house.persons == "10"`.
+4. **Rendering** — the Jinja2 template in `templates/index.html` renders all trips and houses into a card-based comparison layout with interactive Leaflet maps.
+   - Prices are normalised to `XXXX €` format. Per-person price is shown for 8 persons; a 10-person row is shown when a separate 10-person price is available or when `house.persons == "10"`. For fewo/booking the 10-person price is estimated as the 8-person price +2%.
+   - Address is normalised to "City, Country" format with a country flag emoji.
+   - A data quality warning box appears at the top if the scraped bedroom count does not match the number of `room_config` entries; clicking a house name jumps directly to its card.
+   - The last-updated timestamp is shown prominently below the page title.
 
 ## Supported Sources
 
@@ -141,11 +146,18 @@ Each house card shows two types of maps:
 
 The overview map at the top groups houses by location. If two or more houses share the same coordinates (to 5 decimal places), they are merged into a single marker with a split-colour gradient and a tooltip listing each house name, trip, and price separately.
 
+## Data Quality Warnings
+
+If the scraped bedroom count (`rooms`) does not match the number of entries in `room_config`, a highlighted warning box is shown at the top of the page listing all affected houses. Each house name is a clickable link that jumps to the relevant card. The affected card header also shows a small `⚠️ Zimmer` badge. Bed entries containing "Schlafsofa" are flagged inline with ⚠️.
+
 ## Notes
 
 - House scraping requires Chrome to be running in non-headless mode to bypass bot detection. A browser window will briefly appear off-screen during scraping.
+- huetten.com is scraped with plain `requests` — no browser needed.
 - Sled run map pages (e.g. `/rodelbahnen/karte`) return all `N/A` — only use `/detail/` URLs for rodelwelten.com.
 - For outdooractive.com, use route detail URLs in the form `/de/route/rodeln/.../ID/`. The URL fragment (everything after `#`) is ignored.
 - The Flask `@app.route('/')` enables a live server mode (`flask run`) that scrapes on every request, but the primary workflow is static generation via `python app.py`.
 - After adding new sled runs, run with `--force` to bypass the cache and pick up newly scraped fields (e.g. huts).
+- When using `--house` for a house that appears in multiple trips, each unique date range is scraped separately so prices are correct per trip.
+- `room_config` entries should contain only the bed description (e.g. `"1 Doppelbett"`); the "Schlafzimmer N:" label is generated automatically by the template.
 - The footer shows the current version, resolved in order: latest GitHub release tag → latest local git tag → `dev`. Create a GitHub release to have it appear automatically.
