@@ -19,7 +19,7 @@ python app.py [--force] [--broker fewo|booking] [--limit N] [--from-cache] [--ho
 | Flag | Description |
 |------|-------------|
 | `--force` | Re-fetch all sled run data, ignoring the local cache |
-| `--broker fewo\|booking` | Only scrape houses from this broker (skips others) |
+| `--broker fewo\|booking\|huetten` | Only scrape houses from this broker (skips others) |
 | `--limit N` | Stop after scraping N houses |
 | `--from-cache` | Re-render HTML from existing `public/data.json` without scraping |
 | `--house NAME` | Scrape only one house (case-insensitive substring match), patch `public/data.json`, and re-render |
@@ -114,7 +114,11 @@ Points of interest (`pois`) are shown on the house location map. Supported `type
 
 ## How It Works
 
-1. **House scraping** — uses headless Chrome (`undetected-chromedriver`) to bypass bot detection on fewo-direkt.de and booking.com, then extracts location, price, bedroom count, bed configuration, sauna availability, and more. Fields present in `input.json` override scraped values.
+1. **House scraping** — three parsers are supported, selected automatically by URL:
+   - **fewo-direkt.de / booking.com** — uses headless Chrome (`undetected-chromedriver`) to bypass bot detection, then extracts location, price, bedroom count, bed configuration, sauna availability, and more.
+   - **huetten.com** — uses plain `requests` (no browser needed); extracts all fields from static HTML and the JSON-LD `LodgingBusiness` block. Price is resolved from the on-page weekly price table by matching the checkin date and person count parsed from the URL fragment (`#/vsc.php?calendar_date_from=…&persons_adults=…`).
+
+   Fields present in `input.json` override scraped values for all brokers.
 2. **Sled run scraping** — two parsers are supported, selected automatically by URL:
    - **rodelwelten.com** — fetches `/detail/` pages with `requests`/BeautifulSoup and parses the details table (length, elevation, night sledding, public transport, sled rental, etc.). Hut/Alm info (name + website) is extracted from `div.hut-content` blocks. GPX tracks are downloaded (or assembled from inline JSON segments) and downsampled for map display. Cached for 24 hours in `cache/sled_runs.json`.
    - **outdooractive.com** — parses JSON-LD structured data embedded in the page for length, elevation, difficulty, ascent aid, and operator. Additional fields (night sledding, public transport, sled rental, opening hours) are inferred from page text. The GPX track is downloaded via the public `download.tour.gpx?i={id}` endpoint and downsampled. Cached for 24 hours in `cache/outdooractive.json`.
@@ -125,7 +129,7 @@ Points of interest (`pois`) are shown on the house location map. Supported `type
 
 | Type      | Supported sites                                          |
 |-----------|----------------------------------------------------------|
-| Houses    | fewo-direkt.de, booking.com                              |
+| Houses    | fewo-direkt.de, booking.com, huetten.com                 |
 | Sled runs | rodelwelten.com (detail pages only), outdooractive.com   |
 
 ## Maps

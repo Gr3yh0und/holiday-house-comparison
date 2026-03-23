@@ -9,7 +9,7 @@ from urllib.parse import urlparse, parse_qs, urlencode, urlunparse
 import requests
 from flask import Flask, render_template
 
-from parsers import booking, fewo, rodelwelten, outdooractive
+from parsers import booking, fewo, huetten, rodelwelten, outdooractive
 
 app = Flask(__name__)
 
@@ -112,7 +112,7 @@ def _make_driver():
     return uc.Chrome(options=options)
 
 
-BROKER_DOMAINS = {'fewo': 'fewo-direkt.de', 'booking': 'booking.com'}
+BROKER_DOMAINS = {'fewo': 'fewo-direkt.de', 'booking': 'booking.com', 'huetten': 'huetten.com'}
 
 
 def scrape_house(url, driver=None):
@@ -120,6 +120,8 @@ def scrape_house(url, driver=None):
         return fewo.scrape(url, driver)
     if 'booking.com' in url:
         return booking.scrape(url, driver)
+    if 'huetten.com' in url:
+        return huetten.scrape(url, driver)
     return {k: 'N/A' for k in ['location', 'address', 'rooms', 'sqm', 'bathrooms',
                                  'room_config', 'price', 'time', 'train_station',
                                  'supermarket', 'rating', 'persons']}
@@ -211,7 +213,7 @@ def index():
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--force', action='store_true', help='Force re-fetch all sled runs, ignoring cache')
-    parser.add_argument('--broker', choices=['fewo', 'booking'], help='Only scrape houses from this broker')
+    parser.add_argument('--broker', choices=['fewo', 'booking', 'huetten'], help='Only scrape houses from this broker')
     parser.add_argument('--limit', type=int, help='Maximum number of houses to scrape')
     parser.add_argument('--from-cache', action='store_true', help='Re-render HTML from existing public/data.json without scraping')
     parser.add_argument('--house', type=str, metavar='NAME', help='Scrape only this house (substring match), patch data.json and re-render')
