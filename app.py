@@ -193,7 +193,7 @@ def _scrape_one_house(house, trip_checkin, trip_checkout, driver=None, force_ref
     house_info['house_url'] = house_url
     for field in ('address', 'rooms', 'persons', 'sqm', 'bathrooms',
                   'room_config', 'price', 'time', 'rating',
-                  'supermarket', 'train_station', 'sauna', 'nearest_sled_run'):
+                  'supermarket', 'train_station', 'sauna', 'nearest_sled_run', 'notes'):
         if house.get(field):
             house_info[field] = house[field]
     if 'image_url' in house:
