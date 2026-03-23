@@ -273,15 +273,23 @@ if __name__ == '__main__':
         rodelwelten.load_cache(CACHE_FILE)
         outdooractive.load_cache(CACHE_FILE_OA)
 
-        # Scrape once using the first match's dates (house data is the same across trips)
+        # Group matches by unique (checkin, checkout) — prices differ per date range
+        date_groups = {}
+        for trip, house in matches:
+            key = (trip.get('checkin', ''), trip.get('checkout', ''))
+            date_groups.setdefault(key, (trip, house))
+
         driver = None
         try:
             driver = _make_driver()
         except Exception as e:
             print(f"Selenium unavailable ({e}), falling back to requests")
         try:
-            trip0, house0 = matches[0]
-            fresh = _scrape_one_house(house0, trip0.get('checkin', ''), trip0.get('checkout', ''), driver=driver, force_refresh=args.force)
+            scraped = {}  # key -> fresh house data
+            for key, (trip, house) in date_groups.items():
+                checkin, checkout = key
+                print(f"Scraping for dates {checkin} → {checkout}")
+                scraped[key] = _scrape_one_house(house, checkin, checkout, driver=driver, force_refresh=args.force)
         finally:
             if driver:
                 driver.quit()
@@ -292,17 +300,22 @@ if __name__ == '__main__':
         with open('public/data.json', encoding='utf-8') as f:
             cached = json.load(f)
         replaced = 0
-        house_name = house0['name']
+        house_name = matches[0][1]['name']
         for t in cached['trips']:
+            key = (t.get('checkin', ''), t.get('checkout', ''))
+            if key not in scraped:
+                continue
             for i, h in enumerate(t['houses']):
                 if h['name'] == house_name:
-                    t['houses'][i] = fresh
+                    t['houses'][i] = scraped[key]
                     replaced += 1
         if replaced == 0:
-            print(f"House '{house_name}' not found in public/data.json — appending to matching trip.")
+            print(f"House '{house_name}' not found in public/data.json — appending to first matching trip.")
+            first_trip, first_house = matches[0]
+            key = (first_trip.get('checkin', ''), first_trip.get('checkout', ''))
             for t in cached['trips']:
-                if t['name'] == trip0.get('name', ''):
-                    t['houses'].append(fresh)
+                if t['name'] == first_trip.get('name', ''):
+                    t['houses'].append(scraped[key])
                     replaced += 1
                     break
         if replaced == 0:
