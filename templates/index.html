@@ -369,6 +369,7 @@
                     </li>
                     {% set price8 = house.total_costs if house.total_costs else house.price %}
                     {% set price10_val = house.total_costs_10 if house.total_costs_10 else (house.price_10 if house.price_10 else house.price) %}
+                    {% if not house.total_costs_10 %}{% set price10_val = price10_val | price_inflate(2) %}{% endif %}
                     <li>
                         <span class="label">{{ t.house.price }}</span>
                         <span class="value{% if price8 == 'N/A' %} na{% endif %}">{{ price8 | normalize_price }}</span>
@@ -380,7 +381,7 @@
                     </li>
                     {% if house.price_10 or house.total_costs_10 or house.persons == '10' %}
                     <li>
-                        <span class="label">{{ t.house.price_10 }}</span>
+                        <span class="label">{{ t.house.price_10 }}{% if not house.total_costs_10 %} <span title="Preis wurde für 8 Personen ermittelt – für 10 Personen kann er höher ausfallen." style="cursor:help; font-size:0.85em;">ℹ️</span>{% endif %}</span>
                         <span class="value{% if price10_val == 'N/A' %} na{% endif %}">{{ price10_val | normalize_price }}</span>
                     </li>
                     <li>
@@ -447,7 +448,8 @@
                 </ul>
 
                 {% if house.house_url is defined and house.house_url %}
-                <a href="{{ house.house_url }}" target="_blank" class="direct-link">{{ t.house.booking_link }}</a>
+                {% set broker = house.house_url | broker_name %}
+                <a href="{{ house.house_url }}" target="_blank" class="direct-link">{{ t.house.booking_link }}{% if broker %} {{ broker }}{% endif %} ↗</a>
                 {% endif %}
                 {% if house.direct_url is defined and house.direct_url %}
                 <a href="{{ house.direct_url }}" target="_blank" class="direct-link">{{ t.house.direct_link }}</a>

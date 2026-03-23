@@ -77,6 +77,30 @@ _COUNTRY_FLAGS = {
 }
 
 
+_BROKER_NAMES = {
+    'fewo-direkt.de': 'fewo-direkt',
+    'booking.com': 'Booking.com',
+    'huetten.com': 'huetten.com',
+}
+
+
+@app.template_filter('broker_name')
+def broker_name(url):
+    for domain, name in _BROKER_NAMES.items():
+        if domain in url:
+            return name
+    return ''
+
+
+@app.template_filter('price_inflate')
+def price_inflate(price, pct):
+    """Increase a price string by pct percent, return rounded to full euros."""
+    val = _parse_price(price)
+    if val is None:
+        return price
+    return f"{round(val * (1 + pct / 100))} €"
+
+
 @app.template_filter('country_flag')
 def country_flag(address):
     """Return the flag emoji for the country at the end of an 'City, Country' address."""
