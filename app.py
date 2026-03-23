@@ -8,11 +8,12 @@ from urllib.parse import urlparse, parse_qs, urlencode, urlunparse
 
 from flask import Flask, render_template
 
-from parsers import booking, fewo, rodelwelten
+from parsers import booking, fewo, rodelwelten, outdooractive
 
 app = Flask(__name__)
 
 CACHE_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'cache', 'sled_runs.json')
+CACHE_FILE_OA = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'cache', 'outdooractive.json')
 TRANSLATIONS_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'translations')
 
 CHROMEDRIVER_PATH = os.path.join(
@@ -152,7 +153,10 @@ def build_trip_data(data, driver=None, force_refresh=False, broker_filter=None, 
             house_info['checkout'] = trip_checkout
             house_info['sled_runs'] = []
             for sled_run_url in house.get('sled_run_urls', []):
-                sled_run_info = rodelwelten.scrape(sled_run_url, force_refresh=force_refresh)
+                if 'outdooractive.com' in sled_run_url:
+                    sled_run_info = outdooractive.scrape(sled_run_url, force_refresh=force_refresh)
+                else:
+                    sled_run_info = rodelwelten.scrape(sled_run_url, force_refresh=force_refresh)
                 sled_run_info['url'] = sled_run_url
                 if not sled_run_info.get('name') or sled_run_info['name'] == 'N/A':
                     sled_run_info['name'] = sled_run_url.rstrip('/').split('/')[-1].replace('-', ' ').title()
@@ -196,6 +200,7 @@ if __name__ == '__main__':
         raise SystemExit(0)
 
     rodelwelten.load_cache(CACHE_FILE)
+    outdooractive.load_cache(CACHE_FILE_OA)
 
     with open('input.json', encoding='utf-8') as f:
         data = json.load(f)
@@ -214,6 +219,7 @@ if __name__ == '__main__':
             driver.quit()
 
     rodelwelten.save_cache()
+    outdooractive.save_cache()
 
     updated_at = datetime.now().strftime('%Y-%m-%d %H:%M')
 

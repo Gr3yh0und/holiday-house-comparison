@@ -26,11 +26,12 @@ python app.py [--force] [--broker fewo|booking] [--limit N] [--from-cache]
 Outputs:
 - `public/index.html` — the static comparison page
 - `public/data.json` — raw scraped data as JSON
-- `cache/sled_runs.json` — sled run cache (TTL: 1 day)
+- `cache/sled_runs.json` — rodelwelten.com sled run cache (TTL: 1 day)
+- `cache/outdooractive.json` — outdooractive.com sled run cache (TTL: 1 day)
 
 ## Input Format
 
-`input.json` contains a list of **trips**, each with a date range and a list of houses. Each house links to its booking page and a set of rodelwelten.com sled run URLs.
+`input.json` contains a list of **trips**, each with a date range and a list of houses. Each house links to its booking page and a set of sled run URLs (rodelwelten.com or outdooractive.com).
 
 ```json
 {
@@ -54,7 +55,8 @@ Outputs:
             { "type": "supermarket", "label": "Spar Ortsname", "lat": 47.02, "lon": 11.02 }
           ],
           "sled_run_urls": [
-            "https://www.rodelwelten.com/rodelbahnen/detail/run-name"
+            "https://www.rodelwelten.com/rodelbahnen/detail/run-name",
+            "https://www.outdooractive.com/de/route/rodeln/region/name/12345678/"
           ]
         }
       ]
@@ -112,16 +114,18 @@ Points of interest (`pois`) are shown on the house location map. Supported `type
 ## How It Works
 
 1. **House scraping** — uses headless Chrome (`undetected-chromedriver`) to bypass bot detection on fewo-direkt.de and booking.com, then extracts location, price, bedroom count, bed configuration, sauna availability, and more. Fields present in `input.json` override scraped values.
-2. **Sled run scraping** — fetches rodelwelten.com `/detail/` pages with `requests`/BeautifulSoup and parses the details table (length, elevation, night sledding, public transport, sled rental, etc.). Hut/Alm info (name + website) is extracted from the `div.hut-content` blocks on the page. GPX tracks are fetched and downsampled for map display. Results are cached for 24 hours in `cache/sled_runs.json`.
+2. **Sled run scraping** — two parsers are supported, selected automatically by URL:
+   - **rodelwelten.com** — fetches `/detail/` pages with `requests`/BeautifulSoup and parses the details table (length, elevation, night sledding, public transport, sled rental, etc.). Hut/Alm info (name + website) is extracted from `div.hut-content` blocks. GPX tracks are downloaded (or assembled from inline JSON segments) and downsampled for map display. Cached for 24 hours in `cache/sled_runs.json`.
+   - **outdooractive.com** — parses JSON-LD structured data embedded in the page for length, elevation, difficulty, ascent aid, and operator. Additional fields (night sledding, public transport, sled rental, opening hours) are inferred from page text. The GPX track is downloaded via the public `download.tour.gpx?i={id}` endpoint and downsampled. Cached for 24 hours in `cache/outdooractive.json`.
 3. **Date injection** — known date query parameters (`chkin`, `chkout`, `startDate`, `endDate`, `checkin`, `checkout`, etc.) in house URLs are replaced with the configured trip dates before scraping.
 4. **Rendering** — the Jinja2 template in `templates/index.html` renders all trips and houses into a card-based comparison layout with interactive Leaflet maps. Prices are normalised to `XXXX€` format via the `normalize_price` filter. Per-person price is always shown for 8 persons; a second row for 10 persons is shown when `house.persons == "10"`.
 
 ## Supported Sources
 
-| Type      | Supported sites                         |
-|-----------|-----------------------------------------|
-| Houses    | fewo-direkt.de, booking.com             |
-| Sled runs | rodelwelten.com (detail pages only)     |
+| Type      | Supported sites                                          |
+|-----------|----------------------------------------------------------|
+| Houses    | fewo-direkt.de, booking.com                              |
+| Sled runs | rodelwelten.com (detail pages only), outdooractive.com   |
 
 ## Maps
 
@@ -133,6 +137,7 @@ Each house card shows two types of maps:
 ## Notes
 
 - House scraping requires Chrome to be running in non-headless mode to bypass bot detection. A browser window will briefly appear off-screen during scraping.
-- Sled run map pages (e.g. `/rodelbahnen/karte`) return all `N/A` — only use `/detail/` URLs.
+- Sled run map pages (e.g. `/rodelbahnen/karte`) return all `N/A` — only use `/detail/` URLs for rodelwelten.com.
+- For outdooractive.com, use route detail URLs in the form `/de/route/rodeln/.../ID/`. The URL fragment (everything after `#`) is ignored.
 - The Flask `@app.route('/')` enables a live server mode (`flask run`) that scrapes on every request, but the primary workflow is static generation via `python app.py`.
 - After adding new sled runs, run with `--force` to bypass the cache and pick up newly scraped fields (e.g. huts).
