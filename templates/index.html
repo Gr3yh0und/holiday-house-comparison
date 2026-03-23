@@ -582,18 +582,18 @@
                 trip.houses.forEach(function(house) {
                     var key = house.lat.toFixed(5) + ',' + house.lon.toFixed(5);
                     if (!locationMap[key]) {
-                        locationMap[key] = { lat: house.lat, lon: house.lon, name: house.name, entries: [] };
+                        locationMap[key] = { lat: house.lat, lon: house.lon, entries: [] };
                     }
-                    locationMap[key].entries.push({ tripName: trip.name, color: trip.color, price: house.price });
+                    locationMap[key].entries.push({ houseName: house.name, tripName: trip.name, color: trip.color, price: house.price });
                 });
             });
 
             Object.values(locationMap).forEach(function(loc) {
                 // Use the color of the first trip for the marker; split-color if multiple
                 var firstColor = loc.entries[0].color;
-                var multiTrip = loc.entries.length > 1;
+                var multiEntry = loc.entries.length > 1;
                 var bgStyle = firstColor;
-                if (multiTrip) {
+                if (multiEntry) {
                     var stops = loc.entries.map(function(e, i) {
                         var pct1 = Math.round(i * 100 / loc.entries.length);
                         var pct2 = Math.round((i + 1) * 100 / loc.entries.length);
@@ -605,9 +605,11 @@
                     html: '<div style="background:' + bgStyle + ';color:#fff;width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:14px;box-shadow:0 2px 6px rgba(0,0,0,0.35);border:2px solid #fff;">🏠</div>',
                     iconSize: [30, 30], iconAnchor: [15, 15], className: ''
                 });
-                var tooltipHtml = '<b>' + loc.name + '</b>';
+                var tooltipHtml = '';
                 loc.entries.forEach(function(e) {
-                    tooltipHtml += '<br><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:' + e.color + ';margin-right:4px;"></span>'
+                    tooltipHtml += (tooltipHtml ? '<hr style="margin:3px 0;border-color:#ddd;">' : '')
+                        + '<b>' + e.houseName + '</b>'
+                        + '<br><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:' + e.color + ';margin-right:4px;"></span>'
                         + '<span style="color:#444;font-size:0.85em;">' + e.tripName + '</span>'
                         + (e.price && e.price !== 'N/A' ? '<span style="color:#666;font-size:0.85em;"> — ' + e.price + '</span>' : '');
                 });
