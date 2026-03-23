@@ -237,26 +237,31 @@ if __name__ == '__main__':
                 for house in trip['houses']:
                     print(f"  [{trip.get('name', '')}] {house['name']}")
             raise SystemExit(1)
-        if len(matches) > 1:
-            print(f"Multiple houses match '{args.house}':")
+        # Allow multiple matches only when all share the exact same name (same house, multiple trips)
+        unique_names = {h['name'] for _, h in matches}
+        if len(unique_names) > 1:
+            print(f"Multiple different houses match '{args.house}':")
             for trip, house in matches:
                 print(f"  [{trip.get('name', '')}] {house['name']}")
             print("Use a more specific name.")
             raise SystemExit(1)
 
-        trip, house = matches[0]
-        print(f"Matched: [{trip.get('name', '')}] {house['name']}")
+        print(f"Matched {len(matches)} entr{'y' if len(matches)==1 else 'ies'}: {matches[0][1]['name']}")
+        for trip, house in matches:
+            print(f"  [{trip.get('name', '')}]")
 
         rodelwelten.load_cache(CACHE_FILE)
         outdooractive.load_cache(CACHE_FILE_OA)
 
+        # Scrape once using the first match's dates (house data is the same across trips)
         driver = None
         try:
             driver = _make_driver()
         except Exception as e:
             print(f"Selenium unavailable ({e}), falling back to requests")
         try:
-            fresh = _scrape_one_house(house, trip.get('checkin', ''), trip.get('checkout', ''), driver=driver, force_refresh=args.force)
+            trip0, house0 = matches[0]
+            fresh = _scrape_one_house(house0, trip0.get('checkin', ''), trip0.get('checkout', ''), driver=driver, force_refresh=args.force)
         finally:
             if driver:
                 driver.quit()
@@ -266,21 +271,24 @@ if __name__ == '__main__':
 
         with open('public/data.json', encoding='utf-8') as f:
             cached = json.load(f)
-        replaced = False
+        replaced = 0
+        house_name = house0['name']
         for t in cached['trips']:
             for i, h in enumerate(t['houses']):
-                if h['name'] == house['name']:
+                if h['name'] == house_name:
                     t['houses'][i] = fresh
-                    replaced = True
-        if not replaced:
-            print(f"House '{house['name']}' not found in public/data.json — appending to matching trip.")
+                    replaced += 1
+        if replaced == 0:
+            print(f"House '{house_name}' not found in public/data.json — appending to matching trip.")
             for t in cached['trips']:
-                if t['name'] == trip.get('name', ''):
+                if t['name'] == trip0.get('name', ''):
                     t['houses'].append(fresh)
-                    replaced = True
+                    replaced += 1
                     break
-        if not replaced:
+        if replaced == 0:
             print("Warning: could not find matching trip in public/data.json either.")
+        else:
+            print(f"Patched {replaced} entr{'y' if replaced==1 else 'ies'} in public/data.json")
 
         updated_at = datetime.now().strftime('%Y-%m-%d %H:%M')
         cached['updated_at'] = updated_at

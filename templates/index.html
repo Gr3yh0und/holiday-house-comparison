@@ -384,7 +384,7 @@
                     <li style="flex-direction: column; align-items: flex-start; gap: 4px;">
                         <span class="label">{{ t.house.room_config }}</span>
                         {% for room in house.room_config %}
-                        <span class="value" style="font-size: 0.82rem;">{{ room }}</span>
+                        <span class="value" style="font-size: 0.82rem;"><span style="color:#888;">Schlafzimmer {{ loop.index }}:</span> {{ room }}</span>
                         {% endfor %}
                     </li>
                     {% endif %}

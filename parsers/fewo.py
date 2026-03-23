@@ -73,14 +73,18 @@ def scrape(url, driver=None):
         result['sqm'] = f'{sqm_m.group(1)} m²' if sqm_m else 'N/A'
         print(f"  [fewo] sqm: {result['sqm']}")
 
-        # Room/bed config: each bedroom is a data-stid="content-item" with h4 + bed text
+        # Room/bed config: content-items whose text contains bed keywords
+        # Room names are custom (e.g. "Front 1", "Kaminzimmer") — normalise to "Schlafzimmer N"
+        bedroom_n = 0
         for item in soup.find_all('div', attrs={'data-stid': 'content-item'}):
-            h4 = item.find('h4', class_='uitk-heading-6')
-            if not h4 or 'Schlafzimmer' not in h4.get_text():
+            h4 = item.find('h4')
+            if not h4:
                 continue
-            bed_el = item.find('div', class_=lambda c: c and 'uitk-type-300' in c and 'uitk-type-regular' in c)
-            if bed_el:
-                result['room_config'].append(f'{h4.get_text(strip=True)}: {bed_el.get_text(strip=True)}')
+            item_text = item.get_text(' ', strip=True)
+            if re.search(r'\d\s*(King|Queen|Doppel|Einzel|Etagen|Schlaf|Sofa|Franz)[- ]?[Bb]ett', item_text):
+                bedroom_n += 1
+                bed_text = item_text[len(h4.get_text(strip=True)):].strip()
+                result['room_config'].append(bed_text)
 
         # Price: price-summary data-stid; prefer nightly rate
         price_el = soup.find(attrs={'data-stid': 'price-summary'})
