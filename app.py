@@ -115,6 +115,45 @@ def inject_dates(url, checkin, checkout):
     return urlunparse(parsed._replace(query=urlencode(params, doseq=True)))
 
 
+def _scrape_one_house(house, trip_checkin, trip_checkout, driver=None, force_refresh=False):
+    house_url = inject_dates(house['house_url'], trip_checkin, trip_checkout) if trip_checkin and trip_checkout else house['house_url']
+    print(f"Scraping house: {house['name']} ({house_url[:60]}...)")
+    house_info = scrape_house(house_url, driver=driver)
+    house_info['name'] = house['name']
+    house_info['house_url'] = house_url
+    for field in ('address', 'rooms', 'persons', 'sqm', 'bathrooms',
+                  'room_config', 'price', 'time', 'rating',
+                  'supermarket', 'train_station', 'sauna', 'nearest_sled_run'):
+        if house.get(field):
+            house_info[field] = house[field]
+    if 'image_url' in house:
+        house_info['image_url'] = house['image_url']
+    if 'lat' in house and 'lon' in house:
+        house_info['lat'] = house['lat']
+        house_info['lon'] = house['lon']
+    if 'direct_url' in house:
+        house_info['direct_url'] = house['direct_url']
+    if 'pois' in house:
+        house_info['pois'] = house['pois']
+    house_info['checkin'] = trip_checkin
+    house_info['checkout'] = trip_checkout
+    house_info['sled_runs'] = []
+    for sled_run_url in house.get('sled_run_urls', []):
+        if 'outdooractive.com' in sled_run_url:
+            sled_run_info = outdooractive.scrape(sled_run_url, force_refresh=force_refresh)
+        else:
+            sled_run_info = rodelwelten.scrape(sled_run_url, force_refresh=force_refresh)
+        sled_run_info['url'] = sled_run_url
+        if not sled_run_info.get('name') or sled_run_info['name'] == 'N/A':
+            sled_run_info['name'] = sled_run_url.rstrip('/').split('/')[-1].replace('-', ' ').title()
+        house_info['sled_runs'].append(sled_run_info)
+    house_info['sled_runs'].sort(
+        key=lambda r: int(re.sub(r'[^\d]', '', r['length'])) if re.search(r'\d', r['length']) else 0,
+        reverse=True,
+    )
+    return house_info
+
+
 def build_trip_data(data, driver=None, force_refresh=False, broker_filter=None, limit=None):
     trips = []
     scraped = 0
@@ -130,42 +169,8 @@ def build_trip_data(data, driver=None, force_refresh=False, broker_filter=None, 
             if is_skipped:
                 print(f"Skipping house: {house['name']} (not a {broker_filter} URL)")
                 continue
-            print(f"Scraping house: {house['name']} ({house_url[:60]}...)")
-            house_info = scrape_house(house_url, driver=driver)
+            houses.append(_scrape_one_house(house, trip_checkin, trip_checkout, driver=driver, force_refresh=force_refresh))
             scraped += 1
-            house_info['name'] = house['name']
-            house_info['house_url'] = house_url
-            for field in ('address', 'rooms', 'persons', 'sqm', 'bathrooms',
-                          'room_config', 'price', 'time', 'rating',
-                          'supermarket', 'train_station', 'sauna', 'nearest_sled_run'):
-                if house.get(field):
-                    house_info[field] = house[field]
-            if 'image_url' in house:
-                house_info['image_url'] = house['image_url']
-            if 'lat' in house and 'lon' in house:
-                house_info['lat'] = house['lat']
-                house_info['lon'] = house['lon']
-            if 'direct_url' in house:
-                house_info['direct_url'] = house['direct_url']
-            if 'pois' in house:
-                house_info['pois'] = house['pois']
-            house_info['checkin'] = trip_checkin
-            house_info['checkout'] = trip_checkout
-            house_info['sled_runs'] = []
-            for sled_run_url in house.get('sled_run_urls', []):
-                if 'outdooractive.com' in sled_run_url:
-                    sled_run_info = outdooractive.scrape(sled_run_url, force_refresh=force_refresh)
-                else:
-                    sled_run_info = rodelwelten.scrape(sled_run_url, force_refresh=force_refresh)
-                sled_run_info['url'] = sled_run_url
-                if not sled_run_info.get('name') or sled_run_info['name'] == 'N/A':
-                    sled_run_info['name'] = sled_run_url.rstrip('/').split('/')[-1].replace('-', ' ').title()
-                house_info['sled_runs'].append(sled_run_info)
-            house_info['sled_runs'].sort(
-                key=lambda r: int(re.sub(r'[^\d]', '', r['length'])) if re.search(r'\d', r['length']) else 0,
-                reverse=True,
-            )
-            houses.append(house_info)
         trips.append({'name': trip.get('name', ''), 'checkin': trip_checkin, 'checkout': trip_checkout, 'houses': houses})
     return trips
 
@@ -183,9 +188,85 @@ if __name__ == '__main__':
     parser.add_argument('--broker', choices=['fewo', 'booking'], help='Only scrape houses from this broker')
     parser.add_argument('--limit', type=int, help='Maximum number of houses to scrape')
     parser.add_argument('--from-cache', action='store_true', help='Re-render HTML from existing public/data.json without scraping')
+    parser.add_argument('--house', type=str, metavar='NAME', help='Scrape only this house (substring match), patch data.json and re-render')
     args = parser.parse_args()
 
     start_time = time.time()
+
+    if args.house:
+        needle = args.house.lower()
+        with open('input.json', encoding='utf-8') as f:
+            data = json.load(f)
+        # Find all matching houses across trips
+        matches = [
+            (trip, house)
+            for trip in data['trips']
+            for house in trip['houses']
+            if needle in house['name'].lower()
+        ]
+        if not matches:
+            print(f"No house found matching '{args.house}'. Available houses:")
+            for trip in data['trips']:
+                for house in trip['houses']:
+                    print(f"  [{trip.get('name', '')}] {house['name']}")
+            raise SystemExit(1)
+        if len(matches) > 1:
+            print(f"Multiple houses match '{args.house}':")
+            for trip, house in matches:
+                print(f"  [{trip.get('name', '')}] {house['name']}")
+            print("Use a more specific name.")
+            raise SystemExit(1)
+
+        trip, house = matches[0]
+        print(f"Matched: [{trip.get('name', '')}] {house['name']}")
+
+        rodelwelten.load_cache(CACHE_FILE)
+        outdooractive.load_cache(CACHE_FILE_OA)
+
+        driver = None
+        try:
+            driver = _make_driver()
+        except Exception as e:
+            print(f"Selenium unavailable ({e}), falling back to requests")
+        try:
+            fresh = _scrape_one_house(house, trip.get('checkin', ''), trip.get('checkout', ''), driver=driver, force_refresh=args.force)
+        finally:
+            if driver:
+                driver.quit()
+
+        rodelwelten.save_cache()
+        outdooractive.save_cache()
+
+        with open('public/data.json', encoding='utf-8') as f:
+            cached = json.load(f)
+        replaced = False
+        for t in cached['trips']:
+            for i, h in enumerate(t['houses']):
+                if h['name'] == house['name']:
+                    t['houses'][i] = fresh
+                    replaced = True
+        if not replaced:
+            print(f"House '{house['name']}' not found in public/data.json — appending to matching trip.")
+            for t in cached['trips']:
+                if t['name'] == trip.get('name', ''):
+                    t['houses'].append(fresh)
+                    replaced = True
+                    break
+        if not replaced:
+            print("Warning: could not find matching trip in public/data.json either.")
+
+        updated_at = datetime.now().strftime('%Y-%m-%d %H:%M')
+        cached['updated_at'] = updated_at
+        with open('public/data.json', 'w', encoding='utf-8') as f:
+            json.dump(cached, f, ensure_ascii=False, indent=2)
+        print("Updated public/data.json")
+
+        with app.app_context():
+            html_content = render_template('index.html', t=_translations, title=data.get('title', 'Ferienhaus-Vergleich für Rodeln'), trips=cached['trips'], updated_at=updated_at)
+        with open('public/index.html', 'w', encoding='utf-8') as f:
+            f.write(html_content)
+        print(f"Done in {time.time() - start_time:.1f}s")
+        raise SystemExit(0)
 
     if args.from_cache:
         with open('public/data.json', encoding='utf-8') as f:
