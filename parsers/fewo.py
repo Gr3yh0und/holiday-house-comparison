@@ -4,6 +4,29 @@ import time
 import requests
 from bs4 import BeautifulSoup
 
+_REGION_COUNTRY = {
+    # Austria
+    'Tirol': 'Österreich', 'Salzburg': 'Österreich', 'Vorarlberg': 'Österreich',
+    'Kärnten': 'Österreich', 'Steiermark': 'Österreich', 'Wien': 'Österreich',
+    'Burgenland': 'Österreich', 'Niederösterreich': 'Österreich', 'Oberösterreich': 'Österreich',
+    # Germany
+    'Bayern': 'Deutschland', 'Baden-Württemberg': 'Deutschland', 'Sachsen': 'Deutschland',
+    'Thüringen': 'Deutschland', 'Hessen': 'Deutschland', 'Niedersachsen': 'Deutschland',
+    'Rheinland-Pfalz': 'Deutschland', 'Nordrhein-Westfalen': 'Deutschland',
+    'Schleswig-Holstein': 'Deutschland', 'Mecklenburg-Vorpommern': 'Deutschland',
+    'Brandenburg': 'Deutschland', 'Sachsen-Anhalt': 'Deutschland', 'Saarland': 'Deutschland',
+    # Switzerland (canton codes and names)
+    'BE': 'Schweiz', 'GR': 'Schweiz', 'VS': 'Schweiz', 'UR': 'Schweiz', 'SZ': 'Schweiz',
+    'OW': 'Schweiz', 'NW': 'Schweiz', 'GL': 'Schweiz', 'ZG': 'Schweiz', 'FR': 'Schweiz',
+    'SO': 'Schweiz', 'BS': 'Schweiz', 'BL': 'Schweiz', 'SH': 'Schweiz', 'SG': 'Schweiz',
+    'AG': 'Schweiz', 'TG': 'Schweiz', 'TI': 'Schweiz', 'VD': 'Schweiz', 'NE': 'Schweiz',
+    'GE': 'Schweiz', 'JU': 'Schweiz', 'ZH': 'Schweiz', 'LU': 'Schweiz', 'AR': 'Schweiz', 'AI': 'Schweiz',
+    'Bern': 'Schweiz', 'Graubünden': 'Schweiz', 'Wallis': 'Schweiz', 'Tessin': 'Schweiz',
+    # Italy / France
+    'Südtirol': 'Italien', 'Trentino': 'Italien',
+    'Haute-Savoie': 'Frankreich', 'Savoie': 'Frankreich',
+}
+
 EMPTY = {
     'location': 'N/A',
     'address': 'N/A',
@@ -51,9 +74,18 @@ def scrape(url, driver=None):
             result['location'] = ' '.join(h1.get_text(strip=True).split()) if h1 else 'N/A'
         print(f"  [fewo] location: {result['location'][:60]}")
 
-        # Address: content-hotel-address renders "Town, Region"
+        # Address: content-hotel-address renders "Town, Region" — convert to "Town, Country"
         addr_el = soup.find(attrs={'data-stid': 'content-hotel-address'})
-        result['address'] = addr_el.get_text(strip=True) if addr_el else 'N/A'
+        addr_text = addr_el.get_text(strip=True) if addr_el else ''
+        if ',' in addr_text:
+            city_raw, region = addr_text.rsplit(',', 1)
+            region = region.strip()
+            # Swiss format: "Wengen BE, BE" — strip canton code suffix from city
+            city = re.sub(r'\s+[A-Z]{2}$', '', city_raw.strip())
+            country = _REGION_COUNTRY.get(region, region)
+            result['address'] = f"{city}, {country}"
+        else:
+            result['address'] = addr_text or 'N/A'
         print(f"  [fewo] address: {result['address']}")
 
         # Rooms, bathrooms, persons, sqm — all in rendered summary text

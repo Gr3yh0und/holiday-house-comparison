@@ -6,6 +6,18 @@ from urllib.parse import urlparse, parse_qs
 import requests
 from bs4 import BeautifulSoup
 
+_COUNTRY_NAMES = {
+    'AT': 'Österreich', 'DE': 'Deutschland', 'CH': 'Schweiz',
+    'IT': 'Italien', 'FR': 'Frankreich',
+    'Austria': 'Österreich', 'Germany': 'Deutschland', 'Switzerland': 'Schweiz',
+    'Italy': 'Italien', 'France': 'Frankreich',
+}
+
+def _normalize_country(s):
+    s = s.strip()
+    return _COUNTRY_NAMES.get(s, s)
+
+
 EMPTY = {
     'location': 'N/A',
     'address': 'N/A',
@@ -48,8 +60,8 @@ def scrape(url, driver=None):
         # Address
         addr = ld.get('address', {})
         city = addr.get('addressLocality', '')
-        region = addr.get('addressRegion', '')
-        result['address'] = f"{city}, {region}" if city else 'N/A'
+        country = _normalize_country(addr.get('addressCountry', ''))
+        result['address'] = f"{city}, {country}" if city else 'N/A'
 
         # Persons
         capacity = ld.get('maximumAttendeeCapacity')

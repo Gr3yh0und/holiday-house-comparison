@@ -4,6 +4,18 @@ import re
 import requests
 from bs4 import BeautifulSoup
 
+_COUNTRY_NAMES = {
+    'AT': 'Österreich', 'DE': 'Deutschland', 'CH': 'Schweiz',
+    'IT': 'Italien', 'FR': 'Frankreich',
+    'Austria': 'Österreich', 'Germany': 'Deutschland', 'Switzerland': 'Schweiz',
+    'Italy': 'Italien', 'France': 'Frankreich',
+}
+
+def _normalize_country(s):
+    s = s.strip()
+    return _COUNTRY_NAMES.get(s, s)
+
+
 EMPTY = {
     'location': 'N/A',
     'address': 'N/A',
@@ -58,7 +70,9 @@ def scrape(url, driver=None):
             # the town follows the postal code in streetAddress, e.g. "2a Lärchenweg, 5722 Niedernsill, Österreich"
             street = addr.get('streetAddress', '')
             town_m = re.search(r'\d{4,5}\s+([^,]+)', street)
-            result['address'] = town_m.group(1).strip() if town_m else 'N/A'
+            town = town_m.group(1).strip() if town_m else 'N/A'
+            country = _normalize_country(addr.get('addressCountry', ''))
+            result['address'] = f"{town}, {country}" if country else town
             agg = ld_data.get('aggregateRating', {})
             if agg:
                 result['rating'] = f"{agg.get('ratingValue', '?')} / {agg.get('bestRating', 10)} ({agg.get('reviewCount', '?')} Bewertungen)"
@@ -130,9 +144,8 @@ def scrape(url, driver=None):
                 label = block.find('div', class_='m-rs-bed-display__label')
                 beds = block.find_all('span', class_='m-rs-bed-display__bed-type-name')
                 if label and beds:
-                    room_name = label.get_text(strip=True).rstrip(':')
                     bed_types = ', '.join(b.get_text(strip=True) for b in beds)
-                    result['room_config'].append(f'{room_name}: {bed_types}')
+                    result['room_config'].append(bed_types)
 
         result['time'] = 'Available'
         if re.search(r'Bahnhof|train station', text, re.I):

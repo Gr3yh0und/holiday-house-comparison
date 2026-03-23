@@ -282,7 +282,11 @@
 </head>
 <body>
     <h1>{{ title }}</h1>
-    <p style="text-align: center; margin: -8px 0 18px; font-size: 0.85rem; color: #666;">{{ t.updated_at }}: <strong>{{ updated_at }}</strong></p>
+    <p style="text-align: center; margin: -8px 0 24px;">
+        <span style="display: inline-block; background: #dce8f5; border: 1px solid #b8cfe8; border-radius: 8px; padding: 5px 14px; font-size: 0.82rem; color: #1a365d;">
+            🕐 {{ t.updated_at }}: <strong>{{ updated_at }}</strong>
+        </span>
+    </p>
 
     {% set trip_colors = ['#2b6cb0','#276749','#c05621','#553c9a','#c53030','#744210','#086f83','#702459'] %}
     <div class="overview-section">
@@ -365,7 +369,7 @@
                 <ul class="props">
                     <li>
                         <span class="label">{{ t.house.location }}</span>
-                        <span class="value{% if house.address == 'N/A' or house.address == 'Error loading' %} na{% endif %}">{{ house.address }}</span>
+                        <span class="value{% if house.address == 'N/A' or house.address == 'Error loading' %} na{% endif %}">{{ house.address }} {{ house.address | country_flag }}</span>
                     </li>
                     <li>
                         <span class="label">{{ t.house.bedrooms }}</span>
@@ -509,7 +513,7 @@
     </div>
     </div>
     <p style="text-align: center; margin-top: 28px; font-size: 0.8rem; color: #999;">
-        {{ t.updated_at }}: {{ updated_at }} &mdash; <a href="https://github.com/Gr3yh0und/holiday-house-comparison" target="_blank" style="color: #999;">GitHub</a>{% if version %} &mdash; {{ version }}{% endif %}
+        <a href="https://github.com/Gr3yh0und/holiday-house-comparison" target="_blank" style="color: #999;">GitHub</a>{% if version %} &mdash; {{ version }}{% endif %}
     </p>
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script>

@@ -68,6 +68,24 @@ def _parse_price(price):
         return None
 
 
+_COUNTRY_FLAGS = {
+    'Österreich': '🇦🇹',
+    'Deutschland': '🇩🇪',
+    'Schweiz': '🇨🇭',
+    'Italien': '🇮🇹',
+    'Frankreich': '🇫🇷',
+}
+
+
+@app.template_filter('country_flag')
+def country_flag(address):
+    """Return the flag emoji for the country at the end of an 'City, Country' address."""
+    if not address or address in ('N/A', 'Error'):
+        return ''
+    country = address.rsplit(',', 1)[-1].strip()
+    return _COUNTRY_FLAGS.get(country, '')
+
+
 @app.template_filter('normalize_price')
 def normalize_price(price):
     if price in (None, 'N/A', 'Error'):
