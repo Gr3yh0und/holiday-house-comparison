@@ -6,6 +6,7 @@ import time
 from datetime import datetime
 from urllib.parse import urlparse, parse_qs, urlencode, urlunparse
 
+import requests
 from flask import Flask, render_template
 
 from parsers import booking, fewo, rodelwelten, outdooractive
@@ -29,6 +30,31 @@ def load_translations(lang='de') -> dict:
 
 
 _translations: dict = load_translations()
+
+
+def get_version():
+    """Return the latest GitHub release tag, falling back to the latest git tag, then 'dev'."""
+    try:
+        resp = requests.get(
+            'https://api.github.com/repos/Gr3yh0und/holiday-house-comparison/releases/latest',
+            headers={'Accept': 'application/vnd.github+json'},
+            timeout=5,
+        )
+        if resp.status_code == 200:
+            return resp.json().get('tag_name', '')
+    except Exception:
+        pass
+    try:
+        import subprocess
+        tag = subprocess.check_output(
+            ['git', 'describe', '--tags', '--abbrev=0'],
+            stderr=subprocess.DEVNULL,
+        ).decode().strip()
+        if tag:
+            return tag
+    except Exception:
+        pass
+    return 'dev'
 
 
 def _parse_price(price):
@@ -179,7 +205,7 @@ def build_trip_data(data, driver=None, force_refresh=False, broker_filter=None, 
 def index():
     with open('input.json', encoding='utf-8') as f:
         data = json.load(f)
-    return render_template('index.html', t=_translations, title=data.get('title', 'Ferienhaus-Vergleich für Rodeln'), trips=build_trip_data(data), updated_at=datetime.now().strftime('%Y-%m-%d %H:%M'))
+    return render_template('index.html', t=_translations, title=data.get('title', 'Ferienhaus-Vergleich für Rodeln'), trips=build_trip_data(data), updated_at=datetime.now().strftime('%Y-%m-%d %H:%M'), version=get_version())
 
 
 if __name__ == '__main__':
@@ -192,6 +218,7 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     start_time = time.time()
+    version = get_version()
 
     if args.house:
         needle = args.house.lower()
@@ -262,7 +289,7 @@ if __name__ == '__main__':
         print("Updated public/data.json")
 
         with app.app_context():
-            html_content = render_template('index.html', t=_translations, title=data.get('title', 'Ferienhaus-Vergleich für Rodeln'), trips=cached['trips'], updated_at=updated_at)
+            html_content = render_template('index.html', t=_translations, title=data.get('title', 'Ferienhaus-Vergleich für Rodeln'), trips=cached['trips'], updated_at=updated_at, version=version)
         with open('public/index.html', 'w', encoding='utf-8') as f:
             f.write(html_content)
         print(f"Done in {time.time() - start_time:.1f}s")
@@ -274,7 +301,7 @@ if __name__ == '__main__':
         with open('input.json', encoding='utf-8') as f:
             data = json.load(f)
         with app.app_context():
-            html_content = render_template('index.html', t=_translations, title=data.get('title', 'Ferienhaus-Vergleich für Rodeln'), trips=cached['trips'], updated_at=cached['updated_at'])
+            html_content = render_template('index.html', t=_translations, title=data.get('title', 'Ferienhaus-Vergleich für Rodeln'), trips=cached['trips'], updated_at=cached['updated_at'], version=version)
         with open('public/index.html', 'w', encoding='utf-8') as f:
             f.write(html_content)
         print(f"HTML re-rendered from cache in {time.time() - start_time:.1f}s")
@@ -309,7 +336,7 @@ if __name__ == '__main__':
     print("Data saved to public/data.json")
 
     with app.app_context():
-        html_content = render_template('index.html', t=_translations, title=data.get('title', 'Ferienhaus-Vergleich für Rodeln'), trips=trip_data, updated_at=updated_at)
+        html_content = render_template('index.html', t=_translations, title=data.get('title', 'Ferienhaus-Vergleich für Rodeln'), trips=trip_data, updated_at=updated_at, version=version)
 
     with open('public/index.html', 'w', encoding='utf-8') as f:
         f.write(html_content)
