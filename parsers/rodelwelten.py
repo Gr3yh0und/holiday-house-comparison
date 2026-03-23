@@ -126,13 +126,15 @@ def _extract_track(page_text):
         except Exception as e:
             print(f"  [gpx] failed to fetch track: {e}")
 
-    # Case 2: inline JSON coordinates
-    sledrun_m = re.search(
+    # Case 2: inline JSON coordinates (may have multiple sledrun segments)
+    sledrun_matches = re.findall(
         r"JSON\.parse\('(?:\\)?\[([^']+)\]'\);\s*paths\.push\(\{\s*type\s*:\s*'sledrun'",
         page_text, re.DOTALL)
-    if sledrun_m:
+    if sledrun_matches:
         try:
-            pts = [[p['lat'], p['lng']] for p in json.loads('[' + sledrun_m.group(1) + ']')]
+            pts = []
+            for m in sledrun_matches:
+                pts += [[p['lat'], p['lng']] for p in json.loads('[' + m + ']')]
             if pts:
                 step = max(1, len(pts) // 60)
                 return pts[::step]
