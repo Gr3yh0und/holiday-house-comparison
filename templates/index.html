@@ -423,7 +423,8 @@
                      data-lat="{{ house.lat }}"
                      data-lon="{{ house.lon }}"
                      data-name="{{ house.name }}"
-                     data-pois="{{ house.pois | default([]) | tojson | forceescape }}"></div>
+                     data-pois="{{ house.pois | default([]) | tojson | forceescape }}"
+                     data-sled-runs="{{ house.sled_runs | default([]) | selectattr('track') | list | tojson | forceescape }}"></div>
                 {% endif %}
 
                 {% if house.sled_runs %}
@@ -681,7 +682,16 @@
                     .bindTooltip(poi.label || poi.type || 'POI', {direction: 'top', offset: [0, -14]});
                 bounds.extend([poi.lat, poi.lon]);
             });
-            if (pois.length > 0) {
+            var sledRuns = JSON.parse(el.dataset.sledRuns || '[]');
+            sledRuns.forEach(function(run) {
+                if (!run.track || !run.track.length) return;
+                var latlngs = run.track.map(function(pt) { return [pt[0], pt[1]]; });
+                L.polyline(latlngs, {color: '#2b6cb0', weight: 2.5, opacity: 0.75})
+                    .addTo(map)
+                    .bindTooltip('🛷 ' + run.name, {sticky: true});
+                latlngs.forEach(function(pt) { bounds.extend(pt); });
+            });
+            if (pois.length > 0 || sledRuns.length > 0) {
                 map.fitBounds(bounds, {padding: [20, 20]});
             }
         });
