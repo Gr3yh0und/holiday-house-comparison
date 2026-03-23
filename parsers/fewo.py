@@ -113,7 +113,7 @@ def scrape(url, driver=None):
             if not h4:
                 continue
             item_text = item.get_text(' ', strip=True)
-            if re.search(r'\d\s*(King|Queen|Doppel|Einzel|Etagen|Schlaf|Sofa|Franz)[- ]?[Bb]ett', item_text):
+            if re.search(r'\d?\s*(?:(?:King|Queen|Doppel|Einzel|Etagen|Stock|Schlaf|Franz|Kinder)[- ]?[Bb]ett|Schlafsofa)', item_text, re.I):
                 bedroom_n += 1
                 bed_text = item_text[len(h4.get_text(strip=True)):].strip()
                 result['room_config'].append(bed_text)
