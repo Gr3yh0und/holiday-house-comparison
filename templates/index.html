@@ -552,13 +552,19 @@
         function scrollToTrip(id) {
             var target = document.getElementById(id);
             if (!target) return;
-            var container = target.closest('div[style*="overflow-x"]') || target.parentElement;
-            // Scroll the page to the horizontal scroll area
-            container.scrollIntoView({ behavior: 'smooth', block: 'start' });
-            // Scroll horizontally within the container so the trip is at the left edge
-            var containerRect = container.getBoundingClientRect();
-            var targetRect = target.getBoundingClientRect();
-            container.scrollBy({ left: targetRect.left - containerRect.left - 24, behavior: 'smooth' });
+            var tripsScroll = document.querySelector('.trips-scroll');
+            var isColumn = tripsScroll && window.getComputedStyle(tripsScroll).flexDirection === 'column';
+            if (isColumn) {
+                // Mobile: trips are stacked vertically — scroll the page to the trip directly
+                target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            } else {
+                // Desktop: trips are side-by-side — scroll the overflow wrapper horizontally
+                var container = target.closest('div[style*="overflow-x"]') || tripsScroll;
+                container.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                var containerRect = container.getBoundingClientRect();
+                var targetRect = target.getBoundingClientRect();
+                container.scrollBy({ left: targetRect.left - containerRect.left - 24, behavior: 'smooth' });
+            }
         }
 
         // Gesture hint for touch devices — shows "two fingers" message on single-finger touch
