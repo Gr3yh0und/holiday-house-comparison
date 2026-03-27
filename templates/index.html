@@ -282,10 +282,15 @@
 </head>
 <body>
     <h1>{{ title }}</h1>
-    <p style="text-align: center; margin: -8px 0 24px;">
+    <p style="text-align: center; margin: -8px 0 24px; display: flex; flex-wrap: wrap; justify-content: center; gap: 8px;">
         <span style="display: inline-block; background: #dce8f5; border: 1px solid #b8cfe8; border-radius: 8px; padding: 5px 14px; font-size: 0.82rem; color: #1a365d;">
             🕐 {{ t.updated_at }}: <strong>{{ updated_at }}</strong>
         </span>
+        {%- if version %}
+        <a href="https://github.com/Gr3yh0und/holiday-house-comparison/releases" target="_blank" style="display: inline-block; background: #edf2ff; border: 1px solid #c3cfe8; border-radius: 8px; padding: 5px 14px; font-size: 0.82rem; color: #2a3f7a; text-decoration: none;">
+            🏷️ {{ version }}
+        </a>
+        {%- endif %}
     </p>
 
     {%- set ns = namespace(warnings=[], hidx=0) -%}
