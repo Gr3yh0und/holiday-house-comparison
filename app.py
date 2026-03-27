@@ -145,13 +145,15 @@ def dedate(value):
 
 def _make_driver():
     import undetected_chromedriver as uc
+    from webdriver_manager.chrome import ChromeDriverManager
 
     options = uc.ChromeOptions()
     options.add_argument('--no-sandbox')
     options.add_argument('--disable-dev-shm-usage')
     options.add_argument('--window-size=1920,1080')
     options.add_argument('--window-position=-32000,0')
-    return uc.Chrome(options=options)
+    driver_path = ChromeDriverManager().install()
+    return uc.Chrome(options=options, driver_executable_path=driver_path)
 
 
 BROKER_DOMAINS = {'fewo': 'fewo-direkt.de', 'booking': 'booking.com', 'huetten': 'huetten.com'}
