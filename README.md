@@ -30,7 +30,8 @@ FTP_REMOTE_PATH=/example.com
 **Windows (PowerShell):**
 
 ```powershell
-.\deploy.ps1
+.\deploy.ps1        # uploads as index.html
+.\deploy-test.ps1   # uploads as index-test.html (for testing)
 ```
 
 Requires `curl.exe`, built into Windows 10+.
@@ -38,8 +39,9 @@ Requires `curl.exe`, built into Windows 10+.
 **Unix (bash):**
 
 ```bash
-chmod +x deploy.sh
-./deploy.sh
+chmod +x deploy.sh deploy-test.sh
+./deploy.sh        # uploads as index.html
+./deploy-test.sh   # uploads as index-test.html (for testing)
 ```
 
 Requires `curl`, available by default on macOS and most Linux distributions.
