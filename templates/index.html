@@ -459,7 +459,7 @@
                         {% set pp8 = price8 | price_per_person(8) %}
                         <span class="value{% if not pp8 %} na{% endif %}">{{ pp8 if pp8 else 'N/A' }}</span>
                     </li>
-                    {% if house.price_10 or house.total_costs_10 or house.persons == '10' %}
+                    {% if house.price_10 or house.total_costs_10 or (house.persons and house.persons != 'N/A' and house.persons | int >= 10) %}
                     <li>
                         <span class="label"><span data-i18n="house.price_10">{{ t.house.price_10 }}</span>{% if not house.total_costs_10 %} <span data-i18n-title="ui.price_10_estimated" title="{{ t.ui.price_10_estimated }}" style="cursor:help; font-size:0.85em;">ℹ️</span>{% endif %}</span>
                         <span class="value{% if price10_val == 'N/A' %} na{% endif %}">{{ price10_val | normalize_price }}</span>

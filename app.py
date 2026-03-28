@@ -119,6 +119,8 @@ def country_flag(address):
     if not address or address in ('N/A', 'Error'):
         return ''
     country = address.rsplit(',', 1)[-1].strip()
+    if country.startswith('Canton of '):
+        return _COUNTRY_FLAGS.get('Schweiz', '')
     return _COUNTRY_FLAGS.get(country, '')
 
 

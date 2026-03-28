@@ -82,7 +82,8 @@ def scrape(url, driver=None):
             region = region.strip()
             # Swiss format: "Wengen BE, BE" — strip canton code suffix from city
             city = re.sub(r'\s+[A-Z]{2}$', '', city_raw.strip())
-            country = _REGION_COUNTRY.get(region, region)
+            region_key = region.removeprefix('Canton of ').strip()
+            country = _REGION_COUNTRY.get(region_key, _REGION_COUNTRY.get(region, region))
             result['address'] = f"{city}, {country}"
         else:
             result['address'] = addr_text or 'N/A'
@@ -118,6 +119,18 @@ def scrape(url, driver=None):
                 bedroom_n += 1
                 bed_text = item_text[len(h4.get_text(strip=True)):].strip()
                 result['room_config'].append(bed_text)
+
+        # Fallback: fluid text in data-stid="content-markup" (e.g. Interhome-style descriptions)
+        if not result['room_config']:
+            from parsers.interhome import _parse_room_config as _interhome_parse_room_config
+            for markup in soup.find_all(attrs={'data-stid': 'content-markup'}):
+                markup_text = re.sub(r'\s+', ' ', markup.get_text(' ', strip=True))
+                parsed = _interhome_parse_room_config(markup_text)
+                if parsed:
+                    result['room_config'] = parsed
+                    if result['rooms'] == 'N/A':
+                        result['rooms'] = str(len(parsed))
+                    break
 
         # Price: price-summary data-stid; prefer nightly rate
         price_el = soup.find(attrs={'data-stid': 'price-summary'})

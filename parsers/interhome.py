@@ -195,7 +195,7 @@ def _parse_room_config(desc):
     for seg in re.split(r'\.\s+', text):
         m = re.search(
             r'(\d+)\s+(?:\S+\s+)?Zimmer'        # N [adj] Zimmer
-            r'(?:\s+\d+\s*m²)?'                  # optional size
+            r'(?:\s+\d+\s*m[²2])?'                 # optional size
             r'(?:\s*,\s*jedes\s+Zimmer)?'         # optional ", jedes Zimmer"
             r'\s+(?:je\s+)?mit\s+'               # mit / je mit
             r'(.+)',                              # bed description (rest of segment)
@@ -204,6 +204,8 @@ def _parse_room_config(desc):
         if m:
             count = int(m.group(1))
             bed_desc = m.group(2).strip().rstrip('.,')
+            bed_desc = re.sub(r',\s*Länge\s*\d+\s*cm', '', bed_desc)
+            bed_desc = re.sub(r'(\d+)\s*cm', r'\1cm', bed_desc)
             rooms.extend([bed_desc] * count)
     return rooms
 
