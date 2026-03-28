@@ -166,6 +166,9 @@
             border-radius: 4px;
         }
         .sled-run-link:hover { background: #bee3f8; }
+        .loipe-run { border-left-color: #38a169; }
+        .loipe-run summary { color: #276749; }
+        .loipe-run summary:hover { background: #f0fff4; }
         .sled-run-body { padding: 0 12px 10px; }
         .sled-run-map { height: 200px; border-radius: 4px; margin-bottom: 10px; }
         .house-map { height: 180px; border-radius: 6px; margin: 14px 0; }
@@ -668,6 +671,7 @@
                      data-name="{{ house.name }}"
                      data-pois="{{ house.pois | default([]) | tojson | forceescape }}"
                      data-sled-runs="{{ house.sled_runs | default([]) | selectattr('track') | list | tojson | forceescape }}"
+                     data-loipen="{{ house.loipen | default([]) | selectattr('track') | list | tojson | forceescape }}"
                      data-train-track="{{ house.train_track | default([]) | tojson | forceescape }}"></div>
                 {% endif %}
 
@@ -729,6 +733,37 @@
                 </details>
                 {% endfor %}
                 {% endif %}
+
+                {% if house.loipen %}
+                <p class="section-title"><span data-i18n="loipen.section_title">{{ t.loipen.section_title }}</span> ({{ house.loipen | length }})</p>
+                {% for loipe in house.loipen %}
+                {%- set diff_key = 'difficulty_' ~ loipe.difficulty -%}
+                <details class="sled-run loipe-run">
+                    <summary>
+                        <div class="sled-run-header">
+                            <span class="sled-run-name">⛷️ {{ loipe.name }}</span>
+                            <div class="sled-run-meta">
+                                {% if loipe.length_km %}<span class="sled-meta-chip">{{ loipe.length_km }} km</span>{% endif %}
+                                {% if loipe.distance_km is not none %}<span class="sled-meta-chip">📍 {{ loipe.distance_km }} km</span>{% endif %}
+                                {% if loipe.difficulty %}<span class="sled-meta-chip">{{ t.loipen[diff_key] if diff_key in t.loipen else loipe.difficulty }}</span>{% endif %}
+                            </div>
+                        </div>
+                    </summary>
+                    <div class="sled-run-body">
+                    {% if loipe.track %}
+                    <div class="sled-run-map" data-track="{{ loipe.track | tojson }}"></div>
+                    {% endif %}
+                    <ul class="props">
+                        <li><span class="label" data-i18n="loipen.length">{{ t.loipen.length }}</span><span class="value{% if not loipe.length_km %} na{% endif %}">{{ loipe.length_km ~ ' km' if loipe.length_km else 'N/A' }}</span></li>
+                        <li><span class="label" data-i18n="loipen.difficulty">{{ t.loipen.difficulty }}</span><span class="value{% if not loipe.difficulty %} na{% endif %}">{{ t.loipen[diff_key] if diff_key in t.loipen else loipe.difficulty or 'N/A' }}</span></li>
+                        <li><span class="label" data-i18n="loipen.grooming">{{ t.loipen.grooming }}</span><span class="value{% if not loipe.grooming %} na{% endif %}">{{ loipe.grooming or 'N/A' }}</span></li>
+                        <li><span class="label" data-i18n="loipen.distance">{{ t.loipen.distance }}</span><span class="value">{{ loipe.distance_km }} km</span></li>
+                    </ul>
+                    </div>
+                </details>
+                {% endfor %}
+                {% endif %}
+
             </div>
         </div>
         </div>
@@ -1023,6 +1058,15 @@
                     .bindTooltip('🛷 ' + run.name, {sticky: true});
                 latlngs.forEach(function(pt) { bounds.extend(pt); });
             });
+            var loipen = JSON.parse(el.dataset.loipen || '[]');
+            loipen.forEach(function(loipe) {
+                if (!loipe.track || !loipe.track.length) return;
+                var latlngs = loipe.track.map(function(pt) { return [pt[0], pt[1]]; });
+                L.polyline(latlngs, {color: '#38a169', weight: 2.5, opacity: 0.75, dashArray: '6 4'})
+                    .addTo(map)
+                    .bindTooltip('⛷️ ' + loipe.name, {sticky: true});
+                latlngs.forEach(function(pt) { bounds.extend(pt); });
+            });
             var trainTrack = JSON.parse(el.dataset.trainTrack || '[]');
             if (trainTrack.length) {
                 var latlngs = trainTrack.map(function(pt) { return [pt[0], pt[1]]; });
@@ -1031,7 +1075,7 @@
                     .bindTooltip('🚞 Zahnradbahn Lauterbrunnen – Wengen (kein Auto, Parkplatz in Lauterbrunnen)', {sticky: true});
                 latlngs.forEach(function(pt) { bounds.extend(pt); });
             }
-            if (pois.length > 0 || sledRuns.length > 0 || trainTrack.length) {
+            if (pois.length > 0 || sledRuns.length > 0 || loipen.length > 0 || trainTrack.length) {
                 map.fitBounds(bounds, {padding: [20, 20]});
             }
         });
@@ -1230,7 +1274,8 @@
                     subdomains: 'abcd',
                     maxZoom: 19
                 }).addTo(map);
-                var line = L.polyline(track, {color: '#2b6cb0', weight: 3}).addTo(map);
+                var trackColor = el.classList.contains('loipe-run') ? '#38a169' : '#2b6cb0';
+                var line = L.polyline(track, {color: trackColor, weight: 3, dashArray: el.classList.contains('loipe-run') ? '6 4' : null}).addTo(map);
                 var bounds = line.getBounds();
 
                 var houseMapEl = el.closest('.card-body').querySelector('.house-map');

@@ -48,6 +48,18 @@
         "link_label": "↗ Zur Route",
         "huts": "Einkehrmöglichkeit"
     },
+    "loipen": {
+        "section_title": "Langlauf-Loipen",
+        "length": "Länge",
+        "difficulty": "Schwierigkeit",
+        "grooming": "Präparierung",
+        "distance": "Entfernung",
+        "difficulty_novice": "Anfänger",
+        "difficulty_easy": "Leicht",
+        "difficulty_intermediate": "Mittel",
+        "difficulty_advanced": "Schwer",
+        "difficulty_expert": "Sehr Schwer"
+    },
     "poi": {
         "house_label": "Unterkunft",
         "default_label": "POI"

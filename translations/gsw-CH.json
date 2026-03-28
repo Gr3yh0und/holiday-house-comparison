@@ -48,6 +48,18 @@
         "link_label": "↗ Zur Route",
         "huts": "Beizli"
     },
+    "loipen": {
+        "section_title": "Langlauf-Loipe",
+        "length": "Lengi",
+        "difficulty": "Schwierigkäit",
+        "grooming": "Präpariig",
+        "distance": "Entfernig",
+        "difficulty_novice": "Aaafänger",
+        "difficulty_easy": "Liecht",
+        "difficulty_intermediate": "Mittel",
+        "difficulty_advanced": "Schwär",
+        "difficulty_expert": "Sehr Schwär"
+    },
     "poi": {
         "house_label": "Unterkumft",
         "default_label": "POI"

@@ -48,6 +48,18 @@
         "link_label": "↗ Bekijk route",
         "huts": "Eetgelegenheden"
     },
+    "loipen": {
+        "section_title": "Langlaufsporen",
+        "length": "Lengte",
+        "difficulty": "Moeilijkheid",
+        "grooming": "Preparering",
+        "distance": "Afstand",
+        "difficulty_novice": "Beginner",
+        "difficulty_easy": "Makkelijk",
+        "difficulty_intermediate": "Gemiddeld",
+        "difficulty_advanced": "Moeilijk",
+        "difficulty_expert": "Expert"
+    },
     "poi": {
         "house_label": "Accommodatie",
         "default_label": "POI"

@@ -48,6 +48,18 @@
         "link_label": "↗ View route",
         "huts": "Refreshment stops"
     },
+    "loipen": {
+        "section_title": "Nordic Ski Trails",
+        "length": "Length",
+        "difficulty": "Difficulty",
+        "grooming": "Grooming",
+        "distance": "Distance",
+        "difficulty_novice": "Novice",
+        "difficulty_easy": "Easy",
+        "difficulty_intermediate": "Intermediate",
+        "difficulty_advanced": "Advanced",
+        "difficulty_expert": "Expert"
+    },
     "poi": {
         "house_label": "Accommodation",
         "default_label": "POI"

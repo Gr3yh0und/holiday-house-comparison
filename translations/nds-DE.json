@@ -48,6 +48,18 @@
         "link_label": "↗ Naa de Strecke",
         "huts": "Gasthüüs"
     },
+    "loipen": {
+        "section_title": "Langloop-Loipen",
+        "length": "Läng",
+        "difficulty": "Schwierigheit",
+        "grooming": "Präparierung",
+        "distance": "Afstand",
+        "difficulty_novice": "Anfänger",
+        "difficulty_easy": "Licht",
+        "difficulty_intermediate": "Middel",
+        "difficulty_advanced": "Swoor",
+        "difficulty_expert": "Bannig Swoor"
+    },
     "poi": {
         "house_label": "Unnerkumft",
         "default_label": "POI"

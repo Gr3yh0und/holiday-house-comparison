@@ -66,6 +66,7 @@ Outputs:
 - `public/data.json` — raw scraped data as JSON
 - `cache/sled_runs.json` — rodelwelten.com sled run cache (TTL: 1 day)
 - `cache/outdooractive.json` — outdooractive.com sled run cache (TTL: 1 day)
+- `cache/loipen.json` — Overpass API Nordic ski trail cache (TTL: 1 day, keyed by house coordinates)
 
 ## Input Format
 
@@ -174,7 +175,8 @@ Points of interest (`pois`) are shown on the house location map. Supported `type
 2. **Sled run scraping** — two parsers are supported, selected automatically by URL:
    - **rodelwelten.com** — fetches `/detail/` pages with `requests`/BeautifulSoup and parses the details table (length, elevation, night sledding, public transport, sled rental, etc.). Hut/Alm info (name + website) is extracted from `div.hut-content` blocks. GPX tracks are downloaded (or assembled from inline JSON segments) and downsampled for map display. Cached for 24 hours in `cache/sled_runs.json`.
    - **outdooractive.com** — parses JSON-LD structured data embedded in the page for length, elevation, difficulty, ascent aid, and operator. Additional fields (night sledding, public transport, sled rental, opening hours) are inferred from page text. The GPX track is downloaded via the public `download.tour.gpx?i={id}` endpoint and downsampled. Cached for 24 hours in `cache/outdooractive.json`.
-3. **Date injection** — known date query parameters (`chkin`, `chkout`, `startDate`, `endDate`, `checkin`, `checkout`, `arrival`, etc.) in house URLs are replaced with the configured trip dates before scraping.
+3. **Nordic ski trail (Loipen) discovery** — runs automatically for every house that has `lat`/`lon` coordinates. Queries the [Overpass API](https://overpass-api.de/) for all OSM elements tagged `piste:type=nordic` within 10 km of the house. Results are deduplicated by name (relations take priority over individual ways), sorted by distance to the house, and cached for 24 hours in `cache/loipen.json` (keyed by rounded coordinates). Each trail carries name, difficulty, grooming style, calculated length (Haversine), and a downsampled track for map display. Coverage depends on OpenStreetMap data — areas where Loipen have not yet been mapped with `piste:type=nordic` will return no results.
+4. **Date injection** — known date query parameters (`chkin`, `chkout`, `startDate`, `endDate`, `checkin`, `checkout`, `arrival`, etc.) in house URLs are replaced with the configured trip dates before scraping.
 4. **Rendering** — the Jinja2 template in `templates/index.html` renders all trips and houses into a card-based comparison layout with interactive Leaflet maps.
    - Prices are normalised to `XXXX €` format. Per-person price is shown for 8 persons; a 10-person row is shown when a separate 10-person price is available or when the scraped max-person count is ≥ 10. For fewo/booking the 10-person price is estimated as the 8-person price +2%.
    - Address is normalised to "City, Country" format with a country flag emoji. Swiss canton names (e.g. "Canton of Bern") are resolved to "Schweiz".
@@ -188,13 +190,15 @@ Points of interest (`pois`) are shown on the house location map. Supported `type
 |-----------|----------------------------------------------------------|
 | Houses    | fewo-direkt.de, booking.com, huetten.com, interhome.de   |
 | Sled runs | rodelwelten.com (detail pages only), outdooractive.com   |
+| Loipen    | OpenStreetMap via Overpass API (auto, no URLs needed)    |
 
 ## Maps
 
 Each house card shows two types of maps:
 
-- **House map** — shows the house location (🏠) plus any configured POIs (train stations, supermarkets, etc.). If a `train_track` is defined (see below), it is rendered as a red dashed line with a tooltip explaining the route.
-- **Sled run maps** — shown per sled run (expand to view); displays the GPX route with the house location (🏠) for distance reference
+- **House map** — shows the house location (🏠) plus any configured POIs (train stations, supermarkets, etc.). Sled run tracks are overlaid in blue, Nordic ski trails (Loipen) in green dashed lines. If a `train_track` is defined (see below), it is rendered as a red dashed line with a tooltip explaining the route.
+- **Sled run maps** — shown per sled run (expand to view); displays the GPX route in blue with the house location (🏠) for distance reference.
+- **Loipen maps** — shown per trail (expand to view); displays the OSM trail geometry in green dashed style with the house location (🏠) for distance reference.
 
 The overview map at the top groups houses by location. If two or more houses share the same coordinates (to 5 decimal places), they are merged into a single marker with a split-colour gradient and a tooltip listing each house name, trip, and price separately. Sled run tracks are drawn per trip colour; train tracks are drawn in red dashed style.
 

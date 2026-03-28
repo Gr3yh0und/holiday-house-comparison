@@ -48,6 +48,18 @@
         "link_label": "↗ Voir l'itinéraire",
         "huts": "Restaurants / refuges"
     },
+    "loipen": {
+        "section_title": "Pistes de ski de fond",
+        "length": "Longueur",
+        "difficulty": "Difficulté",
+        "grooming": "Damage",
+        "distance": "Distance",
+        "difficulty_novice": "Débutant",
+        "difficulty_easy": "Facile",
+        "difficulty_intermediate": "Intermédiaire",
+        "difficulty_advanced": "Difficile",
+        "difficulty_expert": "Expert"
+    },
     "poi": {
         "house_label": "Hébergement",
         "default_label": "PDI"

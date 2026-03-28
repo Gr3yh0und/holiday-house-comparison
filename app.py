@@ -9,13 +9,14 @@ from urllib.parse import urlparse, parse_qs, urlencode, urlunparse
 import requests
 from flask import Flask, render_template
 
-from parsers import booking, fewo, huetten, interhome, rodelwelten, outdooractive
+from parsers import booking, fewo, huetten, interhome, rodelwelten, outdooractive, loipen as loipen_parser
 from parsers.common import EMPTY as _PARSER_EMPTY
 
 app = Flask(__name__)
 
 CACHE_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'cache', 'sled_runs.json')
 CACHE_FILE_OA = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'cache', 'outdooractive.json')
+LOIPEN_CACHE_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'cache', 'loipen.json')
 TRANSLATIONS_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'translations')
 
 CHROMEDRIVER_PATH = os.path.join(
@@ -162,6 +163,36 @@ def dedate(value):
         return value
 
 
+def _fetch_loipen(lat, lon, force_refresh=False):
+    """Return nearby Nordic ski trails, cached for 24 h per coordinate."""
+    cache_key = f'{lat:.4f},{lon:.4f}'
+    if not force_refresh and os.path.exists(LOIPEN_CACHE_FILE):
+        with open(LOIPEN_CACHE_FILE, encoding='utf-8') as f:
+            cache = json.load(f)
+        entry = cache.get(cache_key)
+        if entry:
+            age = (datetime.now() - datetime.strptime(
+                entry['fetched_at'], '%Y-%m-%d %H:%M'
+            )).total_seconds()
+            if age < 86400:
+                print(f'  [loipen] cache hit for {cache_key} ({len(entry["loipen"])} trails)')
+                return entry['loipen']
+    print(f'  [loipen] fetching Overpass for {cache_key} ...')
+    trails = loipen_parser.fetch(lat, lon)
+    print(f'  [loipen] found {len(trails)} trails')
+    cache = {}
+    if os.path.exists(LOIPEN_CACHE_FILE):
+        with open(LOIPEN_CACHE_FILE, encoding='utf-8') as f:
+            cache = json.load(f)
+    cache[cache_key] = {
+        'fetched_at': datetime.now().strftime('%Y-%m-%d %H:%M'),
+        'loipen': trails,
+    }
+    with open(LOIPEN_CACHE_FILE, 'w', encoding='utf-8') as f:
+        json.dump(cache, f, ensure_ascii=False, indent=2)
+    return trails
+
+
 def _make_driver():
     import undetected_chromedriver as uc
 
@@ -296,6 +327,12 @@ def _scrape_one_house(house, trip_checkin, trip_checkout, driver=None, force_ref
         val = float(m.group(1).replace(',', '.'))
         return val * 1000 if m.group(2).lower() == 'km' else val
     house_info['sled_runs'].sort(key=lambda r: _length_m(r['length']), reverse=True)
+    if house.get('lat') and house.get('lon'):
+        house_info['loipen'] = _fetch_loipen(
+            house['lat'], house['lon'], force_refresh=force_refresh
+        )
+    else:
+        house_info['loipen'] = []
     return house_info
 
 

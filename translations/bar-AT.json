@@ -48,6 +48,18 @@
         "link_label": "↗ Zur Strecka",
         "huts": "Wirtschaft"
     },
+    "loipen": {
+        "section_title": "Loipm",
+        "length": "Läng",
+        "difficulty": "Schwierigkeid",
+        "grooming": "Präparierung",
+        "distance": "Entfernung",
+        "difficulty_novice": "Anfänger",
+        "difficulty_easy": "Leicht",
+        "difficulty_intermediate": "Mittel",
+        "difficulty_advanced": "Schwer",
+        "difficulty_expert": "Sehr Schwer"
+    },
     "poi": {
         "house_label": "Unterkumft",
         "default_label": "POI"

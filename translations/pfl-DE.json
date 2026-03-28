@@ -48,6 +48,18 @@
         "link_label": "↗ Zur Schtrecke",
         "huts": "Wirtschaft"
     },
+    "loipen": {
+        "section_title": "Loipe",
+        "length": "Läng",
+        "difficulty": "Schwierigkeid",
+        "grooming": "Präpariering",
+        "distance": "Entfernig",
+        "difficulty_novice": "Aafänger",
+        "difficulty_easy": "Leicht",
+        "difficulty_intermediate": "Mittel",
+        "difficulty_advanced": "Schwer",
+        "difficulty_expert": "Sehr Schwer"
+    },
     "poi": {
         "house_label": "Unnerkumft",
         "default_label": "POI"
