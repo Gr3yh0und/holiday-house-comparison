@@ -52,6 +52,15 @@
         "house_label": "Accommodation",
         "default_label": "POI"
     },
+    "compare": {
+        "select": "Select for comparison",
+        "selected_one": "1 house selected",
+        "selected_many": "{n} houses selected",
+        "button": "\u2696\ufe0f Compare",
+        "clear": "\u2715 Clear selection",
+        "title": "\u2696\ufe0f House comparison",
+        "diff_only": "Show differences only"
+    },
     "common": {
         "yes": "Yes",
         "no": "No"

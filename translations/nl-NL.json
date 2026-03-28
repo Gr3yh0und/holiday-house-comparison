@@ -52,6 +52,15 @@
         "house_label": "Accommodatie",
         "default_label": "POI"
     },
+    "compare": {
+        "select": "Selecteer voor vergelijking",
+        "selected_one": "1 huis geselecteerd",
+        "selected_many": "{n} huizen geselecteerd",
+        "button": "\u2696\ufe0f Vergelijken",
+        "clear": "\u2715 Selectie wissen",
+        "title": "\u2696\ufe0f Huisvergelijking",
+        "diff_only": "Alleen verschillen tonen"
+    },
     "common": {
         "yes": "Ja",
         "no": "Nee"

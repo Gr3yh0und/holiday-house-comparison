@@ -334,6 +334,95 @@
             .sled-run-link { padding: 6px 10px; }
             .direct-link { padding: 12px; }
         }
+
+        /* ── Compare feature ───────────────────────────────────────────── */
+        .compare-cb-row {
+            text-align: center; margin-bottom: 6px;
+        }
+        .compare-cb {
+            -webkit-appearance: none; appearance: none;
+            width: 32px; height: 32px; border-radius: 50%;
+            background: #fff; border: 2px solid #cbd5e0;
+            cursor: pointer; display: inline-block; vertical-align: middle;
+            transition: background 0.15s, border-color 0.15s, box-shadow 0.15s;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.12);
+        }
+        .compare-cb:checked {
+            background-color: #4299e1; border-color: #4299e1;
+            box-shadow: 0 0 0 3px rgba(66,153,225,0.3);
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath fill='none' stroke='%23fff' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round' d='M3 8l3.5 3.5L13 4'/%3E%3C/svg%3E");
+            background-size: 60%; background-repeat: no-repeat; background-position: center;
+        }
+        .compare-cb:hover { border-color: #4299e1; }
+        .compare-bar {
+            position: fixed; bottom: 0; left: 0; right: 0; z-index: 2000;
+            background: #1a365d; color: #fff;
+            display: flex; align-items: center; justify-content: center; gap: 16px;
+            padding: 12px 24px;
+            transform: translateY(100%);
+            transition: transform 0.25s ease;
+            box-shadow: 0 -4px 16px rgba(0,0,0,0.2);
+        }
+        .compare-bar.visible { transform: translateY(0); }
+        .compare-bar-label { font-size: 0.95rem; }
+        .compare-bar button {
+            padding: 7px 18px; border-radius: 6px; border: none;
+            font-size: 0.9rem; font-weight: 700; cursor: pointer;
+        }
+        .compare-bar .btn-compare {
+            background: #4299e1; color: #fff;
+        }
+        .compare-bar .btn-compare:disabled {
+            background: #4a5568; color: #a0aec0; cursor: default;
+        }
+        .compare-bar .btn-clear {
+            background: transparent; color: #a0aec0; border: 1px solid #4a5568;
+        }
+        .compare-bar .btn-clear:hover { color: #fff; border-color: #718096; }
+
+        /* Modal */
+        .compare-overlay {
+            display: none; position: fixed; inset: 0; z-index: 3000;
+            background: rgba(0,0,0,0.55); align-items: center; justify-content: center;
+        }
+        .compare-overlay.open { display: flex; }
+        .compare-modal {
+            background: #fff; border-radius: 12px;
+            max-width: 95vw; max-height: 90vh;
+            overflow: auto; padding: 24px 28px;
+            box-shadow: 0 8px 40px rgba(0,0,0,0.3);
+            position: relative; min-width: 340px;
+        }
+        .compare-modal h2 { font-size: 1.15rem; color: #1a365d; margin-bottom: 16px; }
+        .compare-modal-toolbar {
+            display: flex; align-items: center; gap: 12px;
+            margin-bottom: 14px; flex-wrap: wrap;
+        }
+        .compare-modal-toolbar label { font-size: 0.88rem; display: flex; align-items: center; gap: 6px; cursor: pointer; }
+        .compare-close {
+            position: absolute; top: 14px; right: 16px;
+            background: none; border: none; font-size: 1.4rem;
+            cursor: pointer; color: #718096; line-height: 1;
+        }
+        .compare-close:hover { color: #1a365d; }
+        .compare-table {
+            border-collapse: collapse; width: 100%; font-size: 0.84rem;
+        }
+        .compare-table th, .compare-table td {
+            padding: 7px 12px; text-align: left;
+            border-bottom: 1px solid #e2e8f0; vertical-align: top;
+        }
+        .compare-table th { background: #eef2f7; font-weight: 700; white-space: nowrap; }
+        .compare-table .col-label { color: #718096; white-space: nowrap; font-weight: 600; }
+        .compare-table .col-house { min-width: 160px; }
+        .compare-table .cell-diff { background: #fef9c3; }
+        .compare-table tr.row-same td { opacity: 0.45; }
+        .compare-table tr.row-hidden { display: none; }
+        .compare-house-name { font-weight: 700; color: #1a365d; font-size: 0.9rem; }
+        .compare-house-trip { font-size: 0.77rem; color: #718096; margin-top: 2px; }
+        .compare-good { color: #276749; font-weight: 600; }
+        .compare-bad  { color: #c05621; font-weight: 600; }
+        .compare-na   { color: #a0aec0; }
     </style>
 </head>
 <body>
@@ -425,6 +514,9 @@
         {%- set rc_len = house.room_config | length if house.room_config else 0 -%}
         {%- set has_room_warning = house.rooms and house.rooms not in ('N/A', 'Error') and rc_len > 0 and house.rooms | int != rc_len -%}
         {%- set is_unavailable = house.time == 'Unavailable' -%}
+        <div class="compare-cb-row">
+            <input type="checkbox" class="compare-cb" data-hidx="{{ ns.hidx }}" title="{{ t.compare.select }}" data-i18n-title="compare.select">
+        </div>
         <div class="card{% if is_unavailable %} card--unavailable{% endif %}" id="house-{{ ns.hidx }}">
             <div class="card-header">
                 <span>{{ house.name }}</span>
@@ -628,6 +720,30 @@
     <p style="text-align: center; margin-top: 28px; font-size: 0.8rem; color: #999;">
         <a href="https://github.com/Gr3yh0und/holiday-house-comparison" target="_blank" style="color: #999;">GitHub repository</a>{% if version %} &mdash; {{ version }}{% endif %}
     </p>
+    <!-- Compare bar -->
+    <div class="compare-bar" id="compare-bar">
+        <span class="compare-bar-label" id="compare-bar-label"></span>
+        <button class="btn-compare" id="compare-btn" disabled data-i18n="compare.button">{{ t.compare.button }}</button>
+        <button class="btn-clear" id="compare-clear" data-i18n="compare.clear">{{ t.compare.clear }}</button>
+    </div>
+
+    <!-- Compare modal -->
+    <div class="compare-overlay" id="compare-overlay">
+        <div class="compare-modal">
+            <button class="compare-close" id="compare-close">✕</button>
+            <h2 data-i18n="compare.title">{{ t.compare.title }}</h2>
+            <div class="compare-modal-toolbar">
+                <label><input type="checkbox" id="compare-diff-only"> <span data-i18n="compare.diff_only">{{ t.compare.diff_only }}</span></label>
+            </div>
+            <div style="overflow-x:auto;">
+                <table class="compare-table">
+                    <thead id="compare-table-head"></thead>
+                    <tbody id="compare-table-body"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script>
         function formatDate(dateStr, lang) {
@@ -664,6 +780,7 @@
                 var val = T(el.getAttribute('data-i18n-title'));
                 if (val) el.title = val + (el.getAttribute('data-i18n-title-suffix') || '');
             });
+            updateCompareBar();
         }
 
         (function() {
@@ -900,6 +1017,146 @@
                 dots.forEach(function(d, i) { d.classList.toggle('active', i === idx); });
             }, { passive: true });
         });
+
+        // ── House data for comparison ────────────────────────────────────
+        {%- set ns2 = namespace(hidx2=0) %}
+        var HOUSE_DATA = {
+        {% for trip in trips %}{% for house in trip.houses %}
+            {%- set ns2.hidx2 = ns2.hidx2 + 1 %}
+            {%- set price8 = house.total_costs if house.total_costs else house.price %}
+            {%- set price10_raw = house.total_costs_10 if house.total_costs_10 else (house.price_10 if house.price_10 else house.price) %}
+            {%- if not house.total_costs_10 %}{%- set price10_raw = price10_raw | price_inflate(2) %}{%- endif %}
+            {{ ns2.hidx2 }}: {
+                name:    {{ house.name | tojson }},
+                trip:    {{ trip.name | tojson }},
+                dates:   {{ (trip.checkin | dedate ~ ' → ' ~ trip.checkout | dedate) | tojson }},
+                avail:   {{ house.time | tojson }},
+                rating:  {{ house.rating | tojson }},
+                price8:  {{ price8 | normalize_price | tojson }},
+                pp8:     {{ price8 | price_per_person(8) | tojson }},
+                price10: {{ price10_raw | normalize_price | tojson }},
+                pp10:    {{ price10_raw | price_per_person(10) | tojson }},
+                address: {{ (house.address ~ ' ' ~ (house.address | country_flag)) | tojson }},
+                rooms:   {{ house.rooms | tojson }},
+                persons: {{ house.persons | tojson }},
+                sqm:     {{ house.sqm | tojson }},
+                baths:   {{ house.bathrooms | tojson }},
+                sauna:   {{ house.sauna | tojson }},
+                sled:    {{ (house.nearest_sled_run if house.nearest_sled_run else 'N/A') | tojson }},
+                train:   {{ house.train_station | tojson }},
+                market:  {{ house.supermarket | tojson }},
+                rooms_cfg: {{ (house.room_config | join('\n') if house.room_config else 'N/A') | tojson }}
+            },
+        {% endfor %}{% endfor %}
+        };
+
+        var COMPARE_FIELDS = [
+            { key: 'avail',    label: {{ t.house.availability | tojson }} },
+            { key: 'rating',   label: {{ t.house.rating | tojson }} },
+            { key: 'price8',   label: {{ t.house.price | tojson }} },
+            { key: 'pp8',      label: {{ t.house.price_per_person_8 | tojson }} },
+            { key: 'price10',  label: {{ t.house.price_10 | tojson }} },
+            { key: 'pp10',     label: {{ t.house.price_per_person_10 | tojson }} },
+            { key: 'address',  label: {{ t.house.location | tojson }} },
+            { key: 'rooms',    label: {{ t.house.bedrooms | tojson }} },
+            { key: 'persons',  label: {{ t.house.persons | tojson }} },
+            { key: 'sqm',      label: {{ t.house.sqm | tojson }} },
+            { key: 'baths',    label: {{ t.house.bathrooms | tojson }} },
+            { key: 'sauna',    label: {{ t.house.sauna | tojson }} },
+            { key: 'sled',     label: {{ t.house.nearest_sled_run | tojson }} },
+            { key: 'train',    label: {{ t.house.train_station | tojson }} },
+            { key: 'market',   label: {{ t.house.supermarket | tojson }} },
+            { key: 'rooms_cfg',label: {{ t.house.room_config | tojson }} },
+        ];
+
+        // ── Compare bar & modal logic ─────────────────────────────────────
+        var selectedHouses = {};
+
+        function updateCompareBar() {
+            var count = Object.keys(selectedHouses || {}).length;
+            var bar   = document.getElementById('compare-bar');
+            var label = document.getElementById('compare-bar-label');
+            var btn   = document.getElementById('compare-btn');
+            var cmp = (window.ALL_TRANSLATIONS[window.CURRENT_LANG] || {}).compare || {};
+            var tpl = count === 1 ? (cmp.selected_one || '1') : (cmp.selected_many || '{n}');
+            if (label) label.textContent = tpl.replace('{n}', count);
+            if (btn) btn.disabled = count < 2;
+            if (bar) bar.classList.toggle('visible', count > 0);
+        }
+
+        document.addEventListener('change', function(e) {
+            if (!e.target.classList.contains('compare-cb')) return;
+            var hidx = e.target.dataset.hidx;
+            if (e.target.checked) { selectedHouses[hidx] = true; }
+            else { delete selectedHouses[hidx]; }
+            updateCompareBar();
+        });
+
+        document.getElementById('compare-btn').addEventListener('click', openCompareModal);
+        document.getElementById('compare-clear').addEventListener('click', function() {
+            document.querySelectorAll('.compare-cb').forEach(function(cb) { cb.checked = false; });
+            selectedHouses = {};
+            updateCompareBar();
+        });
+        document.getElementById('compare-close').addEventListener('click', closeCompareModal);
+        document.getElementById('compare-overlay').addEventListener('click', function(e) {
+            if (e.target === this) closeCompareModal();
+        });
+        document.getElementById('compare-diff-only').addEventListener('change', applyDiffFilter);
+
+        function openCompareModal() {
+            var keys = Object.keys(selectedHouses);
+            if (keys.length < 2) return;
+            var houses = keys.map(function(k) { return HOUSE_DATA[k]; });
+
+            var thead = '<tr><th class="col-label"></th>' +
+                houses.map(function(h) {
+                    return '<th class="col-house"><div class="compare-house-name">' + escHtml(h.name) + '</div>' +
+                           '<div class="compare-house-trip">' + escHtml(h.trip) + ' · ' + escHtml(h.dates) + '</div></th>';
+                }).join('') + '</tr>';
+
+            var tbody = COMPARE_FIELDS.map(function(f) {
+                var vals = houses.map(function(h) { return h[f.key] || 'N/A'; });
+                var allSame = vals.every(function(v) { return v === vals[0]; });
+                var rowClass = allSame ? 'row-same' : 'row-diff';
+                var cells = vals.map(function(v) {
+                    var cls = allSame ? '' : ' cell-diff';
+                    var valClass = '';
+                    if (f.key === 'avail') {
+                        if (v === 'Available' || v === '{{ t.house.available }}') valClass = ' compare-good';
+                        else if (v === 'Unavailable' || v === '{{ t.house.unavailable }}') valClass = ' compare-bad';
+                    }
+                    if (v === 'N/A' || v === '') valClass = ' compare-na';
+                    var display = f.key === 'rooms_cfg' ? escHtml(v).replace(/\n/g, '<br>') : escHtml(v);
+                    return '<td class="' + cls + valClass + '">' + display + '</td>';
+                }).join('');
+                return '<tr class="' + rowClass + '" data-same="' + allSame + '"><td class="col-label">' + escHtml(f.label) + '</td>' + cells + '</tr>';
+            }).join('');
+
+            document.getElementById('compare-table-head').innerHTML = thead;
+            document.getElementById('compare-table-body').innerHTML = tbody;
+            document.getElementById('compare-diff-only').checked = false;
+            document.getElementById('compare-overlay').classList.add('open');
+        }
+
+        function closeCompareModal() {
+            document.getElementById('compare-overlay').classList.remove('open');
+        }
+
+        function applyDiffFilter() {
+            var diffOnly = document.getElementById('compare-diff-only').checked;
+            document.querySelectorAll('#compare-table-body tr').forEach(function(row) {
+                if (diffOnly && row.dataset.same === 'true') {
+                    row.classList.add('row-hidden');
+                } else {
+                    row.classList.remove('row-hidden');
+                }
+            });
+        }
+
+        function escHtml(s) {
+            return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+        }
 
         document.querySelectorAll('details.sled-run').forEach(function(el) {
             el.addEventListener('toggle', function() {

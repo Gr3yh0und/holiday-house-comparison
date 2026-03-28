@@ -52,6 +52,15 @@
         "house_label": "Hébergement",
         "default_label": "PDI"
     },
+    "compare": {
+        "select": "Sélectionner pour comparer",
+        "selected_one": "1 hébergement sélectionné",
+        "selected_many": "{n} hébergements sélectionnés",
+        "button": "\u2696\ufe0f Comparer",
+        "clear": "\u2715 Effacer la sélection",
+        "title": "\u2696\ufe0f Comparaison des hébergements",
+        "diff_only": "Afficher uniquement les différences"
+    },
     "common": {
         "yes": "Oui",
         "no": "Non"

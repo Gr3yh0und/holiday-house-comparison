@@ -52,6 +52,15 @@
         "house_label": "Unterkumft",
         "default_label": "POI"
     },
+    "compare": {
+        "select": "Zum Verglych uuswähle",
+        "selected_one": "1 Huus usgewählt",
+        "selected_many": "{n} Hüüser usgewählt",
+        "button": "\u2696\ufe0f Verglychä",
+        "clear": "\u2715 Uuswahl lösche",
+        "title": "\u2696\ufe0f Hüüserverglych",
+        "diff_only": "Nur Unterschied zeige"
+    },
     "common": {
         "yes": "Ja",
         "no": "Nei"

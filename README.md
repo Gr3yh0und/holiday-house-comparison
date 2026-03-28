@@ -162,7 +162,7 @@ Points of interest (`pois`) are shown on the house location map. Supported `type
 ## How It Works
 
 1. **House scraping** — four parsers are supported, selected automatically by URL:
-   - **fewo-direkt.de / booking.com** — uses headless Chrome (`undetected-chromedriver`) to bypass bot detection, then extracts location, price, bedroom count, bed configuration, sauna availability, and more. Bed entries containing "Schlafsofa" are flagged with ⚠️ in the UI. When no structured bedroom blocks are found, falls back to parsing the free-text description (`[data-stid="content-markup"]`) using the same fluid-text parser as interhome. If fewo-direkt returns a bot/rate-limit page ("Bot oder Mensch?", "Too Many Requests", "Access Denied"), the scrape is aborted and the previous result from `public/data.json` is used instead, provided it is less than 24 hours old.
+   - **fewo-direkt.de / booking.com** — uses headless Chrome (`undetected-chromedriver`) to bypass bot detection, with a randomly chosen User-Agent string and a randomised delay (6–12 s) per house to reduce fingerprinting. Extracts location, price, bedroom count, bed configuration, sauna availability, and more. Bed entries containing "Schlafsofa" are flagged with ⚠️ in the UI. When no structured bedroom blocks are found, falls back to parsing the free-text description (`[data-stid="content-markup"]`) using the same fluid-text parser as interhome. If fewo-direkt returns a bot/rate-limit page ("Bot oder Mensch?", "Too Many Requests", "Access Denied"), the scrape is aborted and the previous result from `public/data.json` is used instead, provided it is less than 24 hours old.
    - **huetten.com** — uses plain `requests` (no browser needed); extracts all fields from static HTML and the JSON-LD `LodgingBusiness` block. Price is resolved from the on-page weekly price table by matching the checkin date and person count parsed from the URL fragment (`#/vsc.php?calendar_date_from=…&persons_adults=…`). Nebenkosten (additional costs) are parsed separately and folded into the displayed Gesamtpreis; Kaution is excluded. Prices for both 8 and 10 persons are looked up from the table directly.
    - **interhome.de** — uses headless Chrome (Selenium) because the site is a React SPA. Waits for the availability badge (`[data-test="available-badge"]`) to settle after the background pricing API call completes (up to 45 s), then grabs the total price directly from the live DOM element. Session/tracking parameters (`offerId`, `clickId`) are stripped from the URL before loading to prevent stale tokens from causing the pricing API to hang. Availability is detected from the badge text: "verfügbar" → `Available`, "ausgebucht" → `Unavailable`. Room count and bed configuration are parsed from the rendered description text (`[data-test="rental-description"]`) using a shared fluid-text parser that handles patterns like `"3 abgeschrägte Zimmer, jedes Zimmer mit 1 franz. Bett (160cm)"`.
 
@@ -229,6 +229,16 @@ The page UI is fully translated. A language switcher is shown in the chip row be
 | `pfl-DE` | ☀️ | Karlsruhe dialect (Badisch-Pfälzisch) |
 
 The server-side default is set with `--lang` (default: `bar-DE`). All translations are embedded in the page at generation time so switching is instant.
+
+## Comparing Houses
+
+Each house card has a round checkbox above it. Selecting two or more houses shows a sticky bar at the bottom of the page with a **Compare** button. Clicking it opens a modal table showing all key fields side by side.
+
+- Rows where all selected houses have the **same value** are shown with a subtle grey background.
+- Rows where values **differ** are highlighted in yellow.
+- The **"Show differences only"** toggle hides identical rows so only the differences remain.
+
+The compare bar label, button text, modal title, and diff-only checkbox are all fully translated and switch instantly with the language selector.
 
 ## Data Quality Warnings
 

@@ -52,6 +52,15 @@
         "house_label": "Unnerkumft",
         "default_label": "POI"
     },
+    "compare": {
+        "select": "Zum Vergleich uuswähle",
+        "selected_one": "1 Haus ausgwählt",
+        "selected_many": "{n} Häuser ausgwählt",
+        "button": "\u2696\ufe0f Vergleicha",
+        "clear": "\u2715 Auswahl lösche",
+        "title": "\u2696\ufe0f Hausvergleich",
+        "diff_only": "Nur Unnerschied zeige"
+    },
     "common": {
         "yes": "Jo",
         "no": "Noi"

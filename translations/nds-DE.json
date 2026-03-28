@@ -52,6 +52,15 @@
         "house_label": "Unnerkumft",
         "default_label": "POI"
     },
+    "compare": {
+        "select": "To'n Verglieken utsöken",
+        "selected_one": "1 Huus utsöcht",
+        "selected_many": "{n} Hüüser utsöcht",
+        "button": "\u2696\ufe0f Verglieken",
+        "clear": "\u2715 Utwahl wischen",
+        "title": "\u2696\ufe0f Hüüserverglieken",
+        "diff_only": "Blots Ünnerschede wiesen"
+    },
     "common": {
         "yes": "Ja",
         "no": "Nee"

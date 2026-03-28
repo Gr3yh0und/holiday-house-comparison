@@ -52,6 +52,15 @@
         "house_label": "Unterkumft",
         "default_label": "POI"
     },
+    "compare": {
+        "select": "Zum Vergleich aussuachn",
+        "selected_one": "1 Haus ausgsuacht",
+        "selected_many": "{n} Häuser ausgsuacht",
+        "button": "\u2696\ufe0f Vergleichen",
+        "clear": "\u2715 Auswahl löschen",
+        "title": "\u2696\ufe0f Hausvergleich",
+        "diff_only": "Nur Unterschiede zeigen"
+    },
     "common": {
         "yes": "Jo",
         "no": "Na"
