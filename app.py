@@ -231,10 +231,13 @@ def _scrape_one_house(house, trip_checkin, trip_checkout, driver=None, force_ref
         if not sled_run_info.get('name') or sled_run_info['name'] == 'N/A':
             sled_run_info['name'] = sled_run_url.rstrip('/').split('/')[-1].replace('-', ' ').title()
         house_info['sled_runs'].append(sled_run_info)
-    house_info['sled_runs'].sort(
-        key=lambda r: int(re.sub(r'[^\d]', '', r['length'])) if re.search(r'\d', r['length']) else 0,
-        reverse=True,
-    )
+    def _length_m(length):
+        m = re.search(r'([\d.,]+)\s*(km|m)\b', length, re.IGNORECASE)
+        if not m:
+            return 0
+        val = float(m.group(1).replace(',', '.'))
+        return val * 1000 if m.group(2).lower() == 'km' else val
+    house_info['sled_runs'].sort(key=lambda r: _length_m(r['length']), reverse=True)
     return house_info
 
 

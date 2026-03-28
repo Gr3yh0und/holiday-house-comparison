@@ -7,6 +7,18 @@ from bs4 import BeautifulSoup
 
 CACHE_TTL = timedelta(days=1)
 
+
+def _normalize_length(raw):
+    if not raw or raw == 'N/A':
+        return raw
+    m = re.search(r'([\d.,]+)\s*(km|m)\b', raw, re.IGNORECASE)
+    if not m:
+        return raw
+    val = float(m.group(1).replace(',', '.'))
+    if m.group(2).lower() == 'm':
+        val = val / 1000
+    return f"{val:.1f} km"
+
 _cache: dict = {}
 _cache_file: str = ''
 
@@ -83,7 +95,7 @@ def scrape(url, force_refresh=False):
 
         result = {
             'name':             route_name,
-            'length':           get('Länge'),
+            'length':           _normalize_length(get('Länge')),
             'night_sleighing':  get('Beleuchtung'),
             'public_transport': get('Öffentliche Anreise'),
             'walking_time':     get('Gehzeit'),
