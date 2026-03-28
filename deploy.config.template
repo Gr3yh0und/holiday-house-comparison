@@ -1,0 +1,4 @@
+FTP_HOST=ftp.example.com
+FTP_USER=username
+FTP_PASS=password
+FTP_REMOTE_PATH=/example.com
