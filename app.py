@@ -9,7 +9,7 @@ from urllib.parse import urlparse, parse_qs, urlencode, urlunparse
 import requests
 from flask import Flask, render_template
 
-from parsers import booking, fewo, huetten, rodelwelten, outdooractive
+from parsers import booking, fewo, huetten, interhome, rodelwelten, outdooractive
 
 app = Flask(__name__)
 
@@ -168,7 +168,10 @@ def _make_driver():
     return uc.Chrome(options=options, driver_executable_path=driver_path)
 
 
-BROKER_DOMAINS = {'fewo': 'fewo-direkt.de', 'booking': 'booking.com', 'huetten': 'huetten.com'}
+BROKER_DOMAINS = {
+    'fewo': 'fewo-direkt.de', 'booking': 'booking.com',
+    'huetten': 'huetten.com', 'interhome': 'interhome.',
+}
 
 
 def scrape_house(url, driver=None):
@@ -178,6 +181,8 @@ def scrape_house(url, driver=None):
         return booking.scrape(url, driver)
     if 'huetten.com' in url:
         return huetten.scrape(url, driver)
+    if 'interhome.' in url:
+        return interhome.scrape(url, driver)
     return {k: 'N/A' for k in ['location', 'address', 'rooms', 'sqm', 'bathrooms',
                                  'room_config', 'price', 'time', 'train_station',
                                  'supermarket', 'rating', 'persons']}
@@ -192,6 +197,7 @@ def inject_dates(url, checkin, checkout):
         'd1': checkin, 'd2': checkout,
         'startDate': checkin, 'endDate': checkout,
         'checkin': checkin, 'checkout': checkout,
+        'arrival': checkin,  # interhome
     }
     for key, val in date_map.items():
         if key in params:
@@ -298,7 +304,10 @@ def index():
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--force', action='store_true', help='Force re-fetch all sled runs, ignoring cache')
-    parser.add_argument('--broker', choices=['fewo', 'booking', 'huetten'], help='Only scrape houses from this broker')
+    parser.add_argument(
+        '--broker', choices=['fewo', 'booking', 'huetten', 'interhome'],
+        help='Only scrape houses from this broker',
+    )
     parser.add_argument('--limit', type=int, help='Maximum number of houses to scrape')
     parser.add_argument(
         '--from-cache', action='store_true',

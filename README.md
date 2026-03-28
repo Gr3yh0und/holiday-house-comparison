@@ -47,13 +47,13 @@ Requires `curl`, available by default on macOS and most Linux distributions.
 ## Usage
 
 ```
-python app.py [--force] [--broker fewo|booking|huetten] [--limit N] [--from-cache] [--house NAME] [--lang de-DE|en-GB|fr-FR|nl-NL|bar-DE|bar-AT|gsw-CH|nds-DE|pfl-DE]
+python app.py [--force] [--broker fewo|booking|huetten|interhome] [--limit N] [--from-cache] [--house NAME] [--lang de-DE|en-GB|fr-FR|nl-NL|bar-DE|bar-AT|gsw-CH|nds-DE|pfl-DE]
 ```
 
 | Flag | Description |
 |------|-------------|
 | `--force` | Re-fetch all sled run data, ignoring the local cache |
-| `--broker fewo\|booking\|huetten` | Only scrape houses from this broker (skips others) |
+| `--broker fewo\|booking\|huetten\|interhome` | Only scrape houses from this broker (skips others) |
 | `--limit N` | Stop after scraping N houses |
 | `--from-cache` | Re-render HTML from existing `public/data.json` without scraping |
 | `--house NAME` | Scrape only one house (case-insensitive substring match), patch `public/data.json`, and re-render. If the house appears in multiple trips with different dates, each trip is scraped separately. |
@@ -150,15 +150,16 @@ Points of interest (`pois`) are shown on the house location map. Supported `type
 
 ## How It Works
 
-1. **House scraping** — three parsers are supported, selected automatically by URL:
+1. **House scraping** — four parsers are supported, selected automatically by URL:
    - **fewo-direkt.de / booking.com** — uses headless Chrome (`undetected-chromedriver`) to bypass bot detection, then extracts location, price, bedroom count, bed configuration, sauna availability, and more. Bed entries containing "Schlafsofa" are flagged with ⚠️ in the UI.
    - **huetten.com** — uses plain `requests` (no browser needed); extracts all fields from static HTML and the JSON-LD `LodgingBusiness` block. Price is resolved from the on-page weekly price table by matching the checkin date and person count parsed from the URL fragment (`#/vsc.php?calendar_date_from=…&persons_adults=…`). Nebenkosten (additional costs) are parsed separately and folded into the displayed Gesamtpreis; Kaution is excluded. Prices for both 8 and 10 persons are looked up from the table directly.
+   - **interhome.de** — uses headless Chrome (Selenium) because the site is a React SPA. Waits for the availability badge (`[data-test="available-badge"]`) to settle after the background pricing API call completes (up to 45 s), then grabs the total price directly from the live DOM element. Session/tracking parameters (`offerId`, `clickId`) are stripped from the URL before loading to prevent stale tokens from causing the pricing API to hang. Availability is detected from the badge text: "verfügbar" → `Available`, "ausgebucht" → `Unavailable`. Room count and bed configuration are parsed from the rendered description text (`[data-test="rental-description"]`); the JSON-LD description is truncated and not used for these fields.
 
    Fields present in `input.json` override scraped values for all brokers.
 2. **Sled run scraping** — two parsers are supported, selected automatically by URL:
    - **rodelwelten.com** — fetches `/detail/` pages with `requests`/BeautifulSoup and parses the details table (length, elevation, night sledding, public transport, sled rental, etc.). Hut/Alm info (name + website) is extracted from `div.hut-content` blocks. GPX tracks are downloaded (or assembled from inline JSON segments) and downsampled for map display. Cached for 24 hours in `cache/sled_runs.json`.
    - **outdooractive.com** — parses JSON-LD structured data embedded in the page for length, elevation, difficulty, ascent aid, and operator. Additional fields (night sledding, public transport, sled rental, opening hours) are inferred from page text. The GPX track is downloaded via the public `download.tour.gpx?i={id}` endpoint and downsampled. Cached for 24 hours in `cache/outdooractive.json`.
-3. **Date injection** — known date query parameters (`chkin`, `chkout`, `startDate`, `endDate`, `checkin`, `checkout`, etc.) in house URLs are replaced with the configured trip dates before scraping.
+3. **Date injection** — known date query parameters (`chkin`, `chkout`, `startDate`, `endDate`, `checkin`, `checkout`, `arrival`, etc.) in house URLs are replaced with the configured trip dates before scraping.
 4. **Rendering** — the Jinja2 template in `templates/index.html` renders all trips and houses into a card-based comparison layout with interactive Leaflet maps.
    - Prices are normalised to `XXXX €` format. Per-person price is shown for 8 persons; a 10-person row is shown when a separate 10-person price is available or when `house.persons == "10"`. For fewo/booking the 10-person price is estimated as the 8-person price +2%.
    - Address is normalised to "City, Country" format with a country flag emoji.
@@ -170,7 +171,7 @@ Points of interest (`pois`) are shown on the house location map. Supported `type
 
 | Type      | Supported sites                                          |
 |-----------|----------------------------------------------------------|
-| Houses    | fewo-direkt.de, booking.com, huetten.com                 |
+| Houses    | fewo-direkt.de, booking.com, huetten.com, interhome.de   |
 | Sled runs | rodelwelten.com (detail pages only), outdooractive.com   |
 
 ## Maps
