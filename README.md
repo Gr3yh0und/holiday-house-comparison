@@ -126,8 +126,8 @@ Any field normally scraped from the booking page can be overridden directly in `
 | `price` | Total price | `"2388"` or `"2388€"` |
 | `time` | Availability status | `"Available"` |
 | `rating` | Rating | `"9.2"` |
-| `supermarket` | Walking distance to nearest supermarket | `"380 m · 5 min (Coop)"` |
-| `train_station` | Walking distance to nearest train station | `"370 m · 5 min (Bahnhof Lauterbrunnen)"` |
+| `supermarket` | Walking distance to nearest supermarket | `"Coop (380 m · 5 min)"` |
+| `train_station` | Walking distance to nearest train station | `"Bahnhof Lauterbrunnen (370 m · 5 min)"` |
 | `sauna` | Sauna available | `"Ja"` or `"Nein"` |
 | `nearest_sled_run` | Nearest sled run with distance/time | `"Sulwald – Isenfluh – Lauterbrunnen (0,3 km · 4 min)"` |
 | `notes` | Free-text note shown on the house card (above the booking buttons) | `"Nur per E-Mail buchbar."` |
@@ -144,8 +144,8 @@ Example:
   "price": "2388",
   "persons": "8",
   "rooms": "5",
-  "supermarket": "2 km (Spar)",
-  "train_station": "650 m zu Fuß"
+  "supermarket": "Spar (2,0 km · 24 min)",
+  "train_station": "Bahnhof Ort (650 m · 8 min)"
 }
 ```
 
