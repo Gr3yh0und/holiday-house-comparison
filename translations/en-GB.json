@@ -63,6 +63,7 @@
         "data_errors": "Data errors",
         "room_warning_badge": "Rooms",
         "rooms_stated": "stated, but",
-        "rooms_entries": "entries in room configuration"
+        "rooms_entries": "entries in room configuration",
+        "price_10_estimated": "Price estimated for 8 persons – may be higher for 10."
     }
 }

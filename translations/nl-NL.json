@@ -63,6 +63,7 @@
         "data_errors": "Datafouten",
         "room_warning_badge": "Kamers",
         "rooms_stated": "opgegeven, maar",
-        "rooms_entries": "vermeldingen in kamerconfiguratie"
+        "rooms_entries": "vermeldingen in kamerconfiguratie",
+        "price_10_estimated": "Prijs geschat voor 8 personen – kan hoger zijn voor 10."
     }
 }
