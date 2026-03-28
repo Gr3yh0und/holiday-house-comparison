@@ -9,6 +9,40 @@ A static site generator for comparing holiday houses suitable for sledding (Rode
 3. Copy `input.template.json` to `input.json` and fill in your trips, houses, and sled run URLs.
 4. Generate the static site: `python app.py`
 5. Open or host `public/index.html`.
+6. (Optional) Copy `deploy.config.template` to `deploy.config` and fill in your FTP credentials to enable deployment.
+
+## Deployment
+
+Both scripts upload `public/index.html` to a remote server via FTP. Use whichever matches your OS.
+
+**Setup (both scripts share the same config):**
+
+1. Copy `deploy.config.template` to `deploy.config` (it is gitignored).
+2. Fill in your credentials:
+
+```
+FTP_HOST=ftp.example.com
+FTP_USER=username
+FTP_PASS=password
+FTP_REMOTE_PATH=/example.com
+```
+
+**Windows (PowerShell):**
+
+```powershell
+.\deploy.ps1
+```
+
+Requires `curl.exe`, built into Windows 10+.
+
+**Unix (bash):**
+
+```bash
+chmod +x deploy.sh
+./deploy.sh
+```
+
+Requires `curl`, available by default on macOS and most Linux distributions.
 
 ## Usage
 
