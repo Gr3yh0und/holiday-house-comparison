@@ -37,3 +37,6 @@ secrets.*
 
 # Deployment credentials
 deploy.config
+
+# Release notes (local drafts)
+release/

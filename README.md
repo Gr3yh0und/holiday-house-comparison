@@ -163,7 +163,8 @@ Points of interest (`pois`) are shown on the house location map. Supported `type
    - Prices are normalised to `XXXX €` format. Per-person price is shown for 8 persons; a 10-person row is shown when a separate 10-person price is available or when `house.persons == "10"`. For fewo/booking the 10-person price is estimated as the 8-person price +2%.
    - Address is normalised to "City, Country" format with a country flag emoji.
    - A data quality warning box appears at the top if the scraped bedroom count does not match the number of `room_config` entries; clicking a house name jumps directly to its card.
-   - The last-updated timestamp is shown prominently below the page title.
+   - The last-updated timestamp and version are shown as chips below the page title, alongside the language switcher.
+   - Unavailable houses (`time == "Unavailable"`) are visually marked with a diagonal red stripe pattern on the header and photo, plus a centred badge.
 
 ## Supported Sources
 
@@ -181,9 +182,25 @@ Each house card shows two types of maps:
 
 The overview map at the top groups houses by location. If two or more houses share the same coordinates (to 5 decimal places), they are merged into a single marker with a split-colour gradient and a tooltip listing each house name, trip, and price separately.
 
+## Languages
+
+The page UI is fully translated. A language switcher is shown in the chip row below the title and persists the selection via `localStorage`. Supported locales:
+
+| Code | Language |
+|------|----------|
+| `de-DE` | German |
+| `en-GB` | English |
+| `fr-FR` | French |
+| `nl-NL` | Dutch |
+| `bar-DE` | Bavarian dialect |
+| `bar-AT` | Tyrolean dialect |
+| `gsw-CH` | Swiss German |
+
+The server-side default is set with `--lang` (default: `bar-DE`). All translations are embedded in the page at generation time so switching is instant.
+
 ## Data Quality Warnings
 
-If the scraped bedroom count (`rooms`) does not match the number of entries in `room_config`, a highlighted warning box is shown at the top of the page listing all affected houses. Each house name is a clickable link that jumps to the relevant card. The affected card header also shows a small `⚠️ Zimmer` badge. Bed entries containing "Schlafsofa" are flagged inline with ⚠️.
+If the scraped bedroom count (`rooms`) does not match the number of entries in `room_config`, a highlighted warning box is shown at the top of the page listing all affected houses. Each house name is a clickable link that jumps to the relevant card. The affected card header also shows a small translated rooms badge. Bed entries containing "Schlafsofa" are flagged inline with ⚠️.
 
 ## Notes
 
@@ -194,5 +211,5 @@ If the scraped bedroom count (`rooms`) does not match the number of entries in `
 - The Flask `@app.route('/')` enables a live server mode (`flask run`) that scrapes on every request, but the primary workflow is static generation via `python app.py`.
 - After adding new sled runs, run with `--force` to bypass the cache and pick up newly scraped fields (e.g. huts).
 - When using `--house` for a house that appears in multiple trips, each unique date range is scraped separately so prices are correct per trip.
-- `room_config` entries should contain only the bed description (e.g. `"1 Doppelbett"`); the "Schlafzimmer N:" label is generated automatically by the template.
-- The footer shows the current version, resolved in order: latest GitHub release tag → latest local git tag → `dev`. Create a GitHub release to have it appear automatically.
+- `room_config` entries should contain only the bed description (e.g. `"1 Doppelbett"`); the bedroom label and number are generated automatically by the template and translated.
+- The version chip in the header resolves in order: latest GitHub release tag → latest local git tag → `dev`. Create a GitHub release to have it appear automatically.
