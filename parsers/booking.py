@@ -4,33 +4,7 @@ import re
 import requests
 from bs4 import BeautifulSoup
 
-_COUNTRY_NAMES = {
-    'AT': 'Österreich', 'DE': 'Deutschland', 'CH': 'Schweiz',
-    'IT': 'Italien', 'FR': 'Frankreich',
-    'Austria': 'Österreich', 'Germany': 'Deutschland', 'Switzerland': 'Schweiz',
-    'Italy': 'Italien', 'France': 'Frankreich',
-}
-
-def _normalize_country(s):
-    s = s.strip()
-    return _COUNTRY_NAMES.get(s, s)
-
-
-EMPTY = {
-    'location': 'N/A',
-    'address': 'N/A',
-    'rooms': 'N/A',
-    'sqm': 'N/A',
-    'bathrooms': 'N/A',
-    'room_config': [],
-    'price': 'N/A',
-    'time': 'N/A',
-    'train_station': 'N/A',
-    'supermarket': 'N/A',
-    'rating': 'N/A',
-    'persons': 'N/A',
-    'sauna': 'N/A',
-}
+from parsers.common import EMPTY, normalize_country as _normalize_country
 
 
 def scrape(url, driver=None):
@@ -170,9 +144,5 @@ def scrape(url, driver=None):
 
 
 def _headers():
-    return {
-        'User-Agent': (
-            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) '
-            'AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
-        )
-    }
+    from parsers.common import HEADERS
+    return HEADERS

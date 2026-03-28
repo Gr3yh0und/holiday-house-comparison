@@ -6,38 +6,7 @@ from urllib.parse import urlparse, parse_qs
 import requests
 from bs4 import BeautifulSoup
 
-_COUNTRY_NAMES = {
-    'AT': 'Österreich', 'DE': 'Deutschland', 'CH': 'Schweiz',
-    'IT': 'Italien', 'FR': 'Frankreich',
-    'Austria': 'Österreich', 'Germany': 'Deutschland', 'Switzerland': 'Schweiz',
-    'Italy': 'Italien', 'France': 'Frankreich',
-}
-
-def _normalize_country(s):
-    s = s.strip()
-    return _COUNTRY_NAMES.get(s, s)
-
-
-EMPTY = {
-    'location': 'N/A',
-    'address': 'N/A',
-    'rooms': 'N/A',
-    'sqm': 'N/A',
-    'bathrooms': 'N/A',
-    'room_config': [],
-    'price': 'N/A',
-    'time': 'N/A',
-    'train_station': 'N/A',
-    'supermarket': 'N/A',
-    'rating': 'N/A',
-    'persons': 'N/A',
-    'sauna': 'N/A',
-}
-
-_HEADERS = {
-    'Accept-Language': 'de',
-    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-}
+from parsers.common import EMPTY, HEADERS as _HEADERS, normalize_country as _normalize_country, parse_json_ld as _parse_json_ld_common
 
 
 def scrape(url, _driver=None):
@@ -51,7 +20,7 @@ def scrape(url, _driver=None):
         soup = BeautifulSoup(resp.content, 'html.parser')
         text = soup.get_text(' ', strip=True)
 
-        ld = _parse_json_ld(soup)
+        ld = _parse_json_ld_common(soup, 'LodgingBusiness')
 
         # Name / location
         h1 = soup.find('h1')
@@ -240,15 +209,6 @@ def _extra_costs_for_persons(nk_div, checkin_date, nights, persons):
     return f"{round(total)} €" if found_any else 'N/A'
 
 
-def _parse_json_ld(soup):
-    for tag in soup.find_all('script', type='application/ld+json'):
-        try:
-            d = json.loads(tag.string or '')
-            if isinstance(d, dict) and d.get('@type') == 'LodgingBusiness':
-                return d
-        except (json.JSONDecodeError, TypeError):
-            pass
-    return {}
 
 
 if __name__ == '__main__':

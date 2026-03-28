@@ -4,6 +4,8 @@ import time
 import requests
 from bs4 import BeautifulSoup
 
+from parsers.common import EMPTY, HEADERS as _HEADERS, parse_room_config as _parse_room_config
+
 _REGION_COUNTRY = {
     # Austria
     'Tirol': 'Österreich', 'Salzburg': 'Österreich', 'Vorarlberg': 'Österreich',
@@ -27,21 +29,6 @@ _REGION_COUNTRY = {
     'Haute-Savoie': 'Frankreich', 'Savoie': 'Frankreich',
 }
 
-EMPTY = {
-    'location': 'N/A',
-    'address': 'N/A',
-    'rooms': 'N/A',
-    'sqm': 'N/A',
-    'bathrooms': 'N/A',
-    'room_config': [],
-    'price': 'N/A',
-    'time': 'N/A',
-    'train_station': 'N/A',
-    'supermarket': 'N/A',
-    'rating': 'N/A',
-    'persons': 'N/A',
-    'sauna': 'N/A',
-}
 
 
 def scrape(url, driver=None):
@@ -55,7 +42,7 @@ def scrape(url, driver=None):
             print(f"  [fewo] page source length: {len(page_source)} chars")
             soup = BeautifulSoup(page_source, 'html.parser')
         else:
-            response = requests.get(url, headers=_headers(), timeout=15)
+            response = requests.get(url, headers=_HEADERS, timeout=15)
             print(f"  [fewo] response status: {response.status_code}, length: {len(response.content)}")
             soup = BeautifulSoup(response.content, 'html.parser')
 
@@ -122,10 +109,9 @@ def scrape(url, driver=None):
 
         # Fallback: fluid text in data-stid="content-markup" (e.g. Interhome-style descriptions)
         if not result['room_config']:
-            from parsers.interhome import _parse_room_config as _interhome_parse_room_config
             for markup in soup.find_all(attrs={'data-stid': 'content-markup'}):
                 markup_text = re.sub(r'\s+', ' ', markup.get_text(' ', strip=True))
-                parsed = _interhome_parse_room_config(markup_text)
+                parsed = _parse_room_config(markup_text)
                 if parsed:
                     result['room_config'] = parsed
                     if result['rooms'] == 'N/A':
@@ -190,10 +176,3 @@ def scrape(url, driver=None):
     return result
 
 
-def _headers():
-    return {
-        'User-Agent': (
-            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) '
-            'AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
-        )
-    }

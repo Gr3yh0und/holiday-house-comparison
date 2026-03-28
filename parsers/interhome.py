@@ -1,41 +1,10 @@
-import json
 import re
 from urllib.parse import urlparse, parse_qs, urlencode
 
 import requests
 from bs4 import BeautifulSoup
 
-_COUNTRY_NAMES = {
-    'Schweiz': 'Schweiz', 'Switzerland': 'Schweiz',
-    'Österreich': 'Österreich', 'Austria': 'Österreich',
-    'Deutschland': 'Deutschland', 'Germany': 'Deutschland',
-    'Italien': 'Italien', 'Italy': 'Italien',
-    'Frankreich': 'Frankreich', 'France': 'Frankreich',
-}
-
-EMPTY = {
-    'location': 'N/A',
-    'address': 'N/A',
-    'rooms': 'N/A',
-    'sqm': 'N/A',
-    'bathrooms': 'N/A',
-    'room_config': [],
-    'price': 'N/A',
-    'time': 'N/A',
-    'train_station': 'N/A',
-    'supermarket': 'N/A',
-    'rating': 'N/A',
-    'persons': 'N/A',
-    'sauna': 'N/A',
-}
-
-_HEADERS = {
-    'Accept-Language': 'de-DE,de;q=0.9',
-    'User-Agent': (
-        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) '
-        'AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
-    ),
-}
+from parsers.common import EMPTY, HEADERS as _HEADERS, normalize_country, parse_json_ld, parse_room_config
 
 
 def _clean_url(url):
@@ -90,7 +59,7 @@ def scrape(url, driver=None):
             resp = requests.get(url, timeout=15, headers=_HEADERS)
             soup = BeautifulSoup(resp.content, 'html.parser')
 
-        ld = _parse_json_ld(soup)
+        ld = parse_json_ld(soup, 'Product')
 
         # Name
         result['location'] = ld.get('name', 'N/A')
@@ -100,7 +69,7 @@ def scrape(url, driver=None):
         if len(crumbs) >= 2:
             city = crumbs[-2].get_text(strip=True)
             country_raw = crumbs[0].get_text(strip=True)
-            country = _COUNTRY_NAMES.get(country_raw, country_raw)
+            country = normalize_country(country_raw)
             result['address'] = f"{city}, {country}"
 
         # Persons
@@ -126,7 +95,7 @@ def scrape(url, driver=None):
         result['bathrooms'] = str(bath_count) if bath_count else 'N/A'
 
         # Room config
-        room_config = _parse_room_config(desc)
+        room_config = parse_room_config(desc)
         result['room_config'] = room_config
         result['rooms'] = str(len(room_config)) if room_config else 'N/A'
 
@@ -175,50 +144,6 @@ def _parse_url_params(url):
     duration = int(duration_str) if duration_str and duration_str.isdigit() else None
     return persons, arrival, duration
 
-
-def _parse_room_config(desc):
-    """Extract individual bedroom entries from the property description text.
-
-    Splits on sentence boundaries while protecting German abbreviations (franz., ca., etc.)
-    that end with a period but are not sentence ends.
-
-    Handles patterns like:
-      '1 Zimmer 20 m² mit 1 franz. Bett (160 cm, Länge 200 cm)'
-      '1 Zimmer 28 m² mit 1 Diwanbett (130 cm), 1 franz. Bett (160 cm)'
-      '3 abgeschrägte Zimmer, jedes Zimmer mit 1 franz. Bett (160 cm)'
-    """
-    # Replace known abbreviation periods with a placeholder so they survive sentence splitting
-    abbrevs = r'\b(franz|ca|inkl|exkl|evtl|ggf|usw|etc|max|min|Nr|Str)\.'
-    text = re.sub(abbrevs, r'\1', desc, flags=re.I)
-
-    rooms = []
-    for seg in re.split(r'\.\s+', text):
-        m = re.search(
-            r'(\d+)\s+(?:\S+\s+)?Zimmer'        # N [adj] Zimmer
-            r'(?:\s+\d+\s*m[²2])?'                 # optional size
-            r'(?:\s*,\s*jedes\s+Zimmer)?'         # optional ", jedes Zimmer"
-            r'\s+(?:je\s+)?mit\s+'               # mit / je mit
-            r'(.+)',                              # bed description (rest of segment)
-            seg.strip(), re.I
-        )
-        if m:
-            count = int(m.group(1))
-            bed_desc = m.group(2).strip().rstrip('.,')
-            bed_desc = re.sub(r',\s*Länge\s*\d+\s*cm', '', bed_desc)
-            bed_desc = re.sub(r'(\d+)\s*cm', r'\1cm', bed_desc)
-            rooms.extend([bed_desc] * count)
-    return rooms
-
-
-def _parse_json_ld(soup):
-    for tag in soup.find_all('script', type='application/ld+json'):
-        try:
-            d = json.loads(tag.string or '')
-            if isinstance(d, dict) and d.get('@type') == 'Product':
-                return d
-        except (json.JSONDecodeError, TypeError):
-            pass
-    return {}
 
 
 if __name__ == '__main__':
