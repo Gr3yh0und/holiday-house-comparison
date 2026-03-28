@@ -503,7 +503,7 @@
                         <span class="label" data-i18n="house.room_config">{{ t.house.room_config }}</span>
                         {% for room in house.room_config %}
                         {%- set is_sofa = 'sofa' in room.lower() -%}
-                        <span class="value" style="font-size: 0.82rem;"><span style="color:#888;"><span data-i18n="ui.bedroom_label">{{ t.ui.bedroom_label }}</span> {{ loop.index }}:</span> {{ room }}{% if is_sofa %} ⚠️{% endif %}</span>
+                        <span class="value" style="font-size: 0.82rem; display: grid; grid-template-columns: max-content 1fr; gap: 0 6px; width: 100%;"><span style="color:#888; white-space: nowrap;"><span data-i18n="ui.bedroom_label">{{ t.ui.bedroom_label }}</span> {{ loop.index }}:</span><span>{{ room }}{% if is_sofa %} ⚠️{% endif %}</span></span>
                         {% endfor %}
                     </li>
                     {% endif %}

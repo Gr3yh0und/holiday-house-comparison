@@ -53,6 +53,15 @@ def parse_json_ld(soup, schema_type):
     return {}
 
 
+def clean_bed_desc(bed_desc):
+    """Normalise a raw bed description string."""
+    bed_desc = re.sub(r',\s*Länge\s*\d+\s*cm', '', bed_desc)
+    bed_desc = re.sub(r',?\s*(?:(?:Bad|Dusche|WC)(?:\s*/\s*(?:Bad|Dusche|WC))+)', '', bed_desc)
+    bed_desc = re.sub(r'\b1\s*[xX]\s*(\d+cm)', r'\1', bed_desc)
+    bed_desc = re.sub(r'(\d+)\s*cm', r'\1cm', bed_desc)
+    return bed_desc.strip().strip(',').strip()
+
+
 def parse_room_config(desc):
     """Extract bedroom entries from a fluid property description (Interhome style).
 
@@ -76,8 +85,6 @@ def parse_room_config(desc):
         )
         if m:
             count = int(m.group(1))
-            bed_desc = m.group(2).strip().rstrip('.,')
-            bed_desc = re.sub(r',\s*Länge\s*\d+\s*cm', '', bed_desc)
-            bed_desc = re.sub(r'(\d+)\s*cm', r'\1cm', bed_desc)
+            bed_desc = clean_bed_desc(m.group(2).rstrip('.,'))
             rooms.extend([bed_desc] * count)
     return rooms

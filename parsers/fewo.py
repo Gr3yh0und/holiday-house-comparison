@@ -4,7 +4,7 @@ import time
 import requests
 from bs4 import BeautifulSoup
 
-from parsers.common import EMPTY, HEADERS as _HEADERS, parse_room_config as _parse_room_config
+from parsers.common import EMPTY, HEADERS as _HEADERS, parse_room_config as _parse_room_config, clean_bed_desc
 
 _REGION_COUNTRY = {
     # Austria
@@ -104,7 +104,7 @@ def scrape(url, driver=None):
             bed_re = r'\d?\s*(?:(?:King|Queen|Doppel|Einzel|Etagen|Stock|Schlaf|Franz|Kinder)[- ]?[Bb]ett|Schlafsofa)'
             if re.search(bed_re, item_text, re.I):
                 bedroom_n += 1
-                bed_text = item_text[len(h4.get_text(strip=True)):].strip()
+                bed_text = clean_bed_desc(item_text[len(h4.get_text(strip=True)):].strip())
                 result['room_config'].append(bed_text)
 
         # Fallback: fluid text in data-stid="content-markup" (e.g. Interhome-style descriptions)
