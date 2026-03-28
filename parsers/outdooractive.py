@@ -107,8 +107,13 @@ def scrape(url, force_refresh=False):
         page_text = soup.get_text(' ', strip=True)
 
         night_sleighing = 'Ja' if re.search(r'Nachtrodeln|Nachtschlitteln|Abendfahrt', page_text) else 'N/A'
-        public_transport = 'Ja' if re.search(r'öffentlich|Bahn und Bus|ÖV|Postauto', page_text, re.IGNORECASE) else 'N/A'
-        sled_rental = 'Ja' if re.search(r'Schlittenmiete|Schlittenverleih|Rodelverleih|mieten', page_text, re.IGNORECASE) else 'N/A'
+        public_transport = (
+            'Ja' if re.search(r'öffentlich|Bahn und Bus|ÖV|Postauto', page_text, re.IGNORECASE) else 'N/A'
+        )
+        sled_rental = (
+            'Ja' if re.search(r'Schlittenmiete|Schlittenverleih|Rodelverleih|mieten', page_text, re.IGNORECASE)
+            else 'N/A'
+        )
 
         hours_m = re.search(r'(\d{1,2}[:.]\d{2})\s*(?:Uhr)?\s*[-–]\s*(\d{1,2}[:.]\d{2})\s*Uhr', page_text)
         opening_hours = f"{hours_m.group(1)} - {hours_m.group(2)}" if hours_m else 'N/A'
@@ -163,7 +168,6 @@ def _parse_json_ld(soup):
 
 def _debug(url):
     """Run the parser on a single URL and print results, for debugging."""
-    import sys
     print(f"Scraping: {url}\n")
     result = scrape(url, force_refresh=True)
     track = result.pop('track', [])

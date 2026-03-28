@@ -199,8 +199,20 @@ def inject_dates(url, checkin, checkout):
     return urlunparse(parsed._replace(query=urlencode(params, doseq=True)))
 
 
+def _render_html(title, trips, updated_at, version):
+    return render_template(
+        'index.html',
+        t=_translations, all_translations=_all_translations, lang=_lang,
+        title=title, trips=trips, updated_at=updated_at, version=version,
+    )
+
+
 def _scrape_one_house(house, trip_checkin, trip_checkout, driver=None, force_refresh=False):
-    house_url = inject_dates(house['house_url'], trip_checkin, trip_checkout) if trip_checkin and trip_checkout else house['house_url']
+    house_url = (
+        inject_dates(house['house_url'], trip_checkin, trip_checkout)
+        if trip_checkin and trip_checkout
+        else house['house_url']
+    )
     print(f"Scraping house: {house['name']} ({house_url[:60]}...)")
     house_info = scrape_house(house_url, driver=driver)
     house_info['name'] = house['name']
@@ -251,14 +263,23 @@ def build_trip_data(data, driver=None, force_refresh=False, broker_filter=None, 
         for house in trip['houses']:
             if limit is not None and scraped >= limit:
                 break
-            house_url = inject_dates(house['house_url'], trip_checkin, trip_checkout) if trip_checkin and trip_checkout else house['house_url']
+            house_url = (
+                inject_dates(house['house_url'], trip_checkin, trip_checkout)
+                if trip_checkin and trip_checkout
+                else house['house_url']
+            )
             is_skipped = broker_filter and BROKER_DOMAINS.get(broker_filter) not in house_url
             if is_skipped:
                 print(f"Skipping house: {house['name']} (not a {broker_filter} URL)")
                 continue
-            houses.append(_scrape_one_house(house, trip_checkin, trip_checkout, driver=driver, force_refresh=force_refresh))
+            houses.append(_scrape_one_house(
+                house, trip_checkin, trip_checkout, driver=driver, force_refresh=force_refresh
+            ))
             scraped += 1
-        trips.append({'name': trip.get('name', ''), 'checkin': trip_checkin, 'checkout': trip_checkout, 'houses': houses})
+        trips.append({
+            'name': trip.get('name', ''), 'checkin': trip_checkin,
+            'checkout': trip_checkout, 'houses': houses,
+        })
     return trips
 
 
@@ -266,7 +287,12 @@ def build_trip_data(data, driver=None, force_refresh=False, broker_filter=None, 
 def index():
     with open('input.json', encoding='utf-8') as f:
         data = json.load(f)
-    return render_template('index.html', t=_translations, all_translations=_all_translations, lang=_lang, title=data.get('title', 'Ferienhaus-Vergleich für Rodeln'), trips=build_trip_data(data), updated_at=datetime.now().strftime('%Y-%m-%d %H:%M'), version=get_version())
+    return _render_html(
+        title=data.get('title', 'Ferienhaus-Vergleich für Rodeln'),
+        trips=build_trip_data(data),
+        updated_at=datetime.now().strftime('%Y-%m-%d %H:%M'),
+        version=get_version(),
+    )
 
 
 if __name__ == '__main__':
@@ -274,9 +300,19 @@ if __name__ == '__main__':
     parser.add_argument('--force', action='store_true', help='Force re-fetch all sled runs, ignoring cache')
     parser.add_argument('--broker', choices=['fewo', 'booking', 'huetten'], help='Only scrape houses from this broker')
     parser.add_argument('--limit', type=int, help='Maximum number of houses to scrape')
-    parser.add_argument('--from-cache', action='store_true', help='Re-render HTML from existing public/data.json without scraping')
-    parser.add_argument('--house', type=str, metavar='NAME', help='Scrape only this house (substring match), patch data.json and re-render')
-    parser.add_argument('--lang', default='bar-DE', choices=['de-DE', 'en-GB', 'fr-FR', 'nl-NL', 'bar-DE', 'bar-AT', 'gsw-CH', 'nds-DE', 'pfl-DE'], help='Language for the rendered page (default: bar-DE)')
+    parser.add_argument(
+        '--from-cache', action='store_true',
+        help='Re-render HTML from existing public/data.json without scraping',
+    )
+    parser.add_argument(
+        '--house', type=str, metavar='NAME',
+        help='Scrape only this house (substring match), patch data.json and re-render',
+    )
+    parser.add_argument(
+        '--lang', default='bar-DE',
+        choices=['de-DE', 'en-GB', 'fr-FR', 'nl-NL', 'bar-DE', 'bar-AT', 'gsw-CH', 'nds-DE', 'pfl-DE'],
+        help='Language for the rendered page (default: bar-DE)',
+    )
     args = parser.parse_args()
 
     _translations = load_translations(args.lang)
@@ -376,7 +412,10 @@ if __name__ == '__main__':
         print("Updated public/data.json")
 
         with app.app_context():
-            html_content = render_template('index.html', t=_translations, all_translations=_all_translations, lang=_lang, title=data.get('title', 'Ferienhaus-Vergleich für Rodeln'), trips=cached['trips'], updated_at=updated_at, version=version)
+            html_content = _render_html(
+                title=data.get('title', 'Ferienhaus-Vergleich für Rodeln'),
+                trips=cached['trips'], updated_at=updated_at, version=version,
+            )
         with open('public/index.html', 'w', encoding='utf-8') as f:
             f.write(html_content)
         print(f"Done in {time.time() - start_time:.1f}s")
@@ -388,7 +427,10 @@ if __name__ == '__main__':
         with open('input.json', encoding='utf-8') as f:
             data = json.load(f)
         with app.app_context():
-            html_content = render_template('index.html', t=_translations, all_translations=_all_translations, lang=_lang, title=data.get('title', 'Ferienhaus-Vergleich für Rodeln'), trips=cached['trips'], updated_at=cached['updated_at'], version=version)
+            html_content = _render_html(
+                title=data.get('title', 'Ferienhaus-Vergleich für Rodeln'),
+                trips=cached['trips'], updated_at=cached['updated_at'], version=version,
+            )
         with open('public/index.html', 'w', encoding='utf-8') as f:
             f.write(html_content)
         print(f"HTML re-rendered from cache in {time.time() - start_time:.1f}s")
@@ -408,7 +450,10 @@ if __name__ == '__main__':
         print(f"Selenium unavailable ({e}), falling back to requests")
 
     try:
-        trip_data = build_trip_data(data, driver=driver, force_refresh=args.force, broker_filter=args.broker, limit=args.limit)
+        trip_data = build_trip_data(
+            data, driver=driver, force_refresh=args.force,
+            broker_filter=args.broker, limit=args.limit,
+        )
     finally:
         if driver:
             driver.quit()
@@ -423,7 +468,10 @@ if __name__ == '__main__':
     print("Data saved to public/data.json")
 
     with app.app_context():
-        html_content = render_template('index.html', t=_translations, all_translations=_all_translations, lang=_lang, title=data.get('title', 'Ferienhaus-Vergleich für Rodeln'), trips=trip_data, updated_at=updated_at, version=version)
+        html_content = _render_html(
+            title=data.get('title', 'Ferienhaus-Vergleich für Rodeln'),
+            trips=trip_data, updated_at=updated_at, version=version,
+        )
 
     with open('public/index.html', 'w', encoding='utf-8') as f:
         f.write(html_content)

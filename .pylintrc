@@ -1,0 +1,41 @@
+[MAIN]
+# Only lint our own code, not the venv
+ignore=.venv,public,cache,examples
+
+[MESSAGES CONTROL]
+disable=
+    # No docstrings in this project
+    missing-module-docstring,
+    missing-class-docstring,
+    missing-function-docstring,
+    # Scrapers legitimately have many locals/branches/statements
+    too-many-locals,
+    too-many-branches,
+    too-many-statements,
+    too-many-return-statements,
+    # Broad except is intentional in scraper fallbacks
+    broad-exception-caught,
+    # f-strings with format spec are fine
+    consider-using-f-string,
+    # Module-level globals are intentional in app.py
+    global-statement,
+    # Lazy imports inside functions are intentional (avoid slow top-level imports)
+    import-outside-toplevel,
+    # Common loop/callback variable names (f, house, trip, ...) shadow outer scope intentionally
+    redefined-outer-name,
+    # EMPTY dicts and GPX helpers are intentionally duplicated across parsers
+    duplicate-code
+
+[BASIC]
+# Allow underscore-prefixed module-level mutable state (not true constants)
+good-names=i,j,k,f,e,m,r,_cache,_cache_file
+
+[FORMAT]
+max-line-length=120
+
+[DESIGN]
+max-args=10
+
+[REPORTS]
+# Show a summary score at the end
+score=yes

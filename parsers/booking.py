@@ -75,7 +75,10 @@ def scrape(url, driver=None):
             result['address'] = f"{town}, {country}" if country else town
             agg = ld_data.get('aggregateRating', {})
             if agg:
-                result['rating'] = f"{agg.get('ratingValue', '?')} / {agg.get('bestRating', 10)} ({agg.get('reviewCount', '?')} Bewertungen)"
+                result['rating'] = (
+                    f"{agg.get('ratingValue', '?')} / {agg.get('bestRating', 10)}"
+                    f" ({agg.get('reviewCount', '?')} Bewertungen)"
+                )
             result['description'] = ld_data.get('description', 'N/A')
         else:
             loc = (
@@ -154,7 +157,10 @@ def scrape(url, driver=None):
             result['supermarket'] = 'Nearby'
         result['sauna'] = 'Ja' if re.search(r'\bSauna\b', text, re.I) else 'Nein'
 
-        print(f"  [booking] address: {result['address']}, rooms: {result['rooms']}, price: {result['price']}, persons: {result['persons']}")
+        print(
+            f"  [booking] address: {result['address']}, rooms: {result['rooms']},"
+            f" price: {result['price']}, persons: {result['persons']}"
+        )
 
     except Exception as e:
         print(f"  [booking] error scraping {url}: {e}")

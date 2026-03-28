@@ -4,7 +4,7 @@ A static site generator for comparing holiday houses suitable for sledding (Rode
 
 ## Setup
 
-1. Install dependencies: `pip install -r requirements.txt`
+1. Install dependencies: `pip install -r requirements.txt` (includes pylint)
 2. Place the ChromeDriver binary in `webdriver/chromedriver-win64/chromedriver.exe` (used for JS-rendered house pages).
 3. Copy `input.template.json` to `input.json` and fill in your trips, houses, and sled run URLs.
 4. Generate the static site: `python app.py`
@@ -203,6 +203,18 @@ The server-side default is set with `--lang` (default: `bar-DE`). All translatio
 ## Data Quality Warnings
 
 If the scraped bedroom count (`rooms`) does not match the number of entries in `room_config`, a highlighted warning box is shown at the top of the page listing all affected houses. Each house name is a clickable link that jumps to the relevant card. The affected card header also shows a small translated rooms badge. Bed entries containing "Schlafsofa" are flagged inline with ⚠️.
+
+## Linting
+
+[Pylint](https://pylint.readthedocs.io/) runs automatically on every push and pull request via GitHub Actions (`.github/workflows/lint.yml`). The workflow lints `app.py` and `parsers/` and fails if the score drops below 7.0.
+
+To run locally:
+
+```bash
+pylint app.py parsers/
+```
+
+Configuration is in `.pylintrc`. Project-specific suppressions (e.g. `too-many-locals` for scrapers, `missing-*-docstring`) are documented there.
 
 ## Notes
 

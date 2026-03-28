@@ -40,7 +40,7 @@ _HEADERS = {
 }
 
 
-def scrape(url, driver=None):
+def scrape(url, _driver=None):
     result = dict(EMPTY, room_config=[])
 
     checkin_date, persons, nights = _parse_url_params(url)
@@ -122,7 +122,8 @@ def scrape(url, driver=None):
 
     except Exception as e:
         print(f"  [huetten] error scraping {url}: {e}")
-        import traceback; traceback.print_exc()
+        import traceback
+        traceback.print_exc()
         return {k: 'Error' for k in result}
 
     return result
@@ -168,7 +169,7 @@ def _price_for_date(price_section, checkin_date, persons):
             continue
         from_d = datetime.strptime(date_m.group(1), '%d.%m.%Y').date()
         to_d = datetime.strptime(date_m.group(2), '%d.%m.%Y').date()
-        if not (from_d <= checkin_date < to_d):
+        if not from_d <= checkin_date < to_d:
             continue
 
         # Pick the column matching the person count
@@ -252,7 +253,7 @@ def _parse_json_ld(soup):
 
 if __name__ == '__main__':
     import sys
-    url = sys.argv[1] if len(sys.argv) > 1 else 'https://www.huetten.com/de/huette/untersoellhof-rt45507.html#/vsc.php?calendar_date_from=2027-02-13&persons_adults=8&calendar_stays=7&c[id_hotel]=7691&set_language=de'
+    url = sys.argv[1] if len(sys.argv) > 1 else 'https://www.huetten.com/de/huette/untersoellhof-rt45507.html#/vsc.php?calendar_date_from=2027-02-13&persons_adults=8&calendar_stays=7&c[id_hotel]=7691&set_language=de'  # pylint: disable=line-too-long
     result = scrape(url)
     rc = result.pop('room_config', [])
     for k, v in result.items():
