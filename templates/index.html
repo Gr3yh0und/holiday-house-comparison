@@ -22,6 +22,7 @@
             border-radius: 10px;
             box-shadow: 0 2px 10px rgba(0,0,0,0.08);
             overflow: hidden;
+            position: relative;
         }
         .card-header {
             background: #2b6cb0;
@@ -36,6 +37,20 @@
         .card-header a:hover { text-decoration: underline; }
         .card-header span { color: #fff; font-size: 1.05rem; font-weight: 700; }
         .card-body { padding: 16px 18px; }
+
+        /* Selected-for-comparison styling */
+        .card--selected {
+            outline: 3px solid #4299e1;
+            outline-offset: -1px;
+            box-shadow: 0 0 0 6px rgba(66,153,225,0.2), 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .card--selected::after {
+            content: '';
+            position: absolute; inset: 0;
+            background: rgba(66,153,225,0.08);
+            border-radius: inherit;
+            pointer-events: none;
+        }
 
         /* Unavailable house styling */
         .card--unavailable {
@@ -370,7 +385,7 @@
             font-size: 0.9rem; font-weight: 700; cursor: pointer;
         }
         .compare-bar .btn-compare {
-            background: #4299e1; color: #fff;
+            background: #fff; color: #1a365d;
         }
         .compare-bar .btn-compare:disabled {
             background: #4a5568; color: #a0aec0; cursor: default;
@@ -419,10 +434,22 @@
         .compare-table tr.row-same td { opacity: 0.45; }
         .compare-table tr.row-hidden { display: none; }
         .compare-house-name { font-weight: 700; color: #1a365d; font-size: 0.9rem; }
-        .compare-house-trip { font-size: 0.77rem; color: #718096; margin-top: 2px; }
         .compare-good { color: #276749; font-weight: 600; }
         .compare-bad  { color: #c05621; font-weight: 600; }
         .compare-na   { color: #a0aec0; }
+        @media (max-width: 600px) {
+            .compare-modal {
+                padding: 14px 10px; min-width: unset;
+                max-width: 100vw; max-height: 95vh; border-radius: 8px;
+            }
+            .compare-modal h2 { font-size: 0.95rem; margin-bottom: 10px; }
+            .compare-modal-toolbar { margin-bottom: 8px; }
+            .compare-table { font-size: 0.74rem; }
+            .compare-table th, .compare-table td { padding: 5px 6px; }
+            .compare-table .col-label { white-space: normal; min-width: 64px; max-width: 80px; }
+            .compare-table .col-house { min-width: unset; }
+            .compare-house-name { font-size: 0.78rem; }
+        }
     </style>
 </head>
 <body>
@@ -453,7 +480,7 @@
         </select>
     </p>
 
-    {%- set ns = namespace(warnings=[], hidx=0) -%}
+    {%- set ns = namespace(warnings=[], hidx=0, tidx=0) -%}
     {%- for trip in trips -%}
       {%- for house in trip.houses -%}
         {%- set ns.hidx = ns.hidx + 1 -%}
@@ -500,6 +527,7 @@
     <div style="width: 100%; overflow-x: auto;">
     <div class="trips-scroll" style="display: flex; gap: 24px; align-items: flex-start; flex-wrap: nowrap; min-width: max-content; padding-bottom: 12px;">
     {% for trip in trips %}
+    {%- set ns.tidx = loop.index0 -%}
     {% if trips | length > 1 %}
     <div class="trip-group" id="trip-{{ loop.index0 }}">
         <div class="trip-header">
@@ -515,7 +543,7 @@
         {%- set has_room_warning = house.rooms and house.rooms not in ('N/A', 'Error') and rc_len > 0 and house.rooms | int != rc_len -%}
         {%- set is_unavailable = house.time == 'Unavailable' -%}
         <div class="compare-cb-row">
-            <input type="checkbox" class="compare-cb" data-hidx="{{ ns.hidx }}" title="{{ t.compare.select }}" data-i18n-title="compare.select">
+            <input type="checkbox" class="compare-cb" data-hidx="{{ ns.hidx }}" data-trip="{{ ns.tidx }}" title="{{ t.compare.select }}" data-i18n-title="compare.select">
         </div>
         <div class="card{% if is_unavailable %} card--unavailable{% endif %}" id="house-{{ ns.hidx }}">
             <div class="card-header">
@@ -732,6 +760,7 @@
         <div class="compare-modal">
             <button class="compare-close" id="compare-close">✕</button>
             <h2 data-i18n="compare.title">{{ t.compare.title }}</h2>
+            <p id="compare-trip-subtitle" style="margin: -10px 0 12px; font-size: 0.82rem; color: #718096;"></p>
             <div class="compare-modal-toolbar">
                 <label><input type="checkbox" id="compare-diff-only"> <span data-i18n="compare.diff_only">{{ t.compare.diff_only }}</span></label>
             </div>
@@ -1071,6 +1100,7 @@
 
         // ── Compare bar & modal logic ─────────────────────────────────────
         var selectedHouses = {};
+        var activeTripIdx = null;
 
         function updateCompareBar() {
             var count = Object.keys(selectedHouses || {}).length;
@@ -1084,18 +1114,43 @@
             if (bar) bar.classList.toggle('visible', count > 0);
         }
 
+        function setCardSelected(hidx, selected) {
+            var card = document.getElementById('house-' + hidx);
+            if (card) card.classList.toggle('card--selected', selected);
+        }
+
         document.addEventListener('change', function(e) {
             if (!e.target.classList.contains('compare-cb')) return;
             var hidx = e.target.dataset.hidx;
-            if (e.target.checked) { selectedHouses[hidx] = true; }
-            else { delete selectedHouses[hidx]; }
+            var tripIdx = e.target.dataset.trip;
+            if (e.target.checked) {
+                if (activeTripIdx !== null && activeTripIdx !== tripIdx) {
+                    document.querySelectorAll('.compare-cb').forEach(function(cb) {
+                        if (cb.dataset.trip !== tripIdx) {
+                            cb.checked = false;
+                            setCardSelected(cb.dataset.hidx, false);
+                        }
+                    });
+                    selectedHouses = {};
+                }
+                activeTripIdx = tripIdx;
+                selectedHouses[hidx] = true;
+            } else {
+                delete selectedHouses[hidx];
+                if (Object.keys(selectedHouses).length === 0) activeTripIdx = null;
+            }
+            setCardSelected(hidx, e.target.checked);
             updateCompareBar();
         });
 
         document.getElementById('compare-btn').addEventListener('click', openCompareModal);
         document.getElementById('compare-clear').addEventListener('click', function() {
-            document.querySelectorAll('.compare-cb').forEach(function(cb) { cb.checked = false; });
+            document.querySelectorAll('.compare-cb').forEach(function(cb) {
+                cb.checked = false;
+                setCardSelected(cb.dataset.hidx, false);
+            });
             selectedHouses = {};
+            activeTripIdx = null;
             updateCompareBar();
         });
         document.getElementById('compare-close').addEventListener('click', closeCompareModal);
@@ -1109,10 +1164,13 @@
             if (keys.length < 2) return;
             var houses = keys.map(function(k) { return HOUSE_DATA[k]; });
 
+            var subtitle = document.getElementById('compare-trip-subtitle');
+            if (subtitle) subtitle.textContent = houses[0].trip + ' · ' + houses[0].dates;
+
             var thead = '<tr><th class="col-label"></th>' +
                 houses.map(function(h) {
-                    return '<th class="col-house"><div class="compare-house-name">' + escHtml(h.name) + '</div>' +
-                           '<div class="compare-house-trip">' + escHtml(h.trip) + ' · ' + escHtml(h.dates) + '</div></th>';
+                    var shortName = h.name.replace(/\s*[-–]\s*.+$/, '');
+                    return '<th class="col-house"><div class="compare-house-name">' + escHtml(shortName) + '</div></th>';
                 }).join('') + '</tr>';
 
             var tbody = COMPARE_FIELDS.map(function(f) {
