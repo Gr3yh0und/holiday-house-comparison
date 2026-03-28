@@ -47,7 +47,7 @@ Requires `curl`, available by default on macOS and most Linux distributions.
 ## Usage
 
 ```
-python app.py [--force] [--broker fewo|booking|huetten] [--limit N] [--from-cache] [--house NAME] [--lang de-DE|en-GB|fr-FR|nl-NL|bar-DE|bar-AT|gsw-CH]
+python app.py [--force] [--broker fewo|booking|huetten] [--limit N] [--from-cache] [--house NAME] [--lang de-DE|en-GB|fr-FR|nl-NL|bar-DE|bar-AT|gsw-CH|nds-DE|pfl-DE]
 ```
 
 | Flag | Description |
@@ -57,7 +57,7 @@ python app.py [--force] [--broker fewo|booking|huetten] [--limit N] [--from-cach
 | `--limit N` | Stop after scraping N houses |
 | `--from-cache` | Re-render HTML from existing `public/data.json` without scraping |
 | `--house NAME` | Scrape only one house (case-insensitive substring match), patch `public/data.json`, and re-render. If the house appears in multiple trips with different dates, each trip is scraped separately. |
-| `--lang de-DE\|en-GB\|fr-FR\|nl-NL\|bar-DE\|bar-AT\|gsw-CH` | Language for the rendered page (default: `bar-DE`). `bar-DE` = Bavarian, `bar-AT` = Tyrolean, `gsw-CH` = Swiss German. |
+| `--lang de-DE\|en-GB\|fr-FR\|nl-NL\|bar-DE\|bar-AT\|gsw-CH\|nds-DE\|pfl-DE` | Language for the rendered page (default: `bar-DE`). `bar-DE` = Bavarian, `bar-AT` = Tyrolean, `gsw-CH` = Swiss German, `nds-DE` = Hamburg (Low German), `pfl-DE` = Karlsruhe (Badisch-Pfälzisch). |
 
 Outputs:
 - `public/index.html` — the static comparison page
@@ -186,15 +186,17 @@ The overview map at the top groups houses by location. If two or more houses sha
 
 The page UI is fully translated. A language switcher is shown in the chip row below the title and persists the selection via `localStorage`. Supported locales:
 
-| Code | Language |
-|------|----------|
-| `de-DE` | German |
-| `en-GB` | English |
-| `fr-FR` | French |
-| `nl-NL` | Dutch |
-| `bar-DE` | Bavarian dialect |
-| `bar-AT` | Tyrolean dialect |
-| `gsw-CH` | Swiss German |
+| Code | Flag | Language |
+|------|------|----------|
+| `de-DE` | 🇩🇪 | German |
+| `en-GB` | 🇬🇧 | English |
+| `fr-FR` | 🇫🇷 | French |
+| `nl-NL` | 🇳🇱 | Dutch |
+| `bar-DE` | 🥨 | Bavarian dialect |
+| `bar-AT` | 🇦🇹 | Tyrolean dialect |
+| `gsw-CH` | 🇨🇭 | Swiss German |
+| `nds-DE` | ⚓ | Hamburg dialect (Low German / Hamburgisch) |
+| `pfl-DE` | ☀️ | Karlsruhe dialect (Badisch-Pfälzisch) |
 
 The server-side default is set with `--lang` (default: `bar-DE`). All translations are embedded in the page at generation time so switching is instant.
 

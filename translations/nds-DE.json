@@ -1,0 +1,69 @@
+{
+    "weekdays": ["Maandag", "Dingsdag", "Middeweek", "Dunnersdag", "Freedag", "Saterdag", "Sünndag"],
+    "updated_at": "Toletzt opdateert",
+    "house": {
+        "section_title": "Unnerkumft",
+        "prices_section": "Prisen",
+        "details_section": "Utstatting",
+        "surroundings_section": "Umgeven",
+        "location": "Ort",
+        "bedrooms": "Slapkamern",
+        "persons": "Lüüd",
+        "sqm": "Flach",
+        "bathrooms": "Badkamern",
+        "room_config": "Zimmeraufdeilung",
+        "sauna": "Sauna",
+        "price": "Gesamtpriis (8 Lüüd)",
+        "price_10": "Gesamtpriis (10 Lüüd)",
+        "price_per_person_8": "Priis/Kopp (8 Lüüd)",
+        "price_per_person_10": "Priis/Kopp (10 Lüüd)",
+        "availability": "Verföglichkeit",
+        "available": "Frei",
+        "unavailable": "Nich frei",
+        "train_station": "Bahnhof in'n Naaberschap",
+        "supermarket": "Supermarkt in'n Naaberschap",
+        "rating": "Bewertung",
+        "booking_link": "Ankieken op",
+        "direct_link": "Direktemang bi'n Gastgever fragn ↗",
+        "maps_link": "In Google Maps openmaken ↗",
+        "nearest_sled_run": "Nächste Roodelbahn"
+    },
+    "sled_runs": {
+        "section_title": "Roodelbahnen",
+        "length": "Läng",
+        "difficulty": "Schwierigheit",
+        "night_sleighing": "Belüchting (Nachtroodeln)",
+        "public_transport": "Öffentl. Anreise",
+        "walking_time": "Gangtiid Opstieg",
+        "sled_rental": "Roodelverlieh",
+        "height_top": "Hööcht boven",
+        "height_bottom": "Hööcht ünnen",
+        "elevation_diff": "Höhenmeters",
+        "slope": "Gefäll",
+        "separate_ascent": "Opstieg trennt",
+        "ascent_aid": "Opstiegshülp",
+        "avalanche_danger": "Lawinengefaar",
+        "operator": "Betriever",
+        "opening_hours": "Öpntieden",
+        "link_label": "↗ Naa de Strecke",
+        "huts": "Gasthüüs"
+    },
+    "poi": {
+        "house_label": "Unnerkumft",
+        "default_label": "POI"
+    },
+    "common": {
+        "yes": "Ja",
+        "no": "Nee"
+    },
+    "ui": {
+        "options": "Mööglichkeiten",
+        "gesture_hint": "Twee Fingers to'n Navigeern",
+        "bedroom_label": "Slapkamer",
+        "data_errors": "Datenfehler",
+        "room_warning_badge": "Zimmer",
+        "rooms_stated": "angeven, man",
+        "rooms_entries": "Indrääg in de Zimmeraufdeilung",
+        "price_10_estimated": "Priis för 8 Lüüd errekent – för 10 kann he höger utfallen."
+    }
+}

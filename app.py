@@ -273,7 +273,7 @@ if __name__ == '__main__':
     parser.add_argument('--limit', type=int, help='Maximum number of houses to scrape')
     parser.add_argument('--from-cache', action='store_true', help='Re-render HTML from existing public/data.json without scraping')
     parser.add_argument('--house', type=str, metavar='NAME', help='Scrape only this house (substring match), patch data.json and re-render')
-    parser.add_argument('--lang', default='bar-DE', choices=['de-DE', 'en-GB', 'fr-FR', 'nl-NL', 'bar-DE', 'bar-AT', 'gsw-CH'], help='Language for the rendered page (default: bar-DE)')
+    parser.add_argument('--lang', default='bar-DE', choices=['de-DE', 'en-GB', 'fr-FR', 'nl-NL', 'bar-DE', 'bar-AT', 'gsw-CH', 'nds-DE', 'pfl-DE'], help='Language for the rendered page (default: bar-DE)')
     args = parser.parse_args()
 
     _translations = load_translations(args.lang)

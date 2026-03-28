@@ -1,0 +1,69 @@
+{
+    "weekdays": ["Mondaa", "Dienschdaa", "Mittwoch", "Dunnerschdaa", "Freidaa", "Samschtaa", "Sunnaa"],
+    "updated_at": "Zuletscht aktualisiert",
+    "house": {
+        "section_title": "Unnerkumft",
+        "prices_section": "Preise",
+        "details_section": "Uusstatting",
+        "surroundings_section": "Umgebung",
+        "location": "Ort",
+        "bedrooms": "Schloofzimmer",
+        "persons": "Leit",
+        "sqm": "Fläch",
+        "bathrooms": "Badzimmer",
+        "room_config": "Zimmeraufdeilung",
+        "sauna": "Sauna",
+        "price": "Gesamtpreis (8 Leit)",
+        "price_10": "Gesamtpreis (10 Leit)",
+        "price_per_person_8": "Preis/Kopp (8 Leit)",
+        "price_per_person_10": "Preis/Kopp (10 Leit)",
+        "availability": "Verfiegbarkeit",
+        "available": "Frei",
+        "unavailable": "Nit frei",
+        "train_station": "Bahnhof in dr Näh",
+        "supermarket": "Subbmarkt in dr Näh",
+        "rating": "Bewertung",
+        "booking_link": "Aagucke uf",
+        "direct_link": "Direkt beim Wirt froge ↗",
+        "maps_link": "In Google Maps uffmache ↗",
+        "nearest_sled_run": "Nächschti Roodelboahn"
+    },
+    "sled_runs": {
+        "section_title": "Roodelboahne",
+        "length": "Läng",
+        "difficulty": "Schwierigkeid",
+        "night_sleighing": "Beleuchtung (Nochtroodele)",
+        "public_transport": "Öffentl. Onreise",
+        "walking_time": "Laufzeit Aufstiig",
+        "sled_rental": "Roodelverleih",
+        "height_top": "Heh owe",
+        "height_bottom": "Heh unte",
+        "elevation_diff": "Hehemeter",
+        "slope": "Gfäll",
+        "separate_ascent": "Aufstiig trennt",
+        "ascent_aid": "Aufstiigshilf",
+        "avalanche_danger": "Lawinegfahr",
+        "operator": "Betreiber",
+        "opening_hours": "Uffnungszeide",
+        "link_label": "↗ Zur Schtrecke",
+        "huts": "Wirtschaft"
+    },
+    "poi": {
+        "house_label": "Unnerkumft",
+        "default_label": "POI"
+    },
+    "common": {
+        "yes": "Jo",
+        "no": "Noi"
+    },
+    "ui": {
+        "options": "Möglichkeide",
+        "gesture_hint": "Zwoi Finger zum Navigiere",
+        "bedroom_label": "Schloofzimmer",
+        "data_errors": "Datenfehler",
+        "room_warning_badge": "Zimmer",
+        "rooms_stated": "oogebe, awwer",
+        "rooms_entries": "Einträäg in dr Zimmeraufdeilung",
+        "price_10_estimated": "Preis fer 8 Leit errechnet – fer 10 kann er höher ausfalle."
+    }
+}
