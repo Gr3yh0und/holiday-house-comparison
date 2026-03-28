@@ -85,7 +85,7 @@ Outputs:
           "image_url": "https://...",
           "house_url": "https://www.fewo-direkt.de/... or https://www.booking.com/...",
           "direct_url": "https://gastgeber-website.de/",
-          "supermarket": "2 km (Spar)",
+          "nearest_sled_run": "Hoher Sattel (2,4 km · 4 min)",
           "pois": [
             { "type": "train", "label": "Bahnhof Ortsname", "lat": 47.01, "lon": 11.01 },
             { "type": "supermarket", "label": "Spar Ortsname", "lat": 47.02, "lon": 11.02 }
@@ -118,11 +118,14 @@ Any field normally scraped from the booking page can be overridden directly in `
 | `price` | Total price | `"2388"` or `"2388€"` |
 | `time` | Availability status | `"Available"` |
 | `rating` | Rating | `"9.2"` |
-| `supermarket` | Supermarket distance (text) | `"2 km (Spar)"` |
-| `train_station` | Train station distance (text) | `"650 m zu Fuß"` |
+| `supermarket` | Walking distance to nearest supermarket | `"380 m · 5 min (Coop)"` |
+| `train_station` | Walking distance to nearest train station | `"370 m · 5 min (Bahnhof Lauterbrunnen)"` |
 | `sauna` | Sauna available | `"Ja"` or `"Nein"` |
-| `nearest_sled_run` | Nearest sled run with driving distance/time | `"Hoher Sattel (2,4 km · 4 min)"` |
+| `nearest_sled_run` | Nearest sled run with distance/time | `"Sulwald – Isenfluh – Lauterbrunnen (0,3 km · 4 min)"` |
 | `notes` | Free-text note shown on the house card (above the booking buttons) | `"Nur per E-Mail buchbar."` |
+| `train_track` | List of `[lat, lon]` points for a train/rack-railway line shown as a red dashed overlay on maps | `[[46.598, 7.908], [46.605, 7.920]]` |
+
+> **Tip:** `supermarket` and `train_station` distances are auto-calculated from `pois` entries when running `app.py`. You can override them manually if needed.
 
 Example:
 
@@ -151,9 +154,11 @@ Points of interest (`pois`) are shown on the house location map. Supported `type
 ## How It Works
 
 1. **House scraping** — four parsers are supported, selected automatically by URL:
-   - **fewo-direkt.de / booking.com** — uses headless Chrome (`undetected-chromedriver`) to bypass bot detection, then extracts location, price, bedroom count, bed configuration, sauna availability, and more. Bed entries containing "Schlafsofa" are flagged with ⚠️ in the UI.
+   - **fewo-direkt.de / booking.com** — uses headless Chrome (`undetected-chromedriver`) to bypass bot detection, then extracts location, price, bedroom count, bed configuration, sauna availability, and more. Bed entries containing "Schlafsofa" are flagged with ⚠️ in the UI. When no structured bedroom blocks are found, falls back to parsing the free-text description (`[data-stid="content-markup"]`) using the same fluid-text parser as interhome.
    - **huetten.com** — uses plain `requests` (no browser needed); extracts all fields from static HTML and the JSON-LD `LodgingBusiness` block. Price is resolved from the on-page weekly price table by matching the checkin date and person count parsed from the URL fragment (`#/vsc.php?calendar_date_from=…&persons_adults=…`). Nebenkosten (additional costs) are parsed separately and folded into the displayed Gesamtpreis; Kaution is excluded. Prices for both 8 and 10 persons are looked up from the table directly.
-   - **interhome.de** — uses headless Chrome (Selenium) because the site is a React SPA. Waits for the availability badge (`[data-test="available-badge"]`) to settle after the background pricing API call completes (up to 45 s), then grabs the total price directly from the live DOM element. Session/tracking parameters (`offerId`, `clickId`) are stripped from the URL before loading to prevent stale tokens from causing the pricing API to hang. Availability is detected from the badge text: "verfügbar" → `Available`, "ausgebucht" → `Unavailable`. Room count and bed configuration are parsed from the rendered description text (`[data-test="rental-description"]`); the JSON-LD description is truncated and not used for these fields.
+   - **interhome.de** — uses headless Chrome (Selenium) because the site is a React SPA. Waits for the availability badge (`[data-test="available-badge"]`) to settle after the background pricing API call completes (up to 45 s), then grabs the total price directly from the live DOM element. Session/tracking parameters (`offerId`, `clickId`) are stripped from the URL before loading to prevent stale tokens from causing the pricing API to hang. Availability is detected from the badge text: "verfügbar" → `Available`, "ausgebucht" → `Unavailable`. Room count and bed configuration are parsed from the rendered description text (`[data-test="rental-description"]`) using a shared fluid-text parser that handles patterns like `"3 abgeschrägte Zimmer, jedes Zimmer mit 1 franz. Bett (160cm)"`.
+
+   Shared parser utilities (country normalisation, JSON-LD parsing, bed description cleaning, fluid-text room config parsing) live in `parsers/common.py`.
 
    Fields present in `input.json` override scraped values for all brokers.
 2. **Sled run scraping** — two parsers are supported, selected automatically by URL:
@@ -161,8 +166,8 @@ Points of interest (`pois`) are shown on the house location map. Supported `type
    - **outdooractive.com** — parses JSON-LD structured data embedded in the page for length, elevation, difficulty, ascent aid, and operator. Additional fields (night sledding, public transport, sled rental, opening hours) are inferred from page text. The GPX track is downloaded via the public `download.tour.gpx?i={id}` endpoint and downsampled. Cached for 24 hours in `cache/outdooractive.json`.
 3. **Date injection** — known date query parameters (`chkin`, `chkout`, `startDate`, `endDate`, `checkin`, `checkout`, `arrival`, etc.) in house URLs are replaced with the configured trip dates before scraping.
 4. **Rendering** — the Jinja2 template in `templates/index.html` renders all trips and houses into a card-based comparison layout with interactive Leaflet maps.
-   - Prices are normalised to `XXXX €` format. Per-person price is shown for 8 persons; a 10-person row is shown when a separate 10-person price is available or when `house.persons == "10"`. For fewo/booking the 10-person price is estimated as the 8-person price +2%.
-   - Address is normalised to "City, Country" format with a country flag emoji.
+   - Prices are normalised to `XXXX €` format. Per-person price is shown for 8 persons; a 10-person row is shown when a separate 10-person price is available or when the scraped max-person count is ≥ 10. For fewo/booking the 10-person price is estimated as the 8-person price +2%.
+   - Address is normalised to "City, Country" format with a country flag emoji. Swiss canton names (e.g. "Canton of Bern") are resolved to "Schweiz".
    - A data quality warning box appears at the top if the scraped bedroom count does not match the number of `room_config` entries; clicking a house name jumps directly to its card.
    - The last-updated timestamp and version are shown as chips below the page title, alongside the language switcher.
    - Unavailable houses (`time == "Unavailable"`) are visually marked with a diagonal red stripe pattern on the header and photo, plus a centred badge.
@@ -178,10 +183,26 @@ Points of interest (`pois`) are shown on the house location map. Supported `type
 
 Each house card shows two types of maps:
 
-- **House map** — shows the house location (🏠) plus any configured POIs (train stations, supermarkets, etc.)
+- **House map** — shows the house location (🏠) plus any configured POIs (train stations, supermarkets, etc.). If a `train_track` is defined (see below), it is rendered as a red dashed line with a tooltip explaining the route.
 - **Sled run maps** — shown per sled run (expand to view); displays the GPX route with the house location (🏠) for distance reference
 
-The overview map at the top groups houses by location. If two or more houses share the same coordinates (to 5 decimal places), they are merged into a single marker with a split-colour gradient and a tooltip listing each house name, trip, and price separately.
+The overview map at the top groups houses by location. If two or more houses share the same coordinates (to 5 decimal places), they are merged into a single marker with a split-colour gradient and a tooltip listing each house name, trip, and price separately. Sled run tracks are drawn per trip colour; train tracks are drawn in red dashed style.
+
+### Train track overlay
+
+For car-free villages (e.g. Wengen), a `train_track` field can be added to a house in `input.json` to draw the rail connection on the map:
+
+```json
+{
+  "name": "Ferienhaus Arche - Wengen",
+  "train_track": [
+    [46.59852, 7.90809],
+    [46.60545, 7.92065]
+  ]
+}
+```
+
+The track is rendered as a **red dashed polyline** on both the overview map and the per-house card map, with a tooltip explaining that no car access is available and where to park.
 
 ## Languages
 
