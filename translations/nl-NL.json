@@ -51,5 +51,18 @@
     "poi": {
         "house_label": "Accommodatie",
         "default_label": "POI"
+    },
+    "common": {
+        "yes": "Ja",
+        "no": "Nee"
+    },
+    "ui": {
+        "options": "Opties",
+        "gesture_hint": "Gebruik twee vingers om te navigeren",
+        "bedroom_label": "Slaapkamer",
+        "data_errors": "Datafouten",
+        "room_warning_badge": "Kamers",
+        "rooms_stated": "opgegeven, maar",
+        "rooms_entries": "vermeldingen in kamerconfiguratie"
     }
 }

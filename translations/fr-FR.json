@@ -51,5 +51,18 @@
     "poi": {
         "house_label": "Hébergement",
         "default_label": "PDI"
+    },
+    "common": {
+        "yes": "Oui",
+        "no": "Non"
+    },
+    "ui": {
+        "options": "Options",
+        "gesture_hint": "Utilisez deux doigts pour naviguer",
+        "bedroom_label": "Chambre",
+        "data_errors": "Erreurs de données",
+        "room_warning_badge": "Chambres",
+        "rooms_stated": "indiqué, mais",
+        "rooms_entries": "entrées dans la configuration des chambres"
     }
 }

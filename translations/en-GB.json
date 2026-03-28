@@ -51,5 +51,18 @@
     "poi": {
         "house_label": "Accommodation",
         "default_label": "POI"
+    },
+    "common": {
+        "yes": "Yes",
+        "no": "No"
+    },
+    "ui": {
+        "options": "Options",
+        "gesture_hint": "Use two fingers to navigate",
+        "bedroom_label": "Bedroom",
+        "data_errors": "Data errors",
+        "room_warning_badge": "Rooms",
+        "rooms_stated": "stated, but",
+        "rooms_entries": "entries in room configuration"
     }
 }

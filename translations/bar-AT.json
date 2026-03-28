@@ -51,5 +51,18 @@
     "poi": {
         "house_label": "Unterkumft",
         "default_label": "POI"
+    },
+    "common": {
+        "yes": "Jo",
+        "no": "Na"
+    },
+    "ui": {
+        "options": "Möglichkeiten",
+        "gesture_hint": "Zwa Finger zum Navigiern",
+        "bedroom_label": "Schloafzimmer",
+        "data_errors": "Datenfehler",
+        "room_warning_badge": "Zimmer",
+        "rooms_stated": "angegeben, oba",
+        "rooms_entries": "Einträge in dr Zimmeraufteilung"
     }
 }

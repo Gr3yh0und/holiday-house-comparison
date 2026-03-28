@@ -51,5 +51,18 @@
     "poi": {
         "house_label": "Unterkunft",
         "default_label": "POI"
+    },
+    "common": {
+        "yes": "Ja",
+        "no": "Nein"
+    },
+    "ui": {
+        "options": "Optionen",
+        "gesture_hint": "Zwei Finger zum Navigieren",
+        "bedroom_label": "Schlafzimmer",
+        "data_errors": "Datenfehler",
+        "room_warning_badge": "Zimmer",
+        "rooms_stated": "angegeben, aber",
+        "rooms_entries": "Einträge in Zimmerkonfiguration"
     }
 }

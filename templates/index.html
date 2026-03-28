@@ -368,13 +368,13 @@
         {%- set ns.hidx = ns.hidx + 1 -%}
         {%- set rc_len = house.room_config | length if house.room_config else 0 -%}
         {%- if house.rooms and house.rooms not in ('N/A', 'Error') and rc_len > 0 and house.rooms | int != rc_len -%}
-          {%- set ns.warnings = ns.warnings + [{'house': house.name, 'trip': trip.name, 'msg': 'Zimmer: ' ~ house.rooms ~ ' angegeben, aber ' ~ rc_len ~ ' Einträge in Zimmerkonfiguration', 'id': 'house-' ~ ns.hidx}] -%}
+          {%- set ns.warnings = ns.warnings + [{'house': house.name, 'trip': trip.name, 'msg': t.ui.room_warning_badge ~ ': ' ~ house.rooms ~ ' ' ~ t.ui.rooms_stated ~ ' ' ~ rc_len ~ ' ' ~ t.ui.rooms_entries, 'id': 'house-' ~ ns.hidx}] -%}
         {%- endif -%}
       {%- endfor -%}
     {%- endfor -%}
     {%- if ns.warnings %}
     <div style="max-width: 900px; margin: 0 auto 24px; background: #fffbeb; border: 1px solid #f6c94e; border-left: 4px solid #d69e2e; border-radius: 8px; padding: 12px 16px;">
-        <p style="margin: 0 0 8px; font-weight: 700; font-size: 0.88rem; color: #7d5a00;">⚠️ Datenfehler ({{ ns.warnings | length }})</p>
+        <p style="margin: 0 0 8px; font-weight: 700; font-size: 0.88rem; color: #7d5a00;">⚠️ <span data-i18n="ui.data_errors">{{ t.ui.data_errors }}</span> ({{ ns.warnings | length }})</p>
         <ul style="margin: 0; padding-left: 18px; font-size: 0.83rem; color: #7d5a00;">
             {%- for w in ns.warnings %}
             <li><a href="#{{ w.id }}" style="color:#7d5a00; font-weight:700;">{{ w.house }}</a>{% if w.trip %} <span style="color:#a07820;">({{ w.trip }})</span>{% endif %} — {{ w.msg }}</li>
@@ -387,14 +387,14 @@
     <div class="overview-section">
         {% if trips | length > 1 %}
         <div class="trip-list-card">
-            <h2>Optionen</h2>
+            <h2 data-i18n="ui.options">{{ t.ui.options }}</h2>
             {% for trip in trips %}
             {% set tc = trip_colors[loop.index0 % trip_colors|length] %}
             <div class="trip-list-item" style="border-left-color: {{ tc }}; cursor: pointer;" onclick="scrollToTrip('trip-{{ loop.index0 }}')">
                 <div class="trip-list-item-body">
                     <span class="trip-list-item-name">{{ trip.name }}</span>
-                    <span class="trip-list-item-dates">{{ trip.checkin | dedate }} &rarr; {{ trip.checkout | dedate }}</span>
-                    <span class="trip-list-item-count">{{ trip.houses | length }} Unterkunft{{ 'e' if trip.houses | length != 1 }}</span>
+                    <span class="trip-list-item-dates"><span data-date="{{ trip.checkin }}">{{ trip.checkin | dedate }}</span> &rarr; <span data-date="{{ trip.checkout }}">{{ trip.checkout | dedate }}</span></span>
+                    <span class="trip-list-item-count">{{ trip.houses | length }} <span data-i18n="house.section_title">{{ t.house.section_title }}</span></span>
                 </div>
             </div>
             {% endfor %}
@@ -413,7 +413,7 @@
     <div class="trip-group" id="trip-{{ loop.index0 }}">
         <div class="trip-header">
             {% if trip.name %}<span class="trip-header-name">{{ trip.name }}</span>{% endif %}
-            <span class="trip-header-dates">{{ trip.checkin | dedate }} &rarr; {{ trip.checkout | dedate }}</span>
+            <span class="trip-header-dates"><span data-date="{{ trip.checkin }}">{{ trip.checkin | dedate }}</span> &rarr; <span data-date="{{ trip.checkout }}">{{ trip.checkout | dedate }}</span></span>
         </div>
         <div class="trip-houses">
     {% endif %}
@@ -426,7 +426,7 @@
         <div class="card{% if is_unavailable %} card--unavailable{% endif %}" id="house-{{ ns.hidx }}">
             <div class="card-header">
                 <span>{{ house.name }}</span>
-                {%- if has_room_warning %}<span style="margin-left:8px; font-size:0.72rem; background:rgba(255,255,255,0.2); border-radius:4px; padding:1px 6px;">⚠️ Zimmer</span>{%- endif %}
+                {%- if has_room_warning %}<span style="margin-left:8px; font-size:0.72rem; background:rgba(255,255,255,0.2); border-radius:4px; padding:1px 6px;">⚠️ <span data-i18n="ui.room_warning_badge">{{ t.ui.room_warning_badge }}</span></span>{%- endif %}
             </div>
             {% if house.image_url is defined and house.image_url %}
             <div class="card-img-wrap">
@@ -494,14 +494,14 @@
                     </li>
                     <li>
                         <span class="label" data-i18n="house.sauna">{{ t.house.sauna }}</span>
-                        <span class="value{% if house.sauna == 'Ja' %} good{% elif house.sauna == 'Nein' %} bad{% else %} na{% endif %}">{% if house.sauna == 'Ja' %}Ja{% elif house.sauna == 'Nein' %}Nein{% else %}{{ house.sauna }}{% endif %}</span>
+                        <span class="value{% if house.sauna == 'Ja' %} good{% elif house.sauna == 'Nein' %} bad{% else %} na{% endif %}"{% if house.sauna == 'Ja' %} data-i18n="common.yes"{% elif house.sauna == 'Nein' %} data-i18n="common.no"{% endif %}>{% if house.sauna == 'Ja' %}{{ t.common.yes }}{% elif house.sauna == 'Nein' %}{{ t.common.no }}{% else %}{{ house.sauna }}{% endif %}</span>
                     </li>
                     {% if house.room_config %}
                     <li style="flex-direction: column; align-items: flex-start; gap: 4px;">
                         <span class="label" data-i18n="house.room_config">{{ t.house.room_config }}</span>
                         {% for room in house.room_config %}
                         {%- set is_sofa = 'sofa' in room.lower() -%}
-                        <span class="value" style="font-size: 0.82rem;"><span style="color:#888;">Schlafzimmer {{ loop.index }}:</span> {{ room }}{% if is_sofa %} ⚠️{% endif %}</span>
+                        <span class="value" style="font-size: 0.82rem;"><span style="color:#888;"><span data-i18n="ui.bedroom_label">{{ t.ui.bedroom_label }}</span> {{ loop.index }}:</span> {{ room }}{% if is_sofa %} ⚠️{% endif %}</span>
                         {% endfor %}
                     </li>
                     {% endif %}
@@ -575,13 +575,13 @@
                         <li><span class="label" data-i18n="sled_runs.difficulty">{{ t.sled_runs.difficulty }}</span><span class="value{% if sled_run.difficulty == 'N/A' %} na{% endif %}">{{ sled_run.difficulty }}</span></li>
                         <li>
                             <span class="label" data-i18n="sled_runs.night_sleighing">{{ t.sled_runs.night_sleighing }}</span>
-                            <span class="value{% if sled_run.night_sleighing == 'Ja' %} good{% elif sled_run.night_sleighing == 'Nein' %} bad{% else %} na{% endif %}">{{ sled_run.night_sleighing }}</span>
+                            <span class="value{% if sled_run.night_sleighing == 'Ja' %} good{% elif sled_run.night_sleighing == 'Nein' %} bad{% else %} na{% endif %}"{% if sled_run.night_sleighing == 'Ja' %} data-i18n="common.yes"{% elif sled_run.night_sleighing == 'Nein' %} data-i18n="common.no"{% endif %}>{% if sled_run.night_sleighing == 'Ja' %}{{ t.common.yes }}{% elif sled_run.night_sleighing == 'Nein' %}{{ t.common.no }}{% else %}{{ sled_run.night_sleighing }}{% endif %}</span>
                         </li>
                         <li><span class="label" data-i18n="sled_runs.public_transport">{{ t.sled_runs.public_transport }}</span><span class="value{% if sled_run.public_transport == 'N/A' %} na{% endif %}">{{ sled_run.public_transport }}</span></li>
                         <li><span class="label" data-i18n="sled_runs.walking_time">{{ t.sled_runs.walking_time }}</span><span class="value{% if sled_run.walking_time == 'N/A' %} na{% endif %}">{{ sled_run.walking_time }}</span></li>
                         <li>
                             <span class="label" data-i18n="sled_runs.sled_rental">{{ t.sled_runs.sled_rental }}</span>
-                            <span class="value{% if sled_run.sled_rental == 'Ja' %} good{% elif sled_run.sled_rental == 'Nein' %} bad{% else %} na{% endif %}">{{ sled_run.sled_rental }}</span>
+                            <span class="value{% if sled_run.sled_rental == 'Ja' %} good{% elif sled_run.sled_rental == 'Nein' %} bad{% else %} na{% endif %}"{% if sled_run.sled_rental == 'Ja' %} data-i18n="common.yes"{% elif sled_run.sled_rental == 'Nein' %} data-i18n="common.no"{% endif %}>{% if sled_run.sled_rental == 'Ja' %}{{ t.common.yes }}{% elif sled_run.sled_rental == 'Nein' %}{{ t.common.no }}{% else %}{{ sled_run.sled_rental }}{% endif %}</span>
                         </li>
                         <li><span class="label" data-i18n="sled_runs.height_top">{{ t.sled_runs.height_top }}</span><span class="value{% if sled_run.height_top == 'N/A' %} na{% endif %}">{{ sled_run.height_top }}</span></li>
                         <li><span class="label" data-i18n="sled_runs.height_bottom">{{ t.sled_runs.height_bottom }}</span><span class="value{% if sled_run.height_bottom == 'N/A' %} na{% endif %}">{{ sled_run.height_bottom }}</span></li>
@@ -627,6 +627,18 @@
     </p>
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script>
+        function formatDate(dateStr, lang) {
+            var t = window.ALL_TRANSLATIONS[lang] || window.ALL_TRANSLATIONS['de-DE'];
+            var d = new Date(dateStr + 'T00:00:00');
+            var weekdays = t.weekdays || [];
+            // JS getDay(): 0=Sun..6=Sat  →  Python weekday(): 0=Mon..6=Sun
+            var pyDay = (d.getDay() + 6) % 7;
+            var day = weekdays[pyDay] || '';
+            var dd = String(d.getDate()).padStart(2, '0');
+            var mm = String(d.getMonth() + 1).padStart(2, '0');
+            return dd + '.' + mm + '.' + d.getFullYear() + (day ? ' (' + day + ')' : '');
+        }
+
         function T(path) {
             var t = window.ALL_TRANSLATIONS[window.CURRENT_LANG] || window.ALL_TRANSLATIONS['de'];
             return path.split('.').reduce(function(o, k) { return o && o[k]; }, t) || path;
@@ -641,6 +653,9 @@
             document.querySelectorAll('[data-i18n]').forEach(function(el) {
                 var val = T(el.getAttribute('data-i18n'));
                 if (val) el.textContent = val;
+            });
+            document.querySelectorAll('[data-date]').forEach(function(el) {
+                el.textContent = formatDate(el.getAttribute('data-date'), lang);
             });
             document.querySelectorAll('[data-i18n-title]').forEach(function(el) {
                 var val = T(el.getAttribute('data-i18n-title'));
@@ -676,7 +691,7 @@
             if (!('ontouchstart' in window)) return;
             var hint = document.createElement('div');
             hint.className = 'map-gesture-hint';
-            hint.textContent = 'Zwei Finger zum Navigieren';
+            hint.textContent = T('ui.gesture_hint');
             mapEl.appendChild(hint);
             var timer;
             mapEl.addEventListener('touchstart', function(e) {

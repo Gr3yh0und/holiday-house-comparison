@@ -51,5 +51,18 @@
     "poi": {
         "house_label": "Unterkumft",
         "default_label": "POI"
+    },
+    "common": {
+        "yes": "Ja",
+        "no": "Nei"
+    },
+    "ui": {
+        "options": "Optione",
+        "gesture_hint": "Zwee Finger zum Navigiere",
+        "bedroom_label": "Schloofzimmer",
+        "data_errors": "Datäfehler",
+        "room_warning_badge": "Zimmer",
+        "rooms_stated": "aaggä, aber",
+        "rooms_entries": "Iitrag in dr Zimmeraufteilig"
     }
 }
