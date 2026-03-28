@@ -1,4 +1,3 @@
-import json
 import re
 from datetime import datetime
 from urllib.parse import urlparse, parse_qs
@@ -6,7 +5,11 @@ from urllib.parse import urlparse, parse_qs
 import requests
 from bs4 import BeautifulSoup
 
-from parsers.common import EMPTY, HEADERS as _HEADERS, normalize_country as _normalize_country, parse_json_ld as _parse_json_ld_common
+from parsers.common import (
+    EMPTY, HEADERS as _HEADERS,
+    normalize_country as _normalize_country,
+    parse_json_ld as _parse_json_ld_common,
+)
 
 
 def scrape(url, _driver=None):
