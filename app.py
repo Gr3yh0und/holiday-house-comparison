@@ -247,9 +247,9 @@ def _scrape_one_house(house, trip_checkin, trip_checkout, driver=None, force_ref
     if house_info is None:
         cached = _load_cached_house(house['name'], trip_checkin, trip_checkout)
         if cached:
-            print(f"  -> bot/scrape failure, using cached data from public/data.json")
+            print("  -> bot/scrape failure, using cached data from public/data.json")
             return cached
-        print(f"  -> bot/scrape failure, no usable cache — returning empty result")
+        print("  -> bot/scrape failure, no usable cache — returning empty result")
         house_info = dict(_PARSER_EMPTY, room_config=[])
     house_info['name'] = house['name']
     house_info['house_url'] = house_url

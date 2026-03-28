@@ -1,10 +1,14 @@
+import random
 import re
 import time
 
 import requests
 from bs4 import BeautifulSoup
 
-from parsers.common import EMPTY, HEADERS as _HEADERS, parse_room_config as _parse_room_config, clean_bed_desc
+from parsers.common import (
+    EMPTY, random_headers, random_user_agent,
+    parse_room_config as _parse_room_config, clean_bed_desc,
+)
 
 _REGION_COUNTRY = {
     # Austria
@@ -36,13 +40,16 @@ def scrape(url, driver=None):
 
     try:
         if driver:
+            ua = random_user_agent()
+            driver.execute_cdp_cmd('Network.setUserAgentOverride', {'userAgent': ua})
+            print(f"  [fewo] user-agent: {ua[:60]}...")
             driver.get(url)
-            time.sleep(8)
+            time.sleep(random.uniform(6, 12))
             page_source = driver.page_source
             print(f"  [fewo] page source length: {len(page_source)} chars")
             soup = BeautifulSoup(page_source, 'html.parser')
         else:
-            response = requests.get(url, headers=_HEADERS, timeout=15)
+            response = requests.get(url, headers=random_headers(), timeout=15)
             print(f"  [fewo] response status: {response.status_code}, length: {len(response.content)}")
             soup = BeautifulSoup(response.content, 'html.parser')
 
@@ -179,5 +186,3 @@ def scrape(url, driver=None):
         return {k: 'Error' for k in result}
 
     return result
-
-
