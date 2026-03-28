@@ -29,7 +29,19 @@ def load_translations(lang='de') -> dict:
         return json.load(f)
 
 
-_translations: dict = load_translations()
+def load_all_translations() -> dict:
+    result = {}
+    for fname in os.listdir(TRANSLATIONS_DIR):
+        if fname.endswith('.json'):
+            lang_code = fname[:-5]
+            with open(os.path.join(TRANSLATIONS_DIR, fname), encoding='utf-8') as f:
+                result[lang_code] = json.load(f)
+    return result
+
+
+_translations = load_translations('bar-DE')
+_all_translations = load_all_translations()
+_lang = 'bar-DE'
 
 
 def get_version():
@@ -251,7 +263,7 @@ def build_trip_data(data, driver=None, force_refresh=False, broker_filter=None, 
 def index():
     with open('input.json', encoding='utf-8') as f:
         data = json.load(f)
-    return render_template('index.html', t=_translations, title=data.get('title', 'Ferienhaus-Vergleich für Rodeln'), trips=build_trip_data(data), updated_at=datetime.now().strftime('%Y-%m-%d %H:%M'), version=get_version())
+    return render_template('index.html', t=_translations, all_translations=_all_translations, lang=_lang, title=data.get('title', 'Ferienhaus-Vergleich für Rodeln'), trips=build_trip_data(data), updated_at=datetime.now().strftime('%Y-%m-%d %H:%M'), version=get_version())
 
 
 if __name__ == '__main__':
@@ -261,7 +273,12 @@ if __name__ == '__main__':
     parser.add_argument('--limit', type=int, help='Maximum number of houses to scrape')
     parser.add_argument('--from-cache', action='store_true', help='Re-render HTML from existing public/data.json without scraping')
     parser.add_argument('--house', type=str, metavar='NAME', help='Scrape only this house (substring match), patch data.json and re-render')
+    parser.add_argument('--lang', default='bar-DE', choices=['de-DE', 'en-GB', 'fr-FR', 'nl-NL', 'bar-DE', 'bar-AT', 'gsw-CH'], help='Language for the rendered page (default: bar-DE)')
     args = parser.parse_args()
+
+    _translations = load_translations(args.lang)
+    _all_translations = load_all_translations()
+    _lang = args.lang
 
     start_time = time.time()
     version = get_version()
@@ -356,7 +373,7 @@ if __name__ == '__main__':
         print("Updated public/data.json")
 
         with app.app_context():
-            html_content = render_template('index.html', t=_translations, title=data.get('title', 'Ferienhaus-Vergleich für Rodeln'), trips=cached['trips'], updated_at=updated_at, version=version)
+            html_content = render_template('index.html', t=_translations, all_translations=_all_translations, lang=_lang, title=data.get('title', 'Ferienhaus-Vergleich für Rodeln'), trips=cached['trips'], updated_at=updated_at, version=version)
         with open('public/index.html', 'w', encoding='utf-8') as f:
             f.write(html_content)
         print(f"Done in {time.time() - start_time:.1f}s")
@@ -368,7 +385,7 @@ if __name__ == '__main__':
         with open('input.json', encoding='utf-8') as f:
             data = json.load(f)
         with app.app_context():
-            html_content = render_template('index.html', t=_translations, title=data.get('title', 'Ferienhaus-Vergleich für Rodeln'), trips=cached['trips'], updated_at=cached['updated_at'], version=version)
+            html_content = render_template('index.html', t=_translations, all_translations=_all_translations, lang=_lang, title=data.get('title', 'Ferienhaus-Vergleich für Rodeln'), trips=cached['trips'], updated_at=cached['updated_at'], version=version)
         with open('public/index.html', 'w', encoding='utf-8') as f:
             f.write(html_content)
         print(f"HTML re-rendered from cache in {time.time() - start_time:.1f}s")
@@ -403,7 +420,7 @@ if __name__ == '__main__':
     print("Data saved to public/data.json")
 
     with app.app_context():
-        html_content = render_template('index.html', t=_translations, title=data.get('title', 'Ferienhaus-Vergleich für Rodeln'), trips=trip_data, updated_at=updated_at, version=version)
+        html_content = render_template('index.html', t=_translations, all_translations=_all_translations, lang=_lang, title=data.get('title', 'Ferienhaus-Vergleich für Rodeln'), trips=trip_data, updated_at=updated_at, version=version)
 
     with open('public/index.html', 'w', encoding='utf-8') as f:
         f.write(html_content)

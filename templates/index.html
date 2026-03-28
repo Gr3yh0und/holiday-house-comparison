@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="de">
+<html lang="{{ lang }}">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -285,6 +285,18 @@
         }
         .house-dot.active { background: #2b6cb0; transform: scale(1.3); }
 
+        /* Language picker */
+        #lang-select {
+            background: #fff;
+            border: 1px solid #b8cfe8;
+            border-radius: 8px;
+            padding: 5px 10px;
+            font-size: 0.82rem;
+            color: #1a365d;
+            cursor: pointer;
+        }
+        #lang-select:hover, #lang-select:focus { border-color: #4299e1; outline: none; }
+
         @media (max-width: 700px) {
             body { padding: 12px; }
             .overview-section { flex-direction: column; }
@@ -325,16 +337,29 @@
     </style>
 </head>
 <body>
+    <script>
+        window.ALL_TRANSLATIONS = {{ all_translations | tojson }};
+        window.CURRENT_LANG = {{ lang | tojson }};
+    </script>
     <h1>{{ title }}</h1>
     <p style="text-align: center; margin: -8px 0 24px; display: flex; flex-wrap: wrap; justify-content: center; gap: 8px;">
         <span style="display: inline-block; background: #dce8f5; border: 1px solid #b8cfe8; border-radius: 8px; padding: 5px 14px; font-size: 0.82rem; color: #1a365d;">
-            🕐 {{ t.updated_at }}: <strong>{{ updated_at }}</strong>
+            🕐 <span data-i18n="updated_at">{{ t.updated_at }}</span>: <strong>{{ updated_at }}</strong>
         </span>
         {%- if version %}
         <a href="https://github.com/Gr3yh0und/holiday-house-comparison/releases" target="_blank" style="display: inline-block; background: #edf2ff; border: 1px solid #c3cfe8; border-radius: 8px; padding: 5px 14px; font-size: 0.82rem; color: #2a3f7a; text-decoration: none;">
             🏷️ {{ version }}
         </a>
         {%- endif %}
+        <select id="lang-select" onchange="setLang(this.value)">
+            <option value="de-DE"{% if lang == 'de-DE' %} selected{% endif %}>🇩🇪 de-DE</option>
+            <option value="en-GB"{% if lang == 'en-GB' %} selected{% endif %}>🇬🇧 en-GB</option>
+            <option value="fr-FR"{% if lang == 'fr-FR' %} selected{% endif %}>🇫🇷 fr-FR</option>
+            <option value="nl-NL"{% if lang == 'nl-NL' %} selected{% endif %}>🇳🇱 nl-NL</option>
+            <option value="bar-DE"{% if lang == 'bar-DE' %} selected{% endif %}>🥨 bar-DE</option>
+            <option value="bar-AT"{% if lang == 'bar-AT' %} selected{% endif %}>🇦🇹 bar-AT</option>
+            <option value="gsw-CH"{% if lang == 'gsw-CH' %} selected{% endif %}>🇨🇭 gsw-CH</option>
+        </select>
     </p>
 
     {%- set ns = namespace(warnings=[], hidx=0) -%}
@@ -406,74 +431,74 @@
             {% if house.image_url is defined and house.image_url %}
             <div class="card-img-wrap">
                 <img src="{{ house.image_url }}" alt="{{ house.name }}" style="width:100%; height:180px; object-fit:cover; display:block;">
-                {%- if is_unavailable %}<span class="unavail-badge">{{ t.house.unavailable }}</span>{%- endif %}
+                {%- if is_unavailable %}<span class="unavail-badge" data-i18n="house.unavailable">{{ t.house.unavailable }}</span>{%- endif %}
             </div>
             {% endif %}
             <div class="card-body">
-                <p class="section-title">{{ t.house.prices_section }}</p>
+                <p class="section-title" data-i18n="house.prices_section">{{ t.house.prices_section }}</p>
                 <ul class="props">
                     <li>
-                        <span class="label">{{ t.house.availability }}</span>
-                        <span class="value{% if house.time == 'Available' %} good{% elif house.time == 'Unavailable' %} bad{% elif house.time == 'N/A' %} na{% endif %}">{% if house.time == 'Available' %}{{ t.house.available }}{% elif house.time == 'Unavailable' %}{{ t.house.unavailable }}{% else %}{{ house.time }}{% endif %}</span>
+                        <span class="label" data-i18n="house.availability">{{ t.house.availability }}</span>
+                        <span class="value{% if house.time == 'Available' %} good{% elif house.time == 'Unavailable' %} bad{% elif house.time == 'N/A' %} na{% endif %}"{% if house.time == 'Available' %} data-i18n="house.available"{% elif house.time == 'Unavailable' %} data-i18n="house.unavailable"{% endif %}>{% if house.time == 'Available' %}{{ t.house.available }}{% elif house.time == 'Unavailable' %}{{ t.house.unavailable }}{% else %}{{ house.time }}{% endif %}</span>
                     </li>
                     <li>
-                        <span class="label">{{ t.house.rating }}</span>
+                        <span class="label" data-i18n="house.rating">{{ t.house.rating }}</span>
                         <span class="value{% if house.rating == 'N/A' %} na{% endif %}">{{ house.rating }}</span>
                     </li>
                     {% set price8 = house.total_costs if house.total_costs else house.price %}
                     {% set price10_val = house.total_costs_10 if house.total_costs_10 else (house.price_10 if house.price_10 else house.price) %}
                     {% if not house.total_costs_10 %}{% set price10_val = price10_val | price_inflate(2) %}{% endif %}
                     <li>
-                        <span class="label">{{ t.house.price }}</span>
+                        <span class="label" data-i18n="house.price">{{ t.house.price }}</span>
                         <span class="value{% if price8 == 'N/A' %} na{% endif %}">{{ price8 | normalize_price }}</span>
                     </li>
                     <li>
-                        <span class="label">{{ t.house.price_per_person_8 }}</span>
+                        <span class="label" data-i18n="house.price_per_person_8">{{ t.house.price_per_person_8 }}</span>
                         {% set pp8 = price8 | price_per_person(8) %}
                         <span class="value{% if not pp8 %} na{% endif %}">{{ pp8 if pp8 else 'N/A' }}</span>
                     </li>
                     {% if house.price_10 or house.total_costs_10 or house.persons == '10' %}
                     <li>
-                        <span class="label">{{ t.house.price_10 }}{% if not house.total_costs_10 %} <span title="Preis wurde für 8 Personen ermittelt – für 10 Personen kann er höher ausfallen." style="cursor:help; font-size:0.85em;">ℹ️</span>{% endif %}</span>
+                        <span class="label"><span data-i18n="house.price_10">{{ t.house.price_10 }}</span>{% if not house.total_costs_10 %} <span title="Preis wurde für 8 Personen ermittelt – für 10 Personen kann er höher ausfallen." style="cursor:help; font-size:0.85em;">ℹ️</span>{% endif %}</span>
                         <span class="value{% if price10_val == 'N/A' %} na{% endif %}">{{ price10_val | normalize_price }}</span>
                     </li>
                     <li>
-                        <span class="label">{{ t.house.price_per_person_10 }}</span>
+                        <span class="label" data-i18n="house.price_per_person_10">{{ t.house.price_per_person_10 }}</span>
                         {% set pp10 = price10_val | price_per_person(10) %}
                         <span class="value{% if not pp10 %} na{% endif %}">{{ pp10 if pp10 else 'N/A' }}</span>
                     </li>
                     {% endif %}
                 </ul>
 
-                <p class="section-title">{{ t.house.details_section }}</p>
+                <p class="section-title" data-i18n="house.details_section">{{ t.house.details_section }}</p>
                 <ul class="props">
                     <li>
-                        <span class="label">{{ t.house.location }}</span>
+                        <span class="label" data-i18n="house.location">{{ t.house.location }}</span>
                         <span class="value{% if house.address == 'N/A' or house.address == 'Error loading' %} na{% endif %}">{{ house.address }} {{ house.address | country_flag }}</span>
                     </li>
                     <li>
-                        <span class="label">{{ t.house.bedrooms }}</span>
+                        <span class="label" data-i18n="house.bedrooms">{{ t.house.bedrooms }}</span>
                         <span class="value{% if house.rooms == 'N/A' %} na{% endif %}">{{ house.rooms }}</span>
                     </li>
                     <li>
-                        <span class="label">{{ t.house.persons }}</span>
+                        <span class="label" data-i18n="house.persons">{{ t.house.persons }}</span>
                         <span class="value{% if house.persons == 'N/A' %} na{% endif %}">{{ house.persons }}</span>
                     </li>
                     <li>
-                        <span class="label">{{ t.house.sqm }}</span>
+                        <span class="label" data-i18n="house.sqm">{{ t.house.sqm }}</span>
                         <span class="value{% if house.sqm == 'N/A' %} na{% endif %}">{{ house.sqm }}</span>
                     </li>
                     <li>
-                        <span class="label">{{ t.house.bathrooms }}</span>
+                        <span class="label" data-i18n="house.bathrooms">{{ t.house.bathrooms }}</span>
                         <span class="value{% if house.bathrooms == 'N/A' %} na{% endif %}">{{ house.bathrooms }}{% if house.bathrooms != 'N/A' and house.rooms != 'N/A' and (house.bathrooms | int) * 2 < (house.rooms | int) %} ⚠️{% endif %}</span>
                     </li>
                     <li>
-                        <span class="label">{{ t.house.sauna }}</span>
+                        <span class="label" data-i18n="house.sauna">{{ t.house.sauna }}</span>
                         <span class="value{% if house.sauna == 'Ja' %} good{% elif house.sauna == 'Nein' %} bad{% else %} na{% endif %}">{% if house.sauna == 'Ja' %}Ja{% elif house.sauna == 'Nein' %}Nein{% else %}{{ house.sauna }}{% endif %}</span>
                     </li>
                     {% if house.room_config %}
                     <li style="flex-direction: column; align-items: flex-start; gap: 4px;">
-                        <span class="label">{{ t.house.room_config }}</span>
+                        <span class="label" data-i18n="house.room_config">{{ t.house.room_config }}</span>
                         {% for room in house.room_config %}
                         {%- set is_sofa = 'sofa' in room.lower() -%}
                         <span class="value" style="font-size: 0.82rem;"><span style="color:#888;">Schlafzimmer {{ loop.index }}:</span> {{ room }}{% if is_sofa %} ⚠️{% endif %}</span>
@@ -482,20 +507,20 @@
                     {% endif %}
                 </ul>
 
-                <p class="section-title">{{ t.house.surroundings_section }}</p>
+                <p class="section-title" data-i18n="house.surroundings_section">{{ t.house.surroundings_section }}</p>
                 <ul class="props">
                     {% if house.nearest_sled_run and house.nearest_sled_run != 'N/A' %}
                     <li>
-                        <span class="label">{{ t.house.nearest_sled_run }}</span>
+                        <span class="label" data-i18n="house.nearest_sled_run">{{ t.house.nearest_sled_run }}</span>
                         <span class="value">{{ house.nearest_sled_run }}</span>
                     </li>
                     {% endif %}
                     <li>
-                        <span class="label">{{ t.house.train_station }}</span>
+                        <span class="label" data-i18n="house.train_station">{{ t.house.train_station }}</span>
                         <span class="value{% if house.train_station == 'Nearby' %} good{% elif house.train_station == 'N/A' %} na{% endif %}">{{ house.train_station }}</span>
                     </li>
                     <li>
-                        <span class="label">{{ t.house.supermarket }}</span>
+                        <span class="label" data-i18n="house.supermarket">{{ t.house.supermarket }}</span>
                         <span class="value{% if house.supermarket == 'Nearby' %} good{% elif house.supermarket == 'N/A' %} na{% endif %}">{{ house.supermarket }}</span>
                     </li>
                 </ul>
@@ -505,14 +530,14 @@
                 {% endif %}
                 {% if house.house_url is defined and house.house_url %}
                 {% set broker = house.house_url | broker_name %}
-                <a href="{{ house.house_url }}" target="_blank" class="direct-link">{{ t.house.booking_link }}{% if broker %} {{ broker }}{% endif %} ↗</a>
+                <a href="{{ house.house_url }}" target="_blank" class="direct-link"><span data-i18n="house.booking_link">{{ t.house.booking_link }}</span>{% if broker %} {{ broker }}{% endif %} ↗</a>
                 {% endif %}
                 {% if house.direct_url is defined and house.direct_url %}
-                <a href="{{ house.direct_url }}" target="_blank" class="direct-link">{{ t.house.direct_link }}</a>
+                <a href="{{ house.direct_url }}" target="_blank" class="direct-link" data-i18n="house.direct_link">{{ t.house.direct_link }}</a>
                 {% endif %}
 
                 {% if house.lat is defined and house.lon is defined %}
-                <a href="https://www.google.com/maps?q={{ house.lat }},{{ house.lon }}" target="_blank" class="direct-link">{{ t.house.maps_link }}</a>
+                <a href="https://www.google.com/maps?q={{ house.lat }},{{ house.lon }}" target="_blank" class="direct-link" data-i18n="house.maps_link">{{ t.house.maps_link }}</a>
                 {% endif %}
                 {% if house.lat is defined and house.lon is defined %}
                 <div class="house-map"
@@ -524,7 +549,7 @@
                 {% endif %}
 
                 {% if house.sled_runs %}
-                <p class="section-title">{{ t.sled_runs.section_title }} ({{ house.sled_runs | length }})</p>
+                <p class="section-title"><span data-i18n="sled_runs.section_title">{{ t.sled_runs.section_title }}</span> ({{ house.sled_runs | length }})</p>
                 {% for sled_run in house.sled_runs %}
                 <details class="sled-run">
                     <summary>
@@ -534,11 +559,11 @@
                                 {% if sled_run.length != 'N/A' %}<span class="sled-meta-chip">{{ sled_run.length }}</span>{% endif %}
                                 {% if sled_run.elevation_diff != 'N/A' %}<span class="sled-meta-chip">↕ {{ sled_run.elevation_diff }}</span>{% endif %}
 {% if sled_run.walking_time != 'N/A' %}<span class="sled-meta-chip">🥾 {{ sled_run.walking_time | replace('Minuten', 'min') }}</span>{% endif %}
-                                {% if sled_run.sled_rental == 'Ja' %}<span class="sled-meta-icon" title="{{ t.sled_runs.sled_rental }}">🛷</span>{% endif %}
-                                {% if sled_run.night_sleighing == 'Ja' %}<span class="sled-meta-icon" title="{{ t.sled_runs.night_sleighing }}">🌙</span>{% endif %}
-                                {% if sled_run.ascent_aid and sled_run.ascent_aid != 'N/A' and sled_run.ascent_aid | upper != 'NEIN' %}<span class="sled-meta-icon" title="{{ t.sled_runs.ascent_aid }}: {{ sled_run.ascent_aid }}">🚡</span>{% endif %}
-                                {% if sled_run.public_transport == 'Ja' %}<span class="sled-meta-icon" title="{{ t.sled_runs.public_transport }}">🚌</span>{% endif %}
-                                {% if sled_run.huts %}<span class="sled-meta-icon" title="{{ t.sled_runs.huts }}: {{ sled_run.huts | map(attribute='name') | join(', ') }}">🍺</span>{% endif %}                            </div>
+                                {% if sled_run.sled_rental == 'Ja' %}<span class="sled-meta-icon" title="{{ t.sled_runs.sled_rental }}" data-i18n-title="sled_runs.sled_rental">🛷</span>{% endif %}
+                                {% if sled_run.night_sleighing == 'Ja' %}<span class="sled-meta-icon" title="{{ t.sled_runs.night_sleighing }}" data-i18n-title="sled_runs.night_sleighing">🌙</span>{% endif %}
+                                {% if sled_run.ascent_aid and sled_run.ascent_aid != 'N/A' and sled_run.ascent_aid | upper != 'NEIN' %}<span class="sled-meta-icon" title="{{ t.sled_runs.ascent_aid }}: {{ sled_run.ascent_aid }}" data-i18n-title="sled_runs.ascent_aid" data-i18n-title-suffix=": {{ sled_run.ascent_aid }}">🚡</span>{% endif %}
+                                {% if sled_run.public_transport == 'Ja' %}<span class="sled-meta-icon" title="{{ t.sled_runs.public_transport }}" data-i18n-title="sled_runs.public_transport">🚌</span>{% endif %}
+                                {% if sled_run.huts %}<span class="sled-meta-icon" title="{{ t.sled_runs.huts }}: {{ sled_run.huts | map(attribute='name') | join(', ') }}" data-i18n-title="sled_runs.huts" data-i18n-title-suffix=": {{ sled_run.huts | map(attribute='name') | join(', ') }}">🍺</span>{% endif %}                            </div>
                         </div>
                     </summary>
                     <div class="sled-run-body">
@@ -546,36 +571,36 @@
                     <div class="sled-run-map" data-track="{{ sled_run.track | tojson }}"></div>
                     {% endif %}
                     <ul class="props">
-                        <li><span class="label">{{ t.sled_runs.length }}</span><span class="value{% if sled_run.length == 'N/A' %} na{% endif %}">{{ sled_run.length }}</span></li>
-                        <li><span class="label">{{ t.sled_runs.difficulty }}</span><span class="value{% if sled_run.difficulty == 'N/A' %} na{% endif %}">{{ sled_run.difficulty }}</span></li>
+                        <li><span class="label" data-i18n="sled_runs.length">{{ t.sled_runs.length }}</span><span class="value{% if sled_run.length == 'N/A' %} na{% endif %}">{{ sled_run.length }}</span></li>
+                        <li><span class="label" data-i18n="sled_runs.difficulty">{{ t.sled_runs.difficulty }}</span><span class="value{% if sled_run.difficulty == 'N/A' %} na{% endif %}">{{ sled_run.difficulty }}</span></li>
                         <li>
-                            <span class="label">{{ t.sled_runs.night_sleighing }}</span>
+                            <span class="label" data-i18n="sled_runs.night_sleighing">{{ t.sled_runs.night_sleighing }}</span>
                             <span class="value{% if sled_run.night_sleighing == 'Ja' %} good{% elif sled_run.night_sleighing == 'Nein' %} bad{% else %} na{% endif %}">{{ sled_run.night_sleighing }}</span>
                         </li>
-                        <li><span class="label">{{ t.sled_runs.public_transport }}</span><span class="value{% if sled_run.public_transport == 'N/A' %} na{% endif %}">{{ sled_run.public_transport }}</span></li>
-                        <li><span class="label">{{ t.sled_runs.walking_time }}</span><span class="value{% if sled_run.walking_time == 'N/A' %} na{% endif %}">{{ sled_run.walking_time }}</span></li>
+                        <li><span class="label" data-i18n="sled_runs.public_transport">{{ t.sled_runs.public_transport }}</span><span class="value{% if sled_run.public_transport == 'N/A' %} na{% endif %}">{{ sled_run.public_transport }}</span></li>
+                        <li><span class="label" data-i18n="sled_runs.walking_time">{{ t.sled_runs.walking_time }}</span><span class="value{% if sled_run.walking_time == 'N/A' %} na{% endif %}">{{ sled_run.walking_time }}</span></li>
                         <li>
-                            <span class="label">{{ t.sled_runs.sled_rental }}</span>
+                            <span class="label" data-i18n="sled_runs.sled_rental">{{ t.sled_runs.sled_rental }}</span>
                             <span class="value{% if sled_run.sled_rental == 'Ja' %} good{% elif sled_run.sled_rental == 'Nein' %} bad{% else %} na{% endif %}">{{ sled_run.sled_rental }}</span>
                         </li>
-                        <li><span class="label">{{ t.sled_runs.height_top }}</span><span class="value{% if sled_run.height_top == 'N/A' %} na{% endif %}">{{ sled_run.height_top }}</span></li>
-                        <li><span class="label">{{ t.sled_runs.height_bottom }}</span><span class="value{% if sled_run.height_bottom == 'N/A' %} na{% endif %}">{{ sled_run.height_bottom }}</span></li>
-                        <li><span class="label">{{ t.sled_runs.elevation_diff }}</span><span class="value{% if sled_run.elevation_diff == 'N/A' %} na{% endif %}">{{ sled_run.elevation_diff }}</span></li>
-                        <li><span class="label">{{ t.sled_runs.slope }}</span><span class="value{% if sled_run.slope == 'N/A' %} na{% endif %}">{{ sled_run.slope }}</span></li>
-                        <li><span class="label">{{ t.sled_runs.separate_ascent }}</span><span class="value{% if sled_run.separate_ascent == 'N/A' %} na{% endif %}">{{ sled_run.separate_ascent }}</span></li>
-                        <li><span class="label">{{ t.sled_runs.ascent_aid }}</span><span class="value{% if sled_run.ascent_aid == 'N/A' %} na{% endif %}">{{ sled_run.ascent_aid }}</span></li>
-                        <li><span class="label">{{ t.sled_runs.avalanche_danger }}</span><span class="value{% if sled_run.avalanche_danger == 'N/A' %} na{% endif %}">{{ sled_run.avalanche_danger }}</span></li>
-                        <li><span class="label">{{ t.sled_runs.operator }}</span><span class="value{% if sled_run.operator == 'N/A' %} na{% endif %}">{{ sled_run.operator }}</span></li>
-                        <li><span class="label">{{ t.sled_runs.opening_hours }}</span><span class="value{% if sled_run.opening_hours == 'N/A' %} na{% endif %}">{{ sled_run.opening_hours }}</span></li>
+                        <li><span class="label" data-i18n="sled_runs.height_top">{{ t.sled_runs.height_top }}</span><span class="value{% if sled_run.height_top == 'N/A' %} na{% endif %}">{{ sled_run.height_top }}</span></li>
+                        <li><span class="label" data-i18n="sled_runs.height_bottom">{{ t.sled_runs.height_bottom }}</span><span class="value{% if sled_run.height_bottom == 'N/A' %} na{% endif %}">{{ sled_run.height_bottom }}</span></li>
+                        <li><span class="label" data-i18n="sled_runs.elevation_diff">{{ t.sled_runs.elevation_diff }}</span><span class="value{% if sled_run.elevation_diff == 'N/A' %} na{% endif %}">{{ sled_run.elevation_diff }}</span></li>
+                        <li><span class="label" data-i18n="sled_runs.slope">{{ t.sled_runs.slope }}</span><span class="value{% if sled_run.slope == 'N/A' %} na{% endif %}">{{ sled_run.slope }}</span></li>
+                        <li><span class="label" data-i18n="sled_runs.separate_ascent">{{ t.sled_runs.separate_ascent }}</span><span class="value{% if sled_run.separate_ascent == 'N/A' %} na{% endif %}">{{ sled_run.separate_ascent }}</span></li>
+                        <li><span class="label" data-i18n="sled_runs.ascent_aid">{{ t.sled_runs.ascent_aid }}</span><span class="value{% if sled_run.ascent_aid == 'N/A' %} na{% endif %}">{{ sled_run.ascent_aid }}</span></li>
+                        <li><span class="label" data-i18n="sled_runs.avalanche_danger">{{ t.sled_runs.avalanche_danger }}</span><span class="value{% if sled_run.avalanche_danger == 'N/A' %} na{% endif %}">{{ sled_run.avalanche_danger }}</span></li>
+                        <li><span class="label" data-i18n="sled_runs.operator">{{ t.sled_runs.operator }}</span><span class="value{% if sled_run.operator == 'N/A' %} na{% endif %}">{{ sled_run.operator }}</span></li>
+                        <li><span class="label" data-i18n="sled_runs.opening_hours">{{ t.sled_runs.opening_hours }}</span><span class="value{% if sled_run.opening_hours == 'N/A' %} na{% endif %}">{{ sled_run.opening_hours }}</span></li>
                         {% if sled_run.huts %}
                         <li style="flex-direction: column; align-items: flex-start; gap: 4px;">
-                            <span class="label">{{ t.sled_runs.huts }}</span>
+                            <span class="label" data-i18n="sled_runs.huts">{{ t.sled_runs.huts }}</span>
                             {% for hut in sled_run.huts %}
                             <span class="value" style="font-size: 0.82rem;">🍺 {{ hut.name }}{% if hut.url %} <a href="{{ hut.url }}" target="_blank" class="sled-run-link">↗</a>{% endif %}</span>
                             {% endfor %}
                         </li>
                         {% endif %}
-                        <li><span class="label">Rodelwelten</span><span class="value"><a class="sled-run-link" href="{{ sled_run.url }}" target="_blank">{{ t.sled_runs.link_label }}</a></span></li>
+                        <li><span class="label">Rodelwelten</span><span class="value"><a class="sled-run-link" href="{{ sled_run.url }}" target="_blank" data-i18n="sled_runs.link_label">{{ t.sled_runs.link_label }}</a></span></li>
                     </ul>
                     </div>
                 </details>
@@ -602,6 +627,32 @@
     </p>
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script>
+        function T(path) {
+            var t = window.ALL_TRANSLATIONS[window.CURRENT_LANG] || window.ALL_TRANSLATIONS['de'];
+            return path.split('.').reduce(function(o, k) { return o && o[k]; }, t) || path;
+        }
+
+        function setLang(lang) {
+            if (!window.ALL_TRANSLATIONS[lang]) return;
+            window.CURRENT_LANG = lang;
+            localStorage.setItem('lang', lang);
+            document.documentElement.lang = lang;
+            document.getElementById('lang-select').value = lang;
+            document.querySelectorAll('[data-i18n]').forEach(function(el) {
+                var val = T(el.getAttribute('data-i18n'));
+                if (val) el.textContent = val;
+            });
+            document.querySelectorAll('[data-i18n-title]').forEach(function(el) {
+                var val = T(el.getAttribute('data-i18n-title'));
+                if (val) el.title = val + (el.getAttribute('data-i18n-title-suffix') || '');
+            });
+        }
+
+        (function() {
+            var stored = localStorage.getItem('lang');
+            if (stored && window.ALL_TRANSLATIONS[stored]) setLang(stored);
+        })();
+
         function scrollToTrip(id) {
             var target = document.getElementById(id);
             if (!target) return;
@@ -775,7 +826,7 @@
             var bounds = L.latLngBounds([[lat, lon]]);
             L.marker([lat, lon], {icon: poiIcon('house')})
                 .addTo(map)
-                .bindTooltip(el.dataset.name || '{{ t.poi.house_label }}', {direction: 'top', offset: [0, -14]});
+                .bindTooltip(el.dataset.name || T('poi.house_label'), {direction: 'top', offset: [0, -14]});
             var pois = JSON.parse(el.dataset.pois || '[]');
             pois.forEach(function(poi) {
                 if (!poi.lat || !poi.lon) return;
