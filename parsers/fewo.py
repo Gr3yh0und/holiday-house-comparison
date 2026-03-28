@@ -46,8 +46,13 @@ def scrape(url, driver=None):
             print(f"  [fewo] response status: {response.status_code}, length: {len(response.content)}")
             soup = BeautifulSoup(response.content, 'html.parser')
 
+        page_title = soup.title.string if soup.title else ''
+        print(f"  [fewo] page title: {page_title or 'N/A'}")
+        if any(kw in page_title.lower() for kw in ('bot', 'mensch', 'too many requests', 'access denied')):
+            print("  [fewo] bot/rate-limit page — scrape failed")
+            return None
+
         text = soup.get_text()
-        print(f"  [fewo] page title: {soup.title.string if soup.title else 'N/A'}")
 
         # Name: h1 inside content-hotel-title (sibling span holds the property type)
         title_el = soup.find(attrs={'data-stid': 'content-hotel-title'})

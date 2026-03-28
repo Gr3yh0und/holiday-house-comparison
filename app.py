@@ -10,6 +10,7 @@ import requests
 from flask import Flask, render_template
 
 from parsers import booking, fewo, huetten, interhome, rodelwelten, outdooractive
+from parsers.common import EMPTY as _PARSER_EMPTY
 
 app = Flask(__name__)
 
@@ -215,6 +216,26 @@ def _render_html(title, trips, updated_at, version):
     )
 
 
+def _load_cached_house(name, checkin, checkout):
+    """Return a previously scraped house from public/data.json if it exists and is < 24 h old."""
+    cache_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'public', 'data.json')
+    if not os.path.exists(cache_path):
+        return None
+    try:
+        with open(cache_path, encoding='utf-8') as f:
+            cached = json.load(f)
+        updated_at = datetime.strptime(cached.get('updated_at', ''), '%Y-%m-%d %H:%M')
+        if (datetime.now() - updated_at).total_seconds() > 86400:
+            return None
+        for trip in cached.get('trips', []):
+            for h in trip.get('houses', []):
+                if h.get('name') == name and h.get('checkin') == checkin and h.get('checkout') == checkout:
+                    return h
+    except (json.JSONDecodeError, ValueError, KeyError):
+        pass
+    return None
+
+
 def _scrape_one_house(house, trip_checkin, trip_checkout, driver=None, force_refresh=False):
     house_url = (
         inject_dates(house['house_url'], trip_checkin, trip_checkout)
@@ -223,6 +244,13 @@ def _scrape_one_house(house, trip_checkin, trip_checkout, driver=None, force_ref
     )
     print(f"Scraping house: {house['name']} ({house_url[:60]}...)")
     house_info = scrape_house(house_url, driver=driver)
+    if house_info is None:
+        cached = _load_cached_house(house['name'], trip_checkin, trip_checkout)
+        if cached:
+            print(f"  -> bot/scrape failure, using cached data from public/data.json")
+            return cached
+        print(f"  -> bot/scrape failure, no usable cache — returning empty result")
+        house_info = dict(_PARSER_EMPTY, room_config=[])
     house_info['name'] = house['name']
     house_info['house_url'] = house_url
     for field in ('address', 'rooms', 'persons', 'sqm', 'bathrooms',
