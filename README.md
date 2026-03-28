@@ -67,41 +67,49 @@ Outputs:
 
 ## Input Format
 
-`input.json` contains a list of **trips**, each with a date range and a list of houses. Each house links to its booking page and a set of sled run URLs (rodelwelten.com or outdooractive.com).
+`input.json` uses a **house-centric** structure: a top-level `houses` list where each house declares the trips it belongs to. This avoids duplicating house data across trips when the same property is available on multiple date ranges.
 
 ```json
 {
   "title": "Rodelurlaub 2027",
-  "trips": [
+  "houses": [
     {
-      "name": "Option A - 4 Nächte",
-      "checkin": "YYYY-MM-DD",
-      "checkout": "YYYY-MM-DD",
-      "houses": [
-        {
-          "name": "House Name - Ort",
-          "lat": 47.0,
-          "lon": 11.0,
-          "image_url": "https://...",
-          "house_url": "https://www.fewo-direkt.de/... or https://www.booking.com/...",
-          "direct_url": "https://gastgeber-website.de/",
-          "nearest_sled_run": "Hoher Sattel (2,4 km · 4 min)",
-          "pois": [
-            { "type": "train", "label": "Bahnhof Ortsname", "lat": 47.01, "lon": 11.01 },
-            { "type": "supermarket", "label": "Spar Ortsname", "lat": 47.02, "lon": 11.02 }
-          ],
-          "sled_run_urls": [
-            "https://www.rodelwelten.com/rodelbahnen/detail/run-name",
-            "https://www.outdooractive.com/de/route/rodeln/region/name/12345678/"
-          ]
-        }
+      "name": "House Name - Ort",
+      "lat": 47.0,
+      "lon": 11.0,
+      "image_url": "https://...",
+      "house_url": "https://www.fewo-direkt.de/... or https://www.booking.com/...",
+      "direct_url": "https://gastgeber-website.de/",
+      "nearest_sled_run": "Hoher Sattel (2,4 km · 4 min)",
+      "pois": [
+        { "type": "train", "label": "Bahnhof Ortsname", "lat": 47.01, "lon": 11.01 },
+        { "type": "supermarket", "label": "Spar Ortsname", "lat": 47.02, "lon": 11.02 }
+      ],
+      "sled_run_urls": [
+        "https://www.rodelwelten.com/rodelbahnen/detail/run-name",
+        "https://www.outdooractive.com/de/route/rodeln/region/name/12345678/"
+      ],
+      "trips": [
+        { "name": "Option A - 4 Nächte", "checkin": "YYYY-MM-DD", "checkout": "YYYY-MM-DD" },
+        { "name": "Option B - 7 Nächte", "checkin": "YYYY-MM-DD", "checkout": "YYYY-MM-DD" }
       ]
     }
   ]
 }
 ```
 
-A house can optionally override the trip-level dates with its own `"checkin"` and `"checkout"` fields.
+Each entry in `trips` specifies which date range the house is available for. Any scraped field (e.g. `price`, `time`) can also be set as a per-trip override directly inside the trip entry:
+
+```json
+"trips": [
+  { "name": "Option A", "checkin": "2027-02-17", "checkout": "2027-02-21", "price": "3200" },
+  { "name": "Option B", "checkin": "2027-02-13", "checkout": "2027-02-20", "price": "4100" }
+]
+```
+
+Trip-level overrides take precedence over both house-level values and scraped data.
+
+The order of trips in the rendered output follows the order houses appear in the `houses` list (first occurrence of each trip name determines its position).
 
 ### Overriding scraped house details
 

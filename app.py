@@ -263,6 +263,37 @@ def _scrape_one_house(house, trip_checkin, trip_checkout, driver=None, force_ref
     return house_info
 
 
+def _normalize_input(data):
+    """Convert house-centric input format to trip-centric format if needed.
+
+    House-centric format has a top-level 'houses' list where each house
+    contains a 'trips' array with per-trip name/dates (and optional overrides).
+    This is converted to the canonical trip-centric format used throughout the app.
+    """
+    if 'trips' in data:
+        return data
+    trips = {}
+    trip_order = []
+    for house in data.get('houses', []):
+        house_base = {k: v for k, v in house.items() if k != 'trips'}
+        for trip_entry in house.get('trips', []):
+            name = trip_entry['name']
+            if name not in trips:
+                trips[name] = {
+                    'name': name,
+                    'checkin': trip_entry.get('checkin', ''),
+                    'checkout': trip_entry.get('checkout', ''),
+                    'houses': [],
+                }
+                trip_order.append(name)
+            merged = dict(house_base)
+            for key, val in trip_entry.items():
+                if key not in ('name', 'checkin', 'checkout'):
+                    merged[key] = val
+            trips[name]['houses'].append(merged)
+    return {'title': data.get('title', ''), 'trips': [trips[n] for n in trip_order]}
+
+
 def build_trip_data(data, driver=None, force_refresh=False, broker_filter=None, limit=None):
     trips = []
     scraped = 0
@@ -296,7 +327,7 @@ def build_trip_data(data, driver=None, force_refresh=False, broker_filter=None, 
 @app.route('/')
 def index():
     with open('input.json', encoding='utf-8') as f:
-        data = json.load(f)
+        data = _normalize_input(json.load(f))
     return _render_html(
         title=data.get('title', 'Ferienhaus-Vergleich für Rodeln'),
         trips=build_trip_data(data),
@@ -338,7 +369,7 @@ if __name__ == '__main__':
     if args.house:
         needle = args.house.lower()
         with open('input.json', encoding='utf-8') as f:
-            data = json.load(f)
+            data = _normalize_input(json.load(f))
         # Find all matching houses across trips
         matches = [
             (trip, house)
@@ -438,7 +469,7 @@ if __name__ == '__main__':
         with open('public/data.json', encoding='utf-8') as f:
             cached = json.load(f)
         with open('input.json', encoding='utf-8') as f:
-            data = json.load(f)
+            data = _normalize_input(json.load(f))
         with app.app_context():
             html_content = _render_html(
                 title=data.get('title', 'Ferienhaus-Vergleich für Rodeln'),
@@ -453,7 +484,7 @@ if __name__ == '__main__':
     outdooractive.load_cache(CACHE_FILE_OA)
 
     with open('input.json', encoding='utf-8') as f:
-        data = json.load(f)
+        data = _normalize_input(json.load(f))
 
     driver = None
     try:

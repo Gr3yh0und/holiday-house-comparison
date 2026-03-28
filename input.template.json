@@ -1,109 +1,103 @@
 {
     "title": "Rodelurlaub 2027",
-    "trips": [
+    "houses": [
         {
-            "name": "Option A - 4 Nächte",
-            "checkin": "2027-02-17",
-            "checkout": "2027-02-21",
-            "houses": [
+            "name": "Chalet Alpenstern - Mayrhofen",
+            "lat": 47.1677,
+            "lon": 11.8659,
+            "image_url": "https://example.com/bild.jpg",
+            "house_url": "https://www.fewo-direkt.de/ferienwohnung-ferienhaus/p123456",
+            "direct_url": "https://www.chalet-alpenstern.at/",
+            "supermarket": "500 m (MPreis)",
+            "train_station": "1,2 km (Bahnhof Mayrhofen)",
+            "nearest_sled_run": "Spieljoch (1,2 km · 5 min)",
+            "notes": "Nur per E-Mail buchbar.",
+            "_overrides_comment": "All fields below are optional — they override the scraped values from the booking page",
+            "address": "Mayrhofen, Österreich",
+            "rooms": "5",
+            "persons": "10",
+            "sqm": "140 m²",
+            "bathrooms": "3",
+            "room_config": [
+                "1 Doppelbett",
+                "1 Doppelbett",
+                "2 Einzelbetten",
+                "2 Etagenbetten"
+            ],
+            "rating": "9.4",
+            "sauna": "Ja",
+            "pois": [
                 {
-                    "name": "Chalet Alpenstern - Mayrhofen",
-                    "lat": 47.1677,
-                    "lon": 11.8659,
-                    "image_url": "https://example.com/bild.jpg",
-                    "house_url": "https://www.fewo-direkt.de/ferienwohnung-ferienhaus/p123456",
-                    "direct_url": "https://www.chalet-alpenstern.at/",
-                    "supermarket": "500 m (MPreis)",
-                    "train_station": "1,2 km (Bahnhof Mayrhofen)",
-                    "nearest_sled_run": "Spieljoch (1,2 km · 5 min)",
-                    "notes": "Nur per E-Mail buchbar.",
-                    "_overrides_comment": "All fields below are optional — they override the scraped values from the booking page",
-                    "address": "Mayrhofen, Österreich",
-                    "rooms": "5",
-                    "persons": "10",
-                    "sqm": "140 m²",
-                    "bathrooms": "3",
-                    "room_config": [
-                        "1 Doppelbett",
-                        "1 Doppelbett",
-                        "2 Einzelbetten",
-                        "2 Etagenbetten"
-                    ],
-                    "price": "3200",
-                    "time": "Available",
-                    "rating": "9.4",
-                    "sauna": "Ja",
-                    "pois": [
-                        {
-                            "type": "train",
-                            "label": "Bahnhof Mayrhofen",
-                            "lat": 47.1652,
-                            "lon": 11.8644
-                        },
-                        {
-                            "type": "supermarket",
-                            "label": "MPreis Mayrhofen",
-                            "lat": 47.1701,
-                            "lon": 11.8623
-                        }
-                    ],
-                    "sled_run_urls": [
-                        "https://www.rodelwelten.com/rodelbahnen/detail/spieljoch",
-                        "https://www.rodelwelten.com/rodelbahnen/detail/goglhof"
-                    ]
+                    "type": "train",
+                    "label": "Bahnhof Mayrhofen",
+                    "lat": 47.1652,
+                    "lon": 11.8644
+                },
+                {
+                    "type": "supermarket",
+                    "label": "MPreis Mayrhofen",
+                    "lat": 47.1701,
+                    "lon": 11.8623
                 }
+            ],
+            "sled_run_urls": [
+                "https://www.rodelwelten.com/rodelbahnen/detail/spieljoch",
+                "https://www.rodelwelten.com/rodelbahnen/detail/goglhof"
+            ],
+            "trips": [
+                { "name": "Option A - 4 Nächte", "checkin": "2027-02-17", "checkout": "2027-02-21" },
+                { "name": "Option B - 7 Nächte Sa/Sa", "checkin": "2027-02-17", "checkout": "2027-02-24", "price": "4200" }
             ]
         },
         {
-            "name": "Option B - 7 Nächte Sa/Sa",
-            "checkin": "2027-02-17",
-            "checkout": "2027-02-24",
-            "houses": [
+            "name": "Hütte Sonnenhang - Krimml",
+            "lat": 47.2264,
+            "lon": 12.1821,
+            "image_url": "https://example.com/bild3.jpg",
+            "house_url": "https://www.huetten.com/de/huette/sonnenhang.html#/vsc.php?calendar_date_from=2027-02-17&persons_adults=8&calendar_stays=7&c[id_hotel]=9999&set_language=de",
+            "nearest_sled_run": "Rodelbahn Krimml (1,4 km · 4 min)",
+            "pois": [
                 {
-                    "name": "Hütte Sonnenhang - Krimml",
-                    "lat": 47.2264,
-                    "lon": 12.1821,
-                    "image_url": "https://example.com/bild3.jpg",
-                    "house_url": "https://www.huetten.com/de/huette/sonnenhang.html#/vsc.php?calendar_date_from=2027-02-17&persons_adults=8&calendar_stays=7&c[id_hotel]=9999&set_language=de",
-                    "nearest_sled_run": "Rodelbahn Krimml (1,4 km · 4 min)",
-                    "pois": [
-                        {
-                            "type": "train",
-                            "label": "Bahnhof Krimml",
-                            "lat": 47.2348,
-                            "lon": 12.1960
-                        }
-                    ],
-                    "sled_run_urls": [
-                        "https://www.rodelwelten.com/rodelbahnen/detail/krimml"
-                    ]
+                    "type": "train",
+                    "label": "Bahnhof Krimml",
+                    "lat": 47.2348,
+                    "lon": 12.1960
+                }
+            ],
+            "sled_run_urls": [
+                "https://www.rodelwelten.com/rodelbahnen/detail/krimml"
+            ],
+            "trips": [
+                { "name": "Option B - 7 Nächte Sa/Sa", "checkin": "2027-02-17", "checkout": "2027-02-24" }
+            ]
+        },
+        {
+            "name": "Ferienhaus Bergblick - Leutasch",
+            "lat": 47.3640,
+            "lon": 11.1420,
+            "image_url": "https://example.com/bild2.jpg",
+            "house_url": "https://www.booking.com/hotel/at/ferienhaus-bergblick.de.html",
+            "direct_url": "https://www.bergblick-leutasch.at/",
+            "pois": [
+                {
+                    "type": "train",
+                    "label": "Bahnhof Seefeld",
+                    "lat": 47.3293,
+                    "lon": 11.1897
                 },
                 {
-                    "name": "Ferienhaus Bergblick - Leutasch",
-                    "lat": 47.3640,
-                    "lon": 11.1420,
-                    "image_url": "https://example.com/bild2.jpg",
-                    "house_url": "https://www.booking.com/hotel/at/ferienhaus-bergblick.de.html",
-                    "direct_url": "https://www.bergblick-leutasch.at/",
-                    "pois": [
-                        {
-                            "type": "train",
-                            "label": "Bahnhof Seefeld",
-                            "lat": 47.3293,
-                            "lon": 11.1897
-                        },
-                        {
-                            "type": "supermarket",
-                            "label": "MPreis Leutasch",
-                            "lat": 47.3715,
-                            "lon": 11.1677
-                        }
-                    ],
-                    "sled_run_urls": [
-                        "https://www.rodelwelten.com/rodelbahnen/detail/haemmermoosalm",
-                        "https://www.rodelwelten.com/rodelbahnen/detail/wetterstein"
-                    ]
+                    "type": "supermarket",
+                    "label": "MPreis Leutasch",
+                    "lat": 47.3715,
+                    "lon": 11.1677
                 }
+            ],
+            "sled_run_urls": [
+                "https://www.rodelwelten.com/rodelbahnen/detail/haemmermoosalm",
+                "https://www.rodelwelten.com/rodelbahnen/detail/wetterstein"
+            ],
+            "trips": [
+                { "name": "Option B - 7 Nächte Sa/Sa", "checkin": "2027-02-17", "checkout": "2027-02-24" }
             ]
         }
     ]
