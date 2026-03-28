@@ -547,7 +547,8 @@
                      data-lon="{{ house.lon }}"
                      data-name="{{ house.name }}"
                      data-pois="{{ house.pois | default([]) | tojson | forceescape }}"
-                     data-sled-runs="{{ house.sled_runs | default([]) | selectattr('track') | list | tojson | forceescape }}"></div>
+                     data-sled-runs="{{ house.sled_runs | default([]) | selectattr('track') | list | tojson | forceescape }}"
+                     data-train-track="{{ house.train_track | default([]) | tojson | forceescape }}"></div>
                 {% endif %}
 
                 {% if house.sled_runs %}
@@ -728,7 +729,8 @@
                                 {% for run in house.sled_runs %}{% if run.track %}
                                 { url: {{ run.url | tojson }}, name: {{ run.name | tojson }}, track: {{ run.track | tojson }} },
                                 {% endif %}{% endfor %}
-                            ]
+                            ],
+                            trainTrack: {{ house.train_track | default([]) | tojson }}
                         },
                         {% endif %}
                         {% endfor %}
@@ -809,6 +811,20 @@
                     .bindTooltip('🛷 ' + run.name, { sticky: true });
             });
 
+            // Draw train tracks (e.g. Wengernalpbahn) — deduplicated, red dashed
+            var trainTrackSeen = false;
+            overviewData.forEach(function(trip) {
+                trip.houses.forEach(function(house) {
+                    if (!house.trainTrack || !house.trainTrack.length) return;
+                    if (trainTrackSeen) return;
+                    trainTrackSeen = true;
+                    var latlngs = house.trainTrack.map(function(pt) { return [pt[0], pt[1]]; });
+                    L.polyline(latlngs, { color: '#c53030', weight: 3, opacity: 0.85, dashArray: '8 6' })
+                        .addTo(map)
+                        .bindTooltip('🚞 Zahnradbahn Lauterbrunnen – Wengen (kein Auto, Parkplatz in Lauterbrunnen)', { sticky: true });
+                });
+            });
+
             if (hasMarkers) {
                 map.fitBounds(bounds, { padding: [30, 30] });
             } else {
@@ -861,7 +877,15 @@
                     .bindTooltip('🛷 ' + run.name, {sticky: true});
                 latlngs.forEach(function(pt) { bounds.extend(pt); });
             });
-            if (pois.length > 0 || sledRuns.length > 0) {
+            var trainTrack = JSON.parse(el.dataset.trainTrack || '[]');
+            if (trainTrack.length) {
+                var latlngs = trainTrack.map(function(pt) { return [pt[0], pt[1]]; });
+                L.polyline(latlngs, {color: '#c53030', weight: 3, opacity: 0.85, dashArray: '8 6'})
+                    .addTo(map)
+                    .bindTooltip('🚞 Zahnradbahn Lauterbrunnen – Wengen (kein Auto, Parkplatz in Lauterbrunnen)', {sticky: true});
+                latlngs.forEach(function(pt) { bounds.extend(pt); });
+            }
+            if (pois.length > 0 || sledRuns.length > 0 || trainTrack.length) {
                 map.fitBounds(bounds, {padding: [20, 20]});
             }
         });
