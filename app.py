@@ -22,6 +22,10 @@ CHROMEDRIVER_PATH = os.path.join(
     os.path.dirname(os.path.abspath(__file__)),
     'webdriver', 'chromedriver-win64', 'chromedriver.exe'
 )
+CHROME_BINARY_PATH = os.path.join(
+    os.path.dirname(os.path.abspath(__file__)),
+    'webdriver', 'chrome-win64', 'chrome.exe'
+)
 
 
 def load_translations(lang='de') -> dict:
@@ -160,14 +164,18 @@ def dedate(value):
 
 def _make_driver():
     import undetected_chromedriver as uc
-    from webdriver_manager.chrome import ChromeDriverManager
 
     options = uc.ChromeOptions()
+    if os.path.exists(CHROME_BINARY_PATH):
+        options.binary_location = CHROME_BINARY_PATH
+        print(f'  [driver] using bundled Chrome: {CHROME_BINARY_PATH}')
+    else:
+        print('  [driver] bundled Chrome not found, falling back to system Chrome')
     options.add_argument('--no-sandbox')
     options.add_argument('--disable-dev-shm-usage')
     options.add_argument('--window-size=1920,1080')
     options.add_argument('--window-position=-32000,0')
-    driver_path = ChromeDriverManager().install()
+    driver_path = CHROMEDRIVER_PATH if os.path.exists(CHROMEDRIVER_PATH) else None
     return uc.Chrome(options=options, driver_executable_path=driver_path)
 
 
