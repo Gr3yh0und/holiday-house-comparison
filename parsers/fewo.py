@@ -10,6 +10,68 @@ from parsers.common import (
     parse_room_config as _parse_room_config, clean_bed_desc,
 )
 
+_FEWO_HOME = 'https://www.fewo-direkt.de'
+
+# CSS selectors tried in order when looking for a cookie-consent accept button
+_COOKIE_SELECTORS = [
+    '[data-testid="accept-button"]',
+    '#onetrust-accept-btn-handler',
+    'button[id*="accept"]',
+    '[class*="accept-all"]',
+    '[class*="acceptAll"]',
+]
+
+# Whether the current driver session has already warmed up on fewo-direkt.de
+# Keyed by driver id() so we don't repeat the warmup for every house
+_warmed_drivers: set = set()
+
+
+def _accept_cookies(driver):
+    """Click the cookie-consent accept button if one is visible."""
+    for sel in _COOKIE_SELECTORS:
+        try:
+            btn = driver.find_element('css selector', sel)
+            if btn.is_displayed():
+                btn.click()
+                time.sleep(random.uniform(0.8, 1.8))
+                print('  [fewo] accepted cookie consent')
+                return True
+        except Exception:
+            pass
+    return False
+
+
+def _human_scroll(driver, steps=None):
+    """Scroll down the page in a realistic, non-linear fashion."""
+    if steps is None:
+        steps = random.randint(3, 6)
+    try:
+        scroll_height = driver.execute_script('return document.body.scrollHeight') or 2000
+        for _ in range(steps):
+            target = random.randint(200, min(1400, scroll_height))
+            driver.execute_script(f'window.scrollTo({{top: {target}, behavior: "smooth"}});')
+            time.sleep(random.uniform(0.6, 1.4))
+        # Scroll back to the top before we start reading the page
+        driver.execute_script('window.scrollTo({top: 0, behavior: "smooth"});')
+        time.sleep(random.uniform(0.4, 0.9))
+    except Exception:
+        pass
+
+
+def _warm_up_session(driver):
+    """Navigate to the fewo-direkt homepage and act human before hitting a listing."""
+    did = id(driver)
+    if did in _warmed_drivers:
+        return
+    print('  [fewo] warming up session on homepage …')
+    driver.get(_FEWO_HOME)
+    time.sleep(random.uniform(4, 8))
+    _accept_cookies(driver)
+    _human_scroll(driver)
+    time.sleep(random.uniform(2, 5))
+    _warmed_drivers.add(did)
+    print('  [fewo] session warmed up')
+
 _REGION_COUNTRY = {
     # Austria
     'Tirol': 'Österreich', 'Salzburg': 'Österreich', 'Vorarlberg': 'Österreich',
@@ -43,20 +105,65 @@ def scrape(url, driver=None):
             ua = random_user_agent()
             driver.execute_cdp_cmd('Network.setUserAgentOverride', {'userAgent': ua})
             print(f"  [fewo] user-agent: {ua[:60]}...")
+            _warm_up_session(driver)
             driver.get(url)
-            time.sleep(random.uniform(6, 12))
+            # Let the React SPA hydrate; add some human-like interaction
+            time.sleep(random.uniform(5, 9))
+            _human_scroll(driver)
+            time.sleep(random.uniform(2, 4))
             page_source = driver.page_source
             print(f"  [fewo] page source length: {len(page_source)} chars")
             soup = BeautifulSoup(page_source, 'html.parser')
         else:
-            response = requests.get(url, headers=random_headers(), timeout=15)
-            print(f"  [fewo] response status: {response.status_code}, length: {len(response.content)}")
-            soup = BeautifulSoup(response.content, 'html.parser')
+            # curl_cffi mimics the real Chrome TLS fingerprint (JA3/JA3S) so
+            # DataDome cannot distinguish it from a real browser at the TLS layer.
+            try:
+                from curl_cffi import requests as cffi_requests
+                ua = random_user_agent()
+                resp = cffi_requests.get(
+                    url,
+                    impersonate='chrome124',
+                    headers={
+                        'User-Agent': ua,
+                        'Accept': (
+                            'text/html,application/xhtml+xml,application/xml;'
+                            'q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8'
+                        ),
+                        'Accept-Language': 'de-DE,de;q=0.9',
+                        'Accept-Encoding': 'gzip, deflate, br',
+                        'Sec-Fetch-Dest': 'document',
+                        'Sec-Fetch-Mode': 'navigate',
+                        'Sec-Fetch-Site': 'none',
+                        'Sec-Fetch-User': '?1',
+                        'Upgrade-Insecure-Requests': '1',
+                    },
+                    timeout=20,
+                )
+                print(f"  [fewo] curl_cffi status: {resp.status_code}, length: {len(resp.content)}")
+                soup = BeautifulSoup(resp.content, 'html.parser')
+                page_source = resp.text
+            except ImportError:
+                print('  [fewo] curl_cffi not installed, falling back to requests')
+                response = requests.get(url, headers=random_headers(), timeout=15)
+                print(f"  [fewo] response status: {response.status_code}, length: {len(response.content)}")
+                soup = BeautifulSoup(response.content, 'html.parser')
+                page_source = response.text
 
         page_title = soup.title.string if soup.title else ''
         print(f"  [fewo] page title: {page_title or 'N/A'}")
-        if any(kw in page_title.lower() for kw in ('bot', 'mensch', 'too many requests', 'access denied')):
-            print("  [fewo] bot/rate-limit page — scrape failed")
+        # Detect bot/rate-limit pages — fewo-direkt uses DataDome which shows a
+        # German challenge page ("Warum diese Kontrolle?") when the IP or
+        # browser fingerprint is flagged.
+        body_text = soup.get_text()
+        bot_page = any(kw in page_title.lower() for kw in (
+            'bot', 'mensch', 'too many requests', 'access denied', 'kontrolle',
+        )) or any(kw in body_text for kw in (
+            'Warum diese Kontrolle',
+            'übermenschlicher Geschwindigkeit',
+            'DataDome',
+        )) or (len(page_source) < 5000)
+        if bot_page:
+            print("  [fewo] bot/rate-limit page detected — scrape failed")
             return None
 
         text = soup.get_text()

@@ -1,6 +1,7 @@
 import argparse
 import json
 import os
+import random
 import re
 import time
 from datetime import datetime
@@ -194,6 +195,7 @@ def _fetch_loipen(lat, lon, force_refresh=False):
 
 
 def _make_driver():
+    import random as _random
     import undetected_chromedriver as uc
 
     options = uc.ChromeOptions()
@@ -202,10 +204,16 @@ def _make_driver():
         print(f'  [driver] using bundled Chrome: {CHROME_BINARY_PATH}')
     else:
         print('  [driver] bundled Chrome not found, falling back to system Chrome')
-    options.add_argument('--no-sandbox')
-    options.add_argument('--disable-dev-shm-usage')
-    options.add_argument('--window-size=1920,1080')
-    options.add_argument('--window-position=-32000,0')
+    # --no-sandbox and --disable-dev-shm-usage are known automation signals on
+    # Windows and are unnecessary there; only add them on Linux (CI / Docker).
+    if os.name != 'nt':
+        options.add_argument('--no-sandbox')
+        options.add_argument('--disable-dev-shm-usage')
+    # Randomise window size slightly so every session looks different
+    w = _random.randint(1280, 1920)
+    h = _random.randint(900, 1080)
+    options.add_argument(f'--window-size={w},{h}')
+    options.add_argument('--window-position=0,0')
     driver_path = CHROMEDRIVER_PATH if os.path.exists(CHROMEDRIVER_PATH) else None
     return uc.Chrome(options=options, driver_executable_path=driver_path)
 
@@ -390,6 +398,12 @@ def build_trip_data(data, driver=None, force_refresh=False, broker_filter=None, 
                 house, trip_checkin, trip_checkout, driver=driver, force_refresh=force_refresh
             ))
             scraped += 1
+            # Add a polite cooldown between fewo-direkt houses to avoid
+            # triggering rate-limits (DataDome tracks request cadence per IP).
+            if scraped < (limit or 999) and 'fewo-direkt.de' in house_url:
+                delay = random.uniform(20, 45)
+                print(f"  [fewo] cooling down {delay:.0f}s before next house …")
+                time.sleep(delay)
         trips.append({
             'name': trip.get('name', ''), 'checkin': trip_checkin,
             'checkout': trip_checkout, 'houses': houses,
