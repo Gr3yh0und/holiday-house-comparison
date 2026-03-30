@@ -224,7 +224,6 @@ def _fetch_loipen(lat, lon, radius_m=None, force_refresh=False):
 
 
 def _make_driver():
-    import random as _random
     import undetected_chromedriver as uc
 
     options = uc.ChromeOptions()
@@ -239,8 +238,8 @@ def _make_driver():
         options.add_argument('--no-sandbox')
         options.add_argument('--disable-dev-shm-usage')
     # Randomise window size slightly so every session looks different
-    w = _random.randint(1280, 1920)
-    h = _random.randint(900, 1080)
+    w = random.randint(1280, 1920)
+    h = random.randint(900, 1080)
     options.add_argument(f'--window-size={w},{h}')
     options.add_argument('--window-position=0,0')
     driver_path = CHROMEDRIVER_PATH if os.path.exists(CHROMEDRIVER_PATH) else None
@@ -364,10 +363,13 @@ def _scrape_one_house(house, trip_checkin, trip_checkout, driver=None, force_ref
         if not house_info.get('bus_stop') and house.get('lat') and house.get('lon'):
             import math as _math
             def _hdist(la1, lo1, la2, lo2):
-                R = 6371
-                dla = _math.radians(la2-la1); dlo = _math.radians(lo2-lo1)
-                a = _math.sin(dla/2)**2 + _math.cos(_math.radians(la1))*_math.cos(_math.radians(la2))*_math.sin(dlo/2)**2
-                return R * 2 * _math.asin(_math.sqrt(a))
+                earth_r = 6371
+                dla = _math.radians(la2 - la1)
+                dlo = _math.radians(lo2 - lo1)
+                a = (_math.sin(dla / 2) ** 2
+                     + _math.cos(_math.radians(la1)) * _math.cos(_math.radians(la2))
+                     * _math.sin(dlo / 2) ** 2)
+                return earth_r * 2 * _math.asin(_math.sqrt(a))
             for poi in house['pois']:
                 if poi.get('type') == 'bus' and poi.get('lat') and poi.get('lon'):
                     d = _hdist(house['lat'], house['lon'], poi['lat'], poi['lon'])
@@ -426,10 +428,13 @@ def _scrape_one_house(house, trip_checkin, trip_checkout, driver=None, force_ref
             length_km = 0.0
         import math as _math
         def _hav(la1, lo1, la2, lo2):
-            R = 6371.0
-            dla = _math.radians(la2-la1); dlo = _math.radians(lo2-lo1)
-            a = _math.sin(dla/2)**2 + _math.cos(_math.radians(la1))*_math.cos(_math.radians(la2))*_math.sin(dlo/2)**2
-            return R * 2 * _math.asin(_math.sqrt(a))
+            earth_r = 6371.0
+            dla = _math.radians(la2 - la1)
+            dlo = _math.radians(lo2 - lo1)
+            a = (_math.sin(dla / 2) ** 2
+                 + _math.cos(_math.radians(la1)) * _math.cos(_math.radians(la2))
+                 * _math.sin(dlo / 2) ** 2)
+            return earth_r * 2 * _math.asin(_math.sqrt(a))
         if track and house.get('lat') and house.get('lon'):
             distance_km = round(min(_hav(p[0], p[1], house['lat'], house['lon']) for p in track), 1)
         else:
@@ -480,7 +485,7 @@ def _normalize_input(data):
     return {'title': data.get('title', ''), 'trips': [trips[n] for n in trip_order]}
 
 
-def build_trip_data(data, driver=None, force_refresh=False, broker_filter=None, limit=None,
+def build_trip_data(data, driver=None, force_refresh=False, broker_filter=None, limit=None,  # pylint: disable=too-many-positional-arguments
                     on_house_scraped=None):
     trips = []
     scraped = 0

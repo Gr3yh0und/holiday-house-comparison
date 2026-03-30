@@ -4,7 +4,9 @@ from urllib.parse import urlparse, parse_qs, urlencode
 import requests
 from bs4 import BeautifulSoup
 
-from parsers.common import EMPTY, HEADERS as _HEADERS, normalize_country, normalize_rating, parse_json_ld, parse_room_config
+from parsers.common import (
+    EMPTY, HEADERS as _HEADERS, normalize_country, normalize_rating, parse_json_ld, parse_room_config,
+)
 
 
 def _clean_url(url):

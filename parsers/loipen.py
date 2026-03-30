@@ -15,8 +15,8 @@ _HEADERS = {
 # Circuit breaker: after this many consecutive all-endpoint failures, stop
 # trying for the remainder of the process.
 _FAILURE_THRESHOLD = 2
-_consecutive_failures = 0
-_circuit_open = False
+_consecutive_failures = 0  # pylint: disable=invalid-name
+_circuit_open = False      # pylint: disable=invalid-name
 
 
 def fetch(lat, lon, radius_m=10000):
