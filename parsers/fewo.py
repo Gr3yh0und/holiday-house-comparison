@@ -263,6 +263,7 @@ def scrape(url, driver=None):
             print(f"  [fewo] rating element text: {src[:80]}")
             score_m = (
                 re.search(r'(\d+[.,]\d+)\s*/\s*10', src) or
+                re.search(r'(\d+[.,]\d+)\s+von\s+10', src, re.I) or
                 re.search(r'Ausgezeichnet\s+(\d+[.,]\d+)', src, re.I) or
                 re.search(r'Sehr gut\s+(\d+[.,]\d+)', src, re.I) or
                 re.search(r'(\d+[.,]\d+)', src)
@@ -270,6 +271,7 @@ def scrape(url, driver=None):
         else:
             score_m = (
                 re.search(r'(\d+[.,]\d+)\s*/\s*10', text) or
+                re.search(r'(\d+[.,]\d+)\s+von\s+10', text, re.I) or
                 re.search(r'Ausgezeichnet\s+(\d+[.,]\d+)', text, re.I) or
                 re.search(r'Sehr gut\s+(\d+[.,]\d+)', text, re.I)
             )
