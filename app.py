@@ -364,6 +364,8 @@ def _scrape_one_house(house, trip_checkin, trip_checkout, driver=None, force_ref
                     break
     if 'train_track' in house:
         house_info['train_track'] = house['train_track']
+    if 'bus_track' in house:
+        house_info['bus_track'] = house['bus_track']
     house_info['checkin'] = trip_checkin
     house_info['checkout'] = trip_checkout
     house_info['sled_runs'] = []

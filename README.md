@@ -137,6 +137,7 @@ Any field normally scraped from the booking page can be overridden directly in `
 | `nearest_sled_run` | Nearest sled run with distance/time | `"Sulwald – Isenfluh – Lauterbrunnen (0,3 km · 4 min)"` |
 | `notes` | Free-text note shown on the house card (above the booking buttons) | `"Nur per E-Mail buchbar."` |
 | `train_track` | List of `[lat, lon]` points for a train/rack-railway line shown as a red dashed overlay on maps | `[[46.598, 7.908], [46.605, 7.920]]` |
+| `bus_track` | Object with `label` (tooltip text) and `points` (list of `[lat, lon]`) for a bus route shown as a blue dashed overlay on the house map | `{"label": "Bus 590N · Innsbruck → Neustift", "points": [[47.26, 11.40], ...]}` |
 | `loipen_radius_m` | Per-house override for the Nordic trail search radius in metres (default from `config.json`) | `15000` |
 | `disable_loipen` | Set to `true` to skip the Overpass auto-discovery for this house. Manually specified `loipen_urls` are still parsed. | `true` |
 | `loipen_urls` | List of rodelwelten.com or outdooractive.com URLs for specific Loipen to include manually. Merged with Overpass results and always parsed even when `disable_loipen` is set. | `["https://www.outdooractive.com/de/route/..."]` |
