@@ -20,6 +20,7 @@
         "availability": "Availability",
         "available": "Available",
         "unavailable": "Not available",
+        "check_manually": "Check manually",
         "train_station": "Train station on foot",
         "bus_stop": "Bus stop",
         "supermarket": "Supermarket on foot",

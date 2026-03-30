@@ -20,6 +20,7 @@
         "availability": "Verfügboakeid",
         "available": "Frei",
         "unavailable": "Ausgbucht",
+        "check_manually": "Selbst nachschaun",
         "train_station": "Boahnhof z'Fuß",
         "bus_stop": "Bushoidn",
         "supermarket": "Supermarkt z'Fuß",

@@ -564,7 +564,7 @@
                 <ul class="props">
                     <li>
                         <span class="label" data-i18n="house.availability">{{ t.house.availability }}</span>
-                        <span class="value{% if house.time == 'Available' %} good{% elif house.time == 'Unavailable' %} bad{% elif house.time == 'N/A' %} na{% endif %}"{% if house.time == 'Available' %} data-i18n="house.available"{% elif house.time == 'Unavailable' %} data-i18n="house.unavailable"{% endif %}>{% if house.time == 'Available' %}{{ t.house.available }}{% elif house.time == 'Unavailable' %}{{ t.house.unavailable }}{% else %}{{ house.time }}{% endif %}</span>
+                        <span class="value{% if house.time == 'Available' %} good{% elif house.time == 'Unavailable' %} bad{% elif house.time in ('N/A', 'check_manually') %} na{% endif %}"{% if house.time == 'Available' %} data-i18n="house.available"{% elif house.time == 'Unavailable' %} data-i18n="house.unavailable"{% elif house.time == 'check_manually' %} data-i18n="house.check_manually"{% endif %}>{% if house.time == 'Available' %}{{ t.house.available }}{% elif house.time == 'Unavailable' %}{{ t.house.unavailable }}{% elif house.time == 'check_manually' %}{{ t.house.check_manually }}{% else %}{{ house.time }}{% endif %}</span>
                     </li>
                     <li>
                         <span class="label" data-i18n="house.rating">{{ t.house.rating }}</span>
@@ -1237,6 +1237,7 @@
                         if (v === 'Available' || v === '{{ t.house.available }}') valClass = ' compare-good';
                         else if (v === 'Unavailable' || v === '{{ t.house.unavailable }}') valClass = ' compare-bad';
                     }
+                    if (v === 'check_manually') v = {{ t.house.check_manually | tojson }};
                     if (v === 'N/A' || v === '') valClass = ' compare-na';
                     var display = f.key === 'rooms_cfg' ? escHtml(v).replace(/\n/g, '<br>') : escHtml(v);
                     return '<td class="' + cls + valClass + '">' + display + '</td>';

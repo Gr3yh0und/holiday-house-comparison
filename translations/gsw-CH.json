@@ -20,6 +20,7 @@
         "availability": "Verfüegbarkeit",
         "available": "Frei",
         "unavailable": "Uusbuecht",
+        "check_manually": "Manuell prüefe",
         "train_station": "Bahnhof z'Fuess",
         "bus_stop": "Busshalestell",
         "supermarket": "Supermarkt z'Fuess",

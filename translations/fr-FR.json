@@ -20,6 +20,7 @@
         "availability": "Disponibilité",
         "available": "Disponible",
         "unavailable": "Non disponible",
+        "check_manually": "À vérifier manuellement",
         "train_station": "Gare à pied",
         "bus_stop": "Arrêt de bus",
         "supermarket": "Supermarché à pied",

@@ -20,6 +20,7 @@
         "availability": "Beschikbaarheid",
         "available": "Beschikbaar",
         "unavailable": "Niet beschikbaar",
+        "check_manually": "Handmatig controleren",
         "train_station": "Station te voet",
         "bus_stop": "Bushalte",
         "supermarket": "Supermarkt te voet",

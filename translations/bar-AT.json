@@ -20,6 +20,7 @@
         "availability": "Verfügboarkeit",
         "available": "Frei",
         "unavailable": "Nit frei",
+        "check_manually": "Selbst nachschaun",
         "train_station": "Bahnhof z'Fuaß",
         "bus_stop": "Bushoidn",
         "supermarket": "Supermarkt z'Fuaß",

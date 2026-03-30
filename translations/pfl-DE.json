@@ -20,6 +20,7 @@
         "availability": "Verfiegbarkeit",
         "available": "Frei",
         "unavailable": "Nit frei",
+        "check_manually": "Selbscht nachschaue",
         "train_station": "Bahnhof zu Fuß",
         "bus_stop": "Bushaltestell",
         "supermarket": "Subbmarkt zu Fuß",

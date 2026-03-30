@@ -292,7 +292,7 @@ def _scrape_one_house(house, trip_checkin, trip_checkout, driver=None, force_ref
     )
     if not house_url:
         print(f"No house_url for: {house['name']} — using input.json data only")
-        house_info = dict(_PARSER_EMPTY, room_config=[])
+        house_info = dict(_PARSER_EMPTY, room_config=[], time='check_manually')
     else:
         print(f"Scraping house: {house['name']} ({house_url[:60]}...)")
         house_info = scrape_house(house_url, driver=driver)
