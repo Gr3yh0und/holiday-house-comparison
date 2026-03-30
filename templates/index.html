@@ -678,7 +678,8 @@
                      data-pois="{{ house.pois | default([]) | tojson | forceescape }}"
                      data-sled-runs="{{ house.sled_runs | default([]) | selectattr('track') | list | tojson | forceescape }}"
                      data-loipen="{{ house.loipen | default([]) | selectattr('track') | list | tojson | forceescape }}"
-                     data-train-track="{{ house.train_track | default([]) | tojson | forceescape }}"></div>
+                     data-train-track="{{ house.train_track | default([]) | tojson | forceescape }}"
+                     data-bus-track="{{ house.bus_track | default([]) | tojson | forceescape }}"></div>
                 {% endif %}
 
                 {% if house.sled_runs %}
@@ -1082,7 +1083,15 @@
                     .bindTooltip('🚞 Zahnradbahn Lauterbrunnen – Wengen (kein Auto, Parkplatz in Lauterbrunnen)', {sticky: true});
                 latlngs.forEach(function(pt) { bounds.extend(pt); });
             }
-            if (pois.length > 0 || sledRuns.length > 0 || loipen.length > 0 || trainTrack.length) {
+            var busTrack = JSON.parse(el.dataset.busTrack || 'null');
+            if (busTrack && busTrack.points && busTrack.points.length) {
+                var latlngs = busTrack.points.map(function(pt) { return [pt[0], pt[1]]; });
+                L.polyline(latlngs, {color: '#2b6cb0', weight: 3, opacity: 0.85, dashArray: '8 6'})
+                    .addTo(map)
+                    .bindTooltip('🚌 ' + (busTrack.label || 'Bus'), {sticky: true});
+                latlngs.forEach(function(pt) { bounds.extend(pt); });
+            }
+            if (pois.length > 0 || sledRuns.length > 0 || loipen.length > 0 || trainTrack.length || (busTrack && busTrack.points && busTrack.points.length)) {
                 map.fitBounds(bounds, {padding: [20, 20]});
             }
         });
