@@ -1086,7 +1086,7 @@
             var busTrack = JSON.parse(el.dataset.busTrack || 'null');
             if (busTrack && busTrack.points && busTrack.points.length) {
                 var latlngs = busTrack.points.map(function(pt) { return [pt[0], pt[1]]; });
-                L.polyline(latlngs, {color: '#2b6cb0', weight: 3, opacity: 0.85, dashArray: '8 6'})
+                L.polyline(latlngs, {color: '#c53030', weight: 3, opacity: 0.85, dashArray: '8 6'})
                     .addTo(map)
                     .bindTooltip('🚌 ' + (busTrack.label || 'Bus'), {sticky: true});
                 latlngs.forEach(function(pt) { bounds.extend(pt); });
