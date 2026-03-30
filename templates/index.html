@@ -522,7 +522,7 @@
                 <div class="trip-list-item-body">
                     <span class="trip-list-item-name">{{ trip.name }}</span>
                     <span class="trip-list-item-dates"><span data-date="{{ trip.checkin }}">{{ trip.checkin | dedate }}</span> &rarr; <span data-date="{{ trip.checkout }}">{{ trip.checkout | dedate }}</span></span>
-                    <span class="trip-list-item-count">{{ trip.houses | length }} <span data-i18n="house.section_title">{{ t.house.section_title }}</span></span>
+                    <span class="trip-list-item-count" data-trip-idx="{{ loop.index0 }}">{{ trip.houses | length }} <span data-i18n="house.section_title">{{ t.house.section_title }}</span></span>
                 </div>
             </div>
             {% endfor %}
@@ -872,11 +872,18 @@
                 var visible = !minPersons || isNaN(p) || p >= minPersons;
                 slide.style.display = visible ? '' : 'none';
             });
-            // Hide trip groups where every house-slide is hidden
+            // Hide trip groups where every house-slide is hidden; update sidebar counts
             document.querySelectorAll('.trip-group').forEach(function(group) {
                 var slides = group.querySelectorAll('.house-slide');
-                var anyVisible = Array.prototype.some.call(slides, function(s) { return s.style.display !== 'none'; });
-                group.style.display = anyVisible ? '' : 'none';
+                var visibleCount = Array.prototype.filter.call(slides, function(s) { return s.style.display !== 'none'; }).length;
+                group.style.display = visibleCount ? '' : 'none';
+                var idx = group.id.replace('trip-', '');
+                var countEl = document.querySelector('.trip-list-item-count[data-trip-idx="' + idx + '"]');
+                if (countEl) {
+                    var label = countEl.querySelector('[data-i18n]');
+                    countEl.firstChild.textContent = visibleCount + ' ';
+                    if (label) countEl.appendChild(label);
+                }
             });
         }
 
