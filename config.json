@@ -1,0 +1,6 @@
+{
+    "loipen_radius_m": 10000,
+    "loipen_cache_ttl_h": 24,
+    "house_cache_ttl_h": 24,
+    "fewo_cooldown_s": [20, 45]
+}

@@ -7,7 +7,8 @@ A static site generator for comparing holiday houses suitable for sledding (Rode
 1. Install dependencies: `pip install -r requirements.txt` (includes pylint)
 2. Place the ChromeDriver binary in `webdriver/chromedriver-win64/chromedriver.exe` (used for JS-rendered house pages).
 3. Copy `input.template.json` to `input.json` and fill in your trips, houses, and sled run URLs.
-4. Generate the static site: `python app.py`
+4. (Optional) Edit `config.json` to adjust global defaults (see [Configuration](#configuration)).
+5. Generate the static site: `python app.py`
 5. Open or host `public/index.html`.
 6. (Optional) Copy `deploy.config.template` to `deploy.config` and fill in your FTP credentials to enable deployment.
 
@@ -127,16 +128,20 @@ Any field normally scraped from the booking page can be overridden directly in `
 | `bathrooms` | Number of bathrooms | `"2"` |
 | `room_config` | List of room descriptions | `["2× Doppelzimmer", "1× Schlafsaal"]` |
 | `price` | Total price | `"2388"` or `"2388€"` |
-| `time` | Availability status | `"Available"` |
+| `time` | Availability status. `"Available"` / `"Unavailable"` get translated labels and colour coding. Omitting `house_url` sets this to `"check_manually"` automatically (shown as a translated "please check manually" label). | `"Available"` |
 | `rating` | Rating | `"9.2"` |
-| `supermarket` | Walking distance to nearest supermarket | `"Coop (380 m · 5 min)"` |
-| `train_station` | Walking distance to nearest train station | `"Bahnhof Lauterbrunnen (370 m · 5 min)"` |
+| `supermarket` | Distance to nearest supermarket | `"Coop (380 m · 5 min)"` |
+| `train_station` | Distance to nearest train station | `"Bahnhof Lauterbrunnen (370 m · 5 min)"` |
+| `bus_stop` | Distance to nearest bus stop | `"Neustift Neugasteig (0,3 km · 3 min)"` |
 | `sauna` | Sauna available | `"Ja"` or `"Nein"` |
 | `nearest_sled_run` | Nearest sled run with distance/time | `"Sulwald – Isenfluh – Lauterbrunnen (0,3 km · 4 min)"` |
 | `notes` | Free-text note shown on the house card (above the booking buttons) | `"Nur per E-Mail buchbar."` |
 | `train_track` | List of `[lat, lon]` points for a train/rack-railway line shown as a red dashed overlay on maps | `[[46.598, 7.908], [46.605, 7.920]]` |
+| `loipen_radius_m` | Per-house override for the Nordic trail search radius in metres (default from `config.json`) | `15000` |
 
-> **Tip:** `supermarket` and `train_station` distances are auto-calculated from `pois` entries when running `app.py`. You can override them manually if needed.
+> **Tip:** `bus_stop` is auto-calculated from a `pois` entry with `"type": "bus"` when running `app.py`. `supermarket` and `train_station` can be set the same way. All three can be overridden manually.
+
+**Houses without a broker URL:** If a house is booked directly (no fewo-direkt / booking.com URL), omit `house_url` entirely and set `direct_url` to the host's website. No scraping will be attempted; all fields must be provided as overrides in `input.json`. The availability field is automatically set to a translated "check manually" label.
 
 Example:
 
@@ -160,12 +165,41 @@ Points of interest (`pois`) are shown on the house location map. Supported `type
 |------|------|-------|
 | `train` | 🚉 | Green |
 | `supermarket` | 🛒 | Orange |
+| `bus` | 🚌 | Blue |
 | *(any other string)* | 📍 | Purple |
+
+A `bus` POI also auto-populates the `bus_stop` distance field on the house card (walking speed assumed for ≤ 1.5 km, driving speed otherwise).
+
+## Configuration
+
+Global defaults live in `config.json` at the project root. Edit this file to tune behaviour without touching code:
+
+```json
+{
+    "loipen_radius_m": 10000,
+    "loipen_cache_ttl_h": 24,
+    "house_cache_ttl_h": 24,
+    "fewo_cooldown_s": [20, 45]
+}
+```
+
+| Key | Default | Description |
+|-----|---------|-------------|
+| `loipen_radius_m` | `10000` | Overpass API search radius (metres) for Nordic ski trails |
+| `loipen_cache_ttl_h` | `24` | Hours before the Loipen cache entry expires |
+| `house_cache_ttl_h` | `24` | Hours before the `public/data.json` fallback cache is considered stale |
+| `fewo_cooldown_s` | `[20, 45]` | Random delay range (seconds) between consecutive fewo-direkt scrapes |
+
+Any key from the table above can also be added directly to a house entry in `input.json` to override the global value for that house only:
+
+```json
+{ "name": "House in remote valley", "loipen_radius_m": 15000 }
+```
 
 ## How It Works
 
 1. **House scraping** — four parsers are supported, selected automatically by URL:
-   - **fewo-direkt.de / booking.com** — uses headless Chrome (`undetected-chromedriver`) to bypass bot detection, with a randomly chosen User-Agent string and a randomised delay (6–12 s) per house to reduce fingerprinting. Extracts location, price, bedroom count, bed configuration, sauna availability, and more. Bed entries containing "Schlafsofa" are flagged with ⚠️ in the UI. When no structured bedroom blocks are found, falls back to parsing the free-text description (`[data-stid="content-markup"]`) using the same fluid-text parser as interhome. If fewo-direkt returns a bot/rate-limit page ("Bot oder Mensch?", "Too Many Requests", "Access Denied"), the scrape is aborted and the previous result from `public/data.json` is used instead, provided it is less than 24 hours old.
+   - **fewo-direkt.de / booking.com** — uses headless Chrome (`undetected-chromedriver`) to bypass bot detection. For fewo-direkt, the session is warmed up by visiting the homepage first (cookie consent, human-like scrolling) before navigating to the listing, and a configurable random cooldown (`fewo_cooldown_s` in `config.json`, default 20–45 s) is applied between houses. `curl_cffi` (Chrome TLS fingerprint impersonation) is used as a first attempt without a full browser when possible. Extracts location, price, bedroom count, bed configuration, sauna availability, and more. Bed entries containing "Schlafsofa" are flagged with ⚠️ in the UI. When no structured bedroom blocks are found, falls back to parsing the free-text description (`[data-stid="content-markup"]`) using the same fluid-text parser as interhome. If fewo-direkt returns a bot/rate-limit page (DataDome challenge, "Warum diese Kontrolle?", etc.), the scrape is aborted and the previous result from `public/data.json` is used instead, provided it is less than `house_cache_ttl_h` hours old.
    - **huetten.com** — uses plain `requests` (no browser needed); extracts all fields from static HTML and the JSON-LD `LodgingBusiness` block. Price is resolved from the on-page weekly price table by matching the checkin date and person count parsed from the URL fragment (`#/vsc.php?calendar_date_from=…&persons_adults=…`). Nebenkosten (additional costs) are parsed separately and folded into the displayed Gesamtpreis; Kaution is excluded. Prices for both 8 and 10 persons are looked up from the table directly.
    - **interhome.de** — uses headless Chrome (Selenium) because the site is a React SPA. Waits for the availability badge (`[data-test="available-badge"]`) to settle after the background pricing API call completes (up to 45 s), then grabs the total price directly from the live DOM element. Session/tracking parameters (`offerId`, `clickId`) are stripped from the URL before loading to prevent stale tokens from causing the pricing API to hang. Availability is detected from the badge text: "verfügbar" → `Available`, "ausgebucht" → `Unavailable`. Room count and bed configuration are parsed from the rendered description text (`[data-test="rental-description"]`) using a shared fluid-text parser that handles patterns like `"3 abgeschrägte Zimmer, jedes Zimmer mit 1 franz. Bett (160cm)"`.
 
@@ -175,7 +209,7 @@ Points of interest (`pois`) are shown on the house location map. Supported `type
 2. **Sled run scraping** — two parsers are supported, selected automatically by URL:
    - **rodelwelten.com** — fetches `/detail/` pages with `requests`/BeautifulSoup and parses the details table (length, elevation, night sledding, public transport, sled rental, etc.). Hut/Alm info (name + website) is extracted from `div.hut-content` blocks. GPX tracks are downloaded (or assembled from inline JSON segments) and downsampled for map display. Cached for 24 hours in `cache/sled_runs.json`.
    - **outdooractive.com** — parses JSON-LD structured data embedded in the page for length, elevation, difficulty, ascent aid, and operator. Additional fields (night sledding, public transport, sled rental, opening hours) are inferred from page text. The GPX track is downloaded via the public `download.tour.gpx?i={id}` endpoint and downsampled. Cached for 24 hours in `cache/outdooractive.json`.
-3. **Nordic ski trail (Loipen) discovery** — runs automatically for every house that has `lat`/`lon` coordinates. Queries the [Overpass API](https://overpass-api.de/) for all OSM elements tagged `piste:type=nordic` within 10 km of the house. Results are deduplicated by name (relations take priority over individual ways), sorted by distance to the house, and cached for 24 hours in `cache/loipen.json` (keyed by rounded coordinates). Each trail carries name, difficulty, grooming style, calculated length (Haversine), and a downsampled track for map display. Coverage depends on OpenStreetMap data — areas where Loipen have not yet been mapped with `piste:type=nordic` will return no results.
+3. **Nordic ski trail (Loipen) discovery** — runs automatically for every house that has `lat`/`lon` coordinates. Queries the [Overpass API](https://overpass-api.de/) for all OSM elements tagged `piste:type=nordic` within the configured radius (default 10 km, overridable per house with `loipen_radius_m`). Results are deduplicated by name (relations take priority over individual ways), sorted by distance to the house, and cached for the configured TTL (default 24 h) in `cache/loipen.json` (keyed by rounded coordinates). Each trail carries name, difficulty, grooming style, calculated length (Haversine), and a downsampled track for map display. Coverage depends on OpenStreetMap data — areas where Loipen have not yet been mapped with `piste:type=nordic` will return no results.
 4. **Date injection** — known date query parameters (`chkin`, `chkout`, `startDate`, `endDate`, `checkin`, `checkout`, `arrival`, etc.) in house URLs are replaced with the configured trip dates before scraping.
 4. **Rendering** — the Jinja2 template in `templates/index.html` renders all trips and houses into a card-based comparison layout with interactive Leaflet maps.
    - Prices are normalised to `XXXX €` format. Per-person price is shown for 8 persons; a 10-person row is shown when a separate 10-person price is available or when the scraped max-person count is ≥ 10. For fewo/booking the 10-person price is estimated as the 8-person price +2%.

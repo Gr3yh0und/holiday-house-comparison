@@ -28,6 +28,25 @@ CHROME_BINARY_PATH = os.path.join(
     os.path.dirname(os.path.abspath(__file__)),
     'webdriver', 'chrome-win64', 'chrome.exe'
 )
+CONFIG_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'config.json')
+
+_DEFAULTS = {
+    'loipen_radius_m': 10000,
+    'loipen_cache_ttl_h': 24,
+    'house_cache_ttl_h': 24,
+    'fewo_cooldown_s': [20, 45],
+}
+
+
+def load_config() -> dict:
+    try:
+        with open(CONFIG_FILE, encoding='utf-8') as f:
+            return {**_DEFAULTS, **json.load(f)}
+    except FileNotFoundError:
+        return dict(_DEFAULTS)
+
+
+_config = load_config()
 
 
 def load_translations(lang='de') -> dict:
@@ -164,8 +183,11 @@ def dedate(value):
         return value
 
 
-def _fetch_loipen(lat, lon, force_refresh=False):
-    """Return nearby Nordic ski trails, cached for 24 h per coordinate."""
+def _fetch_loipen(lat, lon, radius_m=None, force_refresh=False):
+    """Return nearby Nordic ski trails, cached per coordinate."""
+    if radius_m is None:
+        radius_m = _config['loipen_radius_m']
+    ttl_s = _config['loipen_cache_ttl_h'] * 3600
     cache_key = f'{lat:.4f},{lon:.4f}'
     if not force_refresh and os.path.exists(LOIPEN_CACHE_FILE):
         with open(LOIPEN_CACHE_FILE, encoding='utf-8') as f:
@@ -175,11 +197,11 @@ def _fetch_loipen(lat, lon, force_refresh=False):
             age = (datetime.now() - datetime.strptime(
                 entry['fetched_at'], '%Y-%m-%d %H:%M'
             )).total_seconds()
-            if age < 86400:
+            if age < ttl_s:
                 print(f'  [loipen] cache hit for {cache_key} ({len(entry["loipen"])} trails)')
                 return entry['loipen']
-    print(f'  [loipen] fetching Overpass for {cache_key} ...')
-    trails = loipen_parser.fetch(lat, lon)
+    print(f'  [loipen] fetching Overpass for {cache_key} (radius {radius_m} m) ...')
+    trails = loipen_parser.fetch(lat, lon, radius_m=radius_m)
     print(f'  [loipen] found {len(trails)} trails')
     cache = {}
     if os.path.exists(LOIPEN_CACHE_FILE):
@@ -272,7 +294,7 @@ def _load_cached_house(name, checkin, checkout):
         with open(cache_path, encoding='utf-8') as f:
             cached = json.load(f)
         updated_at = datetime.strptime(cached.get('updated_at', ''), '%Y-%m-%d %H:%M')
-        if (datetime.now() - updated_at).total_seconds() > 86400:
+        if (datetime.now() - updated_at).total_seconds() > _config['house_cache_ttl_h'] * 3600:
             return None
         for trip in cached.get('trips', []):
             for h in trip.get('houses', []):
@@ -356,7 +378,9 @@ def _scrape_one_house(house, trip_checkin, trip_checkout, driver=None, force_ref
     house_info['sled_runs'].sort(key=lambda r: _length_m(r['length']), reverse=True)
     if house.get('lat') and house.get('lon'):
         house_info['loipen'] = _fetch_loipen(
-            house['lat'], house['lon'], force_refresh=force_refresh
+            house['lat'], house['lon'],
+            radius_m=house.get('loipen_radius_m'),
+            force_refresh=force_refresh,
         )
     else:
         house_info['loipen'] = []
@@ -420,7 +444,8 @@ def build_trip_data(data, driver=None, force_refresh=False, broker_filter=None, 
             # Add a polite cooldown between fewo-direkt houses to avoid
             # triggering rate-limits (DataDome tracks request cadence per IP).
             if scraped < (limit or 999) and 'fewo-direkt.de' in house_url:
-                delay = random.uniform(20, 45)
+                lo, hi = _config['fewo_cooldown_s']
+                delay = random.uniform(lo, hi)
                 print(f"  [fewo] cooling down {delay:.0f}s before next house …")
                 time.sleep(delay)
         trips.append({
