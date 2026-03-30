@@ -268,9 +268,21 @@ def scrape_house(url, driver=None):
 
 
 def inject_dates(url, checkin, checkout):
-    """Replace known date parameters in a URL with the given checkin/checkout dates."""
+    """Replace known date parameters in a URL with the given checkin/checkout dates.
+
+    For fewo-direkt.de URLs the query string is stripped down to only the
+    essential parameters (chkin, chkout, adults) to avoid sending referrer
+    tokens, session IDs, and search context that DataDome may use for
+    fingerprinting returning scrapers.
+    """
     parsed = urlparse(url)
     params = parse_qs(parsed.query, keep_blank_values=True)
+
+    if 'fewo-direkt.de' in parsed.netloc:
+        adults = params.get('adults', ['8'])[0]
+        clean_params = {'chkin': checkin, 'chkout': checkout, 'adults': adults}
+        return urlunparse(parsed._replace(query=urlencode(clean_params)))
+
     date_map = {
         'chkin': checkin, 'chkout': checkout,
         'd1': checkin, 'd2': checkout,
@@ -478,10 +490,11 @@ def build_trip_data(data, driver=None, force_refresh=False, broker_filter=None, 
         for house in trip['houses']:
             if limit is not None and scraped >= limit:
                 break
+            raw_url = house.get('house_url', '')
             house_url = (
-                inject_dates(house['house_url'], trip_checkin, trip_checkout)
-                if trip_checkin and trip_checkout
-                else house['house_url']
+                inject_dates(raw_url, trip_checkin, trip_checkout)
+                if raw_url and trip_checkin and trip_checkout
+                else raw_url
             )
             is_skipped = broker_filter and BROKER_DOMAINS.get(broker_filter) not in house_url
             if is_skipped:

@@ -12,13 +12,27 @@ _HEADERS = {
     'User-Agent': 'holiday-house-comparison/1.0 (github.com/Gr3yh0und/holiday-house-comparison)',
 }
 
+# Circuit breaker: after this many consecutive all-endpoint failures, stop
+# trying for the remainder of the process.
+_FAILURE_THRESHOLD = 2
+_consecutive_failures = 0
+_circuit_open = False
+
 
 def fetch(lat, lon, radius_m=10000):
     """Return a list of Nordic ski trails within radius_m metres of lat/lon.
 
     Returns None on network/server error so callers can distinguish a failed
     fetch from a location that genuinely has no trails (empty list).
+    After _FAILURE_THRESHOLD consecutive failures across all endpoints the
+    circuit breaker trips and all further calls return None immediately.
     """
+    global _consecutive_failures, _circuit_open  # pylint: disable=global-statement
+
+    if _circuit_open:
+        print('  [loipen] circuit breaker open — skipping Overpass query')
+        return None
+
     query = (
         f'[out:json][timeout:30];'
         f'(way["piste:type"="nordic"](around:{radius_m},{lat},{lon});'
@@ -31,10 +45,23 @@ def fetch(lat, lon, radius_m=10000):
             resp.raise_for_status()
             resp.encoding = 'utf-8'  # Overpass always returns UTF-8; prevent misdetection
             data = resp.json()
+            _consecutive_failures = 0  # reset on success
             return _parse(data, lat, lon)
         except Exception as e:  # pylint: disable=broad-except
             print(f'  [loipen] Overpass error ({url}): {e}')
-    print('  [loipen] all Overpass endpoints failed')
+
+    _consecutive_failures += 1
+    if _consecutive_failures >= _FAILURE_THRESHOLD:
+        _circuit_open = True
+        print(
+            f'  [loipen] {_consecutive_failures} consecutive failures — '
+            'circuit breaker tripped, skipping remaining Overpass queries this run'
+        )
+    else:
+        print(
+            f'  [loipen] all endpoints failed ({_consecutive_failures}/{_FAILURE_THRESHOLD} '
+            'before circuit breaker trips)'
+        )
     return None
 
 

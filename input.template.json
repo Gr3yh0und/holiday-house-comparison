@@ -7,7 +7,7 @@
             "name": "Hausname - Ort",
             "lat": 47.0,
             "lon": 11.0,
-            "house_url": "https://www.fewo-direkt.de/... or https://www.booking.com/... (omit for direct bookings)",
+            "house_url": "https://www.fewo-direkt.de/ferienwohnung-ferienhaus/pXXXXXX?adults=8",
             "direct_url": "https://gastgeber-website.de/",
             "image_url": "https://...",
             "address": "Ort, Österreich",
