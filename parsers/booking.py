@@ -123,6 +123,10 @@ def scrape(url, driver=None):
                 if label and beds:
                     bed_types = ', '.join(b.get_text(strip=True) for b in beds)
                     result['room_config'].append(bed_types)
+        # Use room_config length as the authoritative bedroom count when available —
+        # the text regex may match a different unit on multi-unit hotel pages.
+        if result['room_config']:
+            result['rooms'] = str(len(result['room_config']))
 
         result['time'] = 'Available'
         if re.search(r'Bahnhof|train station', text, re.I):
