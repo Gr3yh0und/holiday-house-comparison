@@ -208,7 +208,7 @@ Any key from the table above can also be added directly to a house entry in `inp
    - **huetten.com** — uses plain `requests` (no browser needed); extracts all fields from static HTML and the JSON-LD `LodgingBusiness` block. Price is resolved from the on-page weekly price table by matching the checkin date and person count parsed from the URL fragment (`#/vsc.php?calendar_date_from=…&persons_adults=…`). Nebenkosten (additional costs) are parsed separately and folded into the displayed Gesamtpreis; Kaution is excluded. Prices for both 8 and 10 persons are looked up from the table directly.
    - **interhome.de** — uses headless Chrome (Selenium) because the site is a React SPA. Waits for the availability badge (`[data-test="available-badge"]`) to settle after the background pricing API call completes (up to 45 s), then grabs the total price directly from the live DOM element. Session/tracking parameters (`offerId`, `clickId`) are stripped from the URL before loading to prevent stale tokens from causing the pricing API to hang. Availability is detected from the badge text: "verfügbar" → `Available`, "ausgebucht" → `Unavailable`. Room count and bed configuration are parsed from the rendered description text (`[data-test="rental-description"]`) using a shared fluid-text parser that handles patterns like `"3 abgeschrägte Zimmer, jedes Zimmer mit 1 franz. Bett (160cm)"`.
 
-   Shared parser utilities (country normalisation, JSON-LD parsing, bed description cleaning, fluid-text room config parsing) live in `parsers/common.py`.
+   Shared parser utilities (country normalisation, rating normalisation, JSON-LD parsing, bed description cleaning, fluid-text room config parsing) live in `parsers/common.py`.
 
    Fields present in `input.json` override scraped values for all brokers.
 2. **Sled run scraping** — two parsers are supported, selected automatically by URL:
@@ -218,9 +218,11 @@ Any key from the table above can also be added directly to a house entry in `inp
 4. **Date injection** — known date query parameters (`chkin`, `chkout`, `startDate`, `endDate`, `checkin`, `checkout`, `arrival`, etc.) in house URLs are replaced with the configured trip dates before scraping.
 4. **Rendering** — the Jinja2 template in `templates/index.html` renders all trips and houses into a card-based comparison layout with interactive Leaflet maps.
    - Prices are normalised to `XXXX €` format. Per-person price is shown for 8 persons; a 10-person row is shown when a separate 10-person price is available or when the scraped max-person count is ≥ 10. For fewo/booking the 10-person price is estimated as the 8-person price +2%.
+   - Ratings are normalised to `X.X (N Bewertungen)` format on a 0–10 scale regardless of the source scale (fewo-direkt 0–10, booking.com 0–10, huetten.com 0–100, interhome 0–5). Normalisation is applied at parse time via `parsers/common.py:normalize_rating()`.
    - Address is normalised to "City, Country" format with a country flag emoji. Swiss canton names (e.g. "Canton of Bern") are resolved to "Schweiz".
    - A data quality warning box appears at the top if the scraped bedroom count does not match the number of `room_config` entries; clicking a house name jumps directly to its card.
-   - The last-updated timestamp and version are shown as chips below the page title, alongside the language switcher.
+   - The last-updated timestamp and version are shown as chips below the page title, alongside the language switcher and a **persons filter** (👥 dropdown, range 6–12). Selecting a minimum hides all house cards that accommodate fewer persons; houses with no persons data are always shown.
+   - The trips area scrolls horizontally on desktop. A sticky scrollbar is pinned to the bottom of the viewport so it remains accessible without scrolling to the end of the page.
    - Unavailable houses (`time == "Unavailable"`) are visually marked with a diagonal red stripe pattern on the header and photo, plus a centred badge.
 
 ## Supported Sources
