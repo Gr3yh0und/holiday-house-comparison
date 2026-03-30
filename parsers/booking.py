@@ -4,7 +4,7 @@ import re
 import requests
 from bs4 import BeautifulSoup
 
-from parsers.common import EMPTY, normalize_country as _normalize_country
+from parsers.common import EMPTY, normalize_country as _normalize_country, normalize_rating
 
 
 def scrape(url, driver=None):
@@ -49,9 +49,8 @@ def scrape(url, driver=None):
             result['address'] = f"{town}, {country}" if country else town
             agg = ld_data.get('aggregateRating', {})
             if agg:
-                result['rating'] = (
-                    f"{agg.get('ratingValue', '?')} / {agg.get('bestRating', 10)}"
-                    f" ({agg.get('reviewCount', '?')} Bewertungen)"
+                result['rating'] = normalize_rating(
+                    agg.get('ratingValue'), agg.get('bestRating', 10), agg.get('reviewCount')
                 )
             result['description'] = ld_data.get('description', 'N/A')
         else:

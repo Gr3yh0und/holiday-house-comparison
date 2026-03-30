@@ -8,6 +8,7 @@ from bs4 import BeautifulSoup
 from parsers.common import (
     EMPTY, HEADERS as _HEADERS,
     normalize_country as _normalize_country,
+    normalize_rating,
     parse_json_ld as _parse_json_ld_common,
 )
 
@@ -42,9 +43,9 @@ def scrape(url, _driver=None):
         # Rating
         agg = ld.get('aggregateRating', {})
         if agg.get('ratingValue'):
-            score = round(float(agg['ratingValue']))
-            count = agg.get('ratingCount', '')
-            result['rating'] = f"{score}% ({count} Bewertungen)" if count else f"{score}%"
+            result['rating'] = normalize_rating(
+                agg['ratingValue'], agg.get('bestRating', 100), agg.get('ratingCount')
+            )
 
         # sqm
         sqm_m = re.search(r'(\d+)\s*qm', text, re.I)

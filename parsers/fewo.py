@@ -7,7 +7,7 @@ from bs4 import BeautifulSoup
 
 from parsers.common import (
     EMPTY, random_headers, random_user_agent,
-    parse_room_config as _parse_room_config, clean_bed_desc,
+    parse_room_config as _parse_room_config, clean_bed_desc, normalize_rating,
 )
 
 _FEWO_HOME = 'https://www.fewo-direkt.de'
@@ -278,9 +278,9 @@ def scrape(url, driver=None):
             src = text
         count_m = re.search(r'(\d+)\s*Bewertung', src, re.I)
         if score_m:
-            result['rating'] = score_m.group(1)
-            if count_m:
-                result['rating'] += f' ({count_m.group(1)} Bewertungen)'
+            result['rating'] = normalize_rating(
+                score_m.group(1), 10, count_m.group(1) if count_m else None
+            )
         print(f"  [fewo] rating: {result['rating']}")
 
         result['time'] = 'Available'

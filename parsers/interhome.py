@@ -4,7 +4,7 @@ from urllib.parse import urlparse, parse_qs, urlencode
 import requests
 from bs4 import BeautifulSoup
 
-from parsers.common import EMPTY, HEADERS as _HEADERS, normalize_country, parse_json_ld, parse_room_config
+from parsers.common import EMPTY, HEADERS as _HEADERS, normalize_country, normalize_rating, parse_json_ld, parse_room_config
 
 
 def _clean_url(url):
@@ -78,9 +78,9 @@ def scrape(url, driver=None):
         # Rating (x / 5 scale)
         agg = ld.get('aggregateRating', {})
         if agg.get('ratingValue'):
-            score = float(agg['ratingValue'])
-            count = agg.get('reviewCount', '')
-            result['rating'] = f"{score} / 5 ({count} Bewertungen)" if count else f"{score} / 5"
+            result['rating'] = normalize_rating(
+                agg['ratingValue'], agg.get('bestRating', 5), agg.get('reviewCount')
+            )
 
         # Full description from the rendered element — JSON-LD description is truncated
         desc_el = soup.find(attrs={'data-test': 'rental-description'})

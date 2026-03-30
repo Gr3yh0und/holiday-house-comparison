@@ -72,6 +72,26 @@ def normalize_country(s):
     return _COUNTRY_NAMES.get(s.strip(), s.strip())
 
 
+def normalize_rating(value, best=10, count=None):
+    """Return a normalized rating string on a 0–10 scale: 'X.X (N Bewertungen)'.
+
+    Handles any bestRating scale (e.g. 5, 10, 100) by scaling to 0–10.
+    value may be a float, int, or string (comma or dot decimal).
+    count is the review count; omit or pass None/'' to suppress it.
+    """
+    try:
+        v = float(str(value).replace(',', '.'))
+        b = float(best) if best else 10.0
+        if b != 10.0:
+            v = v / b * 10
+        score = f"{v:.1f}"
+    except (ValueError, TypeError, ZeroDivisionError):
+        return 'N/A'
+    if count:
+        return f"{score} ({count} Bewertungen)"
+    return score
+
+
 def parse_json_ld(soup, schema_type):
     """Return the first JSON-LD object matching schema_type, or {}."""
     for tag in soup.find_all('script', type='application/ld+json'):
