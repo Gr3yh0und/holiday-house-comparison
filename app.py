@@ -480,7 +480,8 @@ def _normalize_input(data):
     return {'title': data.get('title', ''), 'trips': [trips[n] for n in trip_order]}
 
 
-def build_trip_data(data, driver=None, force_refresh=False, broker_filter=None, limit=None):
+def build_trip_data(data, driver=None, force_refresh=False, broker_filter=None, limit=None,
+                    on_house_scraped=None):
     trips = []
     scraped = 0
     for trip in data['trips']:
@@ -504,6 +505,12 @@ def build_trip_data(data, driver=None, force_refresh=False, broker_filter=None, 
                 house, trip_checkin, trip_checkout, driver=driver, force_refresh=force_refresh
             ))
             scraped += 1
+            if on_house_scraped:
+                current_trip = {
+                    'name': trip.get('name', ''), 'checkin': trip_checkin,
+                    'checkout': trip_checkout, 'houses': houses,
+                }
+                on_house_scraped(trips + [current_trip])
             # Add a polite cooldown between fewo-direkt houses to avoid
             # triggering rate-limits (DataDome tracks request cadence per IP).
             if scraped < (limit or 999) and 'fewo-direkt.de' in house_url:
@@ -687,10 +694,21 @@ if __name__ == '__main__':
     except Exception as e:
         print(f"Selenium unavailable ({e}), falling back to requests")
 
+    def _save_partial(partial_trips):
+        rodelwelten.save_cache()
+        outdooractive.save_cache()
+        with open('public/data.json', 'w', encoding='utf-8') as f:
+            json.dump(
+                {'updated_at': datetime.now().strftime('%Y-%m-%d %H:%M'), 'trips': partial_trips},
+                f, ensure_ascii=False, indent=2,
+            )
+        print("  [cache] public/data.json updated")
+
     try:
         trip_data = build_trip_data(
             data, driver=driver, force_refresh=args.force,
             broker_filter=args.broker, limit=args.limit,
+            on_house_scraped=_save_partial,
         )
     finally:
         if driver:
