@@ -21,6 +21,7 @@
         "available": "Available",
         "unavailable": "Not available",
         "train_station": "Train station on foot",
+        "bus_stop": "Bus stop",
         "supermarket": "Supermarket on foot",
         "rating": "Rating",
         "booking_link": "View on",

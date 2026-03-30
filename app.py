@@ -235,7 +235,7 @@ def scrape_house(url, driver=None):
         return interhome.scrape(url, driver)
     return {k: 'N/A' for k in ['location', 'address', 'rooms', 'sqm', 'bathrooms',
                                  'room_config', 'price', 'time', 'train_station',
-                                 'supermarket', 'rating', 'persons']}
+                                 'bus_stop', 'supermarket', 'rating', 'persons', 'sauna']}
 
 
 def inject_dates(url, checkin, checkout):
@@ -284,25 +284,30 @@ def _load_cached_house(name, checkin, checkout):
 
 
 def _scrape_one_house(house, trip_checkin, trip_checkout, driver=None, force_refresh=False):
+    raw_url = house.get('house_url', '')
     house_url = (
-        inject_dates(house['house_url'], trip_checkin, trip_checkout)
-        if trip_checkin and trip_checkout
-        else house['house_url']
+        inject_dates(raw_url, trip_checkin, trip_checkout)
+        if raw_url and trip_checkin and trip_checkout
+        else raw_url
     )
-    print(f"Scraping house: {house['name']} ({house_url[:60]}...)")
-    house_info = scrape_house(house_url, driver=driver)
-    if house_info is None:
-        cached = _load_cached_house(house['name'], trip_checkin, trip_checkout)
-        if cached:
-            print("  -> bot/scrape failure, using cached data from public/data.json")
-            return cached
-        print("  -> bot/scrape failure, no usable cache — returning empty result")
+    if not house_url:
+        print(f"No house_url for: {house['name']} — using input.json data only")
         house_info = dict(_PARSER_EMPTY, room_config=[])
+    else:
+        print(f"Scraping house: {house['name']} ({house_url[:60]}...)")
+        house_info = scrape_house(house_url, driver=driver)
+        if house_info is None:
+            cached = _load_cached_house(house['name'], trip_checkin, trip_checkout)
+            if cached:
+                print("  -> bot/scrape failure, using cached data from public/data.json")
+                return cached
+            print("  -> bot/scrape failure, no usable cache — returning empty result")
+            house_info = dict(_PARSER_EMPTY, room_config=[])
     house_info['name'] = house['name']
     house_info['house_url'] = house_url
     for field in ('address', 'rooms', 'persons', 'sqm', 'bathrooms',
                   'room_config', 'price', 'time', 'rating',
-                  'supermarket', 'train_station', 'sauna', 'nearest_sled_run', 'notes'):
+                  'supermarket', 'train_station', 'bus_stop', 'sauna', 'nearest_sled_run', 'notes'):
         if house.get(field):
             house_info[field] = house[field]
     if 'image_url' in house:
@@ -314,6 +319,20 @@ def _scrape_one_house(house, trip_checkin, trip_checkout, driver=None, force_ref
         house_info['direct_url'] = house['direct_url']
     if 'pois' in house:
         house_info['pois'] = house['pois']
+        # Auto-compute bus_stop distance string from a 'bus' POI if not already set
+        if not house_info.get('bus_stop') and house.get('lat') and house.get('lon'):
+            import math as _math
+            def _hdist(la1, lo1, la2, lo2):
+                R = 6371
+                dla = _math.radians(la2-la1); dlo = _math.radians(lo2-lo1)
+                a = _math.sin(dla/2)**2 + _math.cos(_math.radians(la1))*_math.cos(_math.radians(la2))*_math.sin(dlo/2)**2
+                return R * 2 * _math.asin(_math.sqrt(a))
+            for poi in house['pois']:
+                if poi.get('type') == 'bus' and poi.get('lat') and poi.get('lon'):
+                    d = _hdist(house['lat'], house['lon'], poi['lat'], poi['lon'])
+                    mins = round(d / 5 * 60) if d < 1.5 else round(d / 40 * 60)
+                    house_info['bus_stop'] = f"{poi['label']} ({d:.1f}".replace('.', ',') + f" km · {mins} min)"
+                    break
     if 'train_track' in house:
         house_info['train_track'] = house['train_track']
     house_info['checkin'] = trip_checkin

@@ -644,6 +644,12 @@
                         <span class="label" data-i18n="house.train_station">{{ t.house.train_station }}</span>
                         <span class="value{% if house.train_station == 'Nearby' %} good{% elif house.train_station == 'N/A' %} na{% endif %}">{{ house.train_station }}</span>
                     </li>
+                    {% if house.bus_stop and house.bus_stop != 'N/A' %}
+                    <li>
+                        <span class="label" data-i18n="house.bus_stop">{{ t.house.bus_stop }}</span>
+                        <span class="value">{{ house.bus_stop }}</span>
+                    </li>
+                    {% endif %}
                     <li>
                         <span class="label" data-i18n="house.supermarket">{{ t.house.supermarket }}</span>
                         <span class="value{% if house.supermarket == 'Nearby' %} good{% elif house.supermarket == 'N/A' %} na{% endif %}">{{ house.supermarket }}</span>
@@ -1017,6 +1023,7 @@
             house:       { emoji: '🏠', bg: '#c53030' },
             train:       { emoji: '🚉', bg: '#276749' },
             supermarket: { emoji: '🛒', bg: '#c05621' },
+            bus:         { emoji: '🚌', bg: '#2b6cb0' },
             default:     { emoji: '📍', bg: '#553c9a' }
         };
         function poiIcon(type) {
@@ -1117,6 +1124,7 @@
                 sauna:   {{ house.sauna | tojson }},
                 sled:    {{ (house.nearest_sled_run if house.nearest_sled_run else 'N/A') | tojson }},
                 train:   {{ house.train_station | tojson }},
+                bus:     {{ (house.bus_stop if house.bus_stop else 'N/A') | tojson }},
                 market:  {{ house.supermarket | tojson }},
                 rooms_cfg: {{ (house.room_config | join('\n') if house.room_config else 'N/A') | tojson }}
             },
@@ -1138,6 +1146,7 @@
             { key: 'sauna',    label: {{ t.house.sauna | tojson }} },
             { key: 'sled',     label: {{ t.house.nearest_sled_run | tojson }} },
             { key: 'train',    label: {{ t.house.train_station | tojson }} },
+            { key: 'bus',      label: {{ t.house.bus_stop | tojson }} },
             { key: 'market',   label: {{ t.house.supermarket | tojson }} },
             { key: 'rooms_cfg',label: {{ t.house.room_config | tojson }} },
         ];

@@ -21,6 +21,7 @@
         "available": "Disponible",
         "unavailable": "Non disponible",
         "train_station": "Gare à pied",
+        "bus_stop": "Arrêt de bus",
         "supermarket": "Supermarché à pied",
         "rating": "Évaluation",
         "booking_link": "Voir sur",

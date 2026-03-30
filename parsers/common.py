@@ -14,6 +14,7 @@ EMPTY = {
     'price': 'N/A',
     'time': 'N/A',
     'train_station': 'N/A',
+    'bus_stop': 'N/A',
     'supermarket': 'N/A',
     'rating': 'N/A',
     'persons': 'N/A',
