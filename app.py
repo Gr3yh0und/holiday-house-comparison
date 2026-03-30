@@ -189,9 +189,16 @@ def _fetch_loipen(lat, lon, radius_m=None, force_refresh=False):
         radius_m = _config['loipen_radius_m']
     ttl_s = _config['loipen_cache_ttl_h'] * 3600
     cache_key = f'{lat:.4f},{lon:.4f}'
+    def _read_cache():
+        try:
+            with open(LOIPEN_CACHE_FILE, encoding='utf-8') as f:
+                return json.load(f)
+        except (UnicodeDecodeError, json.JSONDecodeError) as e:
+            print(f'  [loipen] cache corrupted ({e}), discarding')
+            return {}
+
     if not force_refresh and os.path.exists(LOIPEN_CACHE_FILE):
-        with open(LOIPEN_CACHE_FILE, encoding='utf-8') as f:
-            cache = json.load(f)
+        cache = _read_cache()
         entry = cache.get(cache_key)
         if entry:
             age = (datetime.now() - datetime.strptime(
@@ -202,11 +209,11 @@ def _fetch_loipen(lat, lon, radius_m=None, force_refresh=False):
                 return entry['loipen']
     print(f'  [loipen] fetching Overpass for {cache_key} (radius {radius_m} m) ...')
     trails = loipen_parser.fetch(lat, lon, radius_m=radius_m)
+    if trails is None:
+        print('  [loipen] fetch failed — skipping cache write, returning []')
+        return []
     print(f'  [loipen] found {len(trails)} trails')
-    cache = {}
-    if os.path.exists(LOIPEN_CACHE_FILE):
-        with open(LOIPEN_CACHE_FILE, encoding='utf-8') as f:
-            cache = json.load(f)
+    cache = _read_cache() if os.path.exists(LOIPEN_CACHE_FILE) else {}
     cache[cache_key] = {
         'fetched_at': datetime.now().strftime('%Y-%m-%d %H:%M'),
         'loipen': trails,
@@ -376,7 +383,9 @@ def _scrape_one_house(house, trip_checkin, trip_checkout, driver=None, force_ref
         val = float(m.group(1).replace(',', '.'))
         return val * 1000 if m.group(2).lower() == 'km' else val
     house_info['sled_runs'].sort(key=lambda r: _length_m(r['length']), reverse=True)
-    if house.get('lat') and house.get('lon'):
+    if house.get('disable_loipen'):
+        house_info['loipen'] = []
+    elif house.get('lat') and house.get('lon'):
         house_info['loipen'] = _fetch_loipen(
             house['lat'], house['lon'],
             radius_m=house.get('loipen_radius_m'),

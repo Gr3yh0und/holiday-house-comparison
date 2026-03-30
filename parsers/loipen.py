@@ -3,28 +3,39 @@ import math
 
 import requests
 
-OVERPASS_URL = 'https://overpass-api.de/api/interpreter'
+_OVERPASS_URLS = [
+    'https://overpass-api.de/api/interpreter',
+    'https://overpass.kumi.systems/api/interpreter',
+    'https://overpass.openstreetmap.ru/api/interpreter',
+]
 _HEADERS = {
     'User-Agent': 'holiday-house-comparison/1.0 (github.com/Gr3yh0und/holiday-house-comparison)',
 }
 
 
 def fetch(lat, lon, radius_m=10000):
-    """Return a list of Nordic ski trails within radius_m metres of lat/lon."""
+    """Return a list of Nordic ski trails within radius_m metres of lat/lon.
+
+    Returns None on network/server error so callers can distinguish a failed
+    fetch from a location that genuinely has no trails (empty list).
+    """
     query = (
         f'[out:json][timeout:30];'
         f'(way["piste:type"="nordic"](around:{radius_m},{lat},{lon});'
         f'relation["piste:type"="nordic"](around:{radius_m},{lat},{lon}););'
         f'out body geom;'
     )
-    try:
-        resp = requests.post(OVERPASS_URL, data={'data': query}, timeout=45, headers=_HEADERS)
-        resp.raise_for_status()
-        data = resp.json()
-    except Exception as e:  # pylint: disable=broad-except
-        print(f'  [loipen] Overpass error: {e}')
-        return []
-    return _parse(data, lat, lon)
+    for url in _OVERPASS_URLS:
+        try:
+            resp = requests.post(url, data={'data': query}, timeout=45, headers=_HEADERS)
+            resp.raise_for_status()
+            resp.encoding = 'utf-8'  # Overpass always returns UTF-8; prevent misdetection
+            data = resp.json()
+            return _parse(data, lat, lon)
+        except Exception as e:  # pylint: disable=broad-except
+            print(f'  [loipen] Overpass error ({url}): {e}')
+    print('  [loipen] all Overpass endpoints failed')
+    return None
 
 
 def _parse(data, house_lat, house_lon):
