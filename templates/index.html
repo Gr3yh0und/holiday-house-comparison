@@ -534,7 +534,7 @@
     </div>
 
     {%- set ns.hidx = 0 -%}
-    <div style="width: 100%; overflow-x: auto;">
+    <div id="trips-outer" style="width: 100%; overflow-x: auto;">
     <div class="trips-scroll" style="display: flex; gap: 24px; align-items: flex-start; flex-wrap: nowrap; min-width: max-content; padding-bottom: 12px;">
     {% for trip in trips %}
     {%- set ns.tidx = loop.index0 -%}
@@ -890,13 +890,62 @@
                 target.scrollIntoView({ behavior: 'smooth', block: 'start' });
             } else {
                 // Desktop: trips are side-by-side — scroll the overflow wrapper horizontally
-                var container = target.closest('div[style*="overflow-x"]') || tripsScroll;
+                var container = document.getElementById('trips-outer') || tripsScroll;
                 container.scrollIntoView({ behavior: 'smooth', block: 'start' });
                 var containerRect = container.getBoundingClientRect();
                 var targetRect = target.getBoundingClientRect();
                 container.scrollBy({ left: targetRect.left - containerRect.left - 24, behavior: 'smooth' });
             }
         }
+
+        // Horizontal scroll improvements for desktop
+        (function() {
+            var outer = document.getElementById('trips-outer');
+            if (!outer) return;
+
+            // Sticky scrollbar: mirror the outer div's scroll position into a
+            // fixed bar at the bottom of the viewport so it's always reachable.
+            var mirror = document.createElement('div');
+            mirror.id = 'trips-scroll-mirror';
+            mirror.style.cssText = 'position:fixed; bottom:0; left:0; width:100%; height:14px; overflow-x:auto; overflow-y:hidden; z-index:200; background:#f0f4f8; box-shadow:0 -1px 4px rgba(0,0,0,0.12);';
+            var inner = document.createElement('div');
+            mirror.appendChild(inner);
+            document.body.appendChild(mirror);
+
+            function updateMirror() {
+                var tripsScroll = outer.querySelector('.trips-scroll');
+                if (!tripsScroll || window.getComputedStyle(tripsScroll).flexDirection === 'column') {
+                    mirror.style.display = 'none';
+                    return;
+                }
+                if (outer.scrollWidth <= outer.clientWidth) {
+                    mirror.style.display = 'none';
+                    return;
+                }
+                mirror.style.display = '';
+                inner.style.width = outer.scrollWidth + 'px';
+                inner.style.height = '1px';
+                mirror.style.left = outer.getBoundingClientRect().left + 'px';
+                mirror.style.width = outer.clientWidth + 'px';
+            }
+
+            var syncing = false;
+            outer.addEventListener('scroll', function() {
+                if (syncing) return;
+                syncing = true;
+                mirror.scrollLeft = outer.scrollLeft;
+                syncing = false;
+            });
+            mirror.addEventListener('scroll', function() {
+                if (syncing) return;
+                syncing = true;
+                outer.scrollLeft = mirror.scrollLeft;
+                syncing = false;
+            });
+
+            window.addEventListener('resize', updateMirror);
+            updateMirror();
+        })();
 
         // Gesture hint for touch devices — shows "two fingers" message on single-finger touch
         function addGestureHint(mapEl) {
