@@ -1,5 +1,13 @@
 {
-    "weekdays": ["Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi", "Dimanche"],
+    "weekdays": [
+        "Lundi",
+        "Mardi",
+        "Mercredi",
+        "Jeudi",
+        "Vendredi",
+        "Samedi",
+        "Dimanche"
+    ],
     "updated_at": "Dernière mise à jour",
     "house": {
         "section_title": "Hébergement",
@@ -70,9 +78,9 @@
         "select": "Sélectionner pour comparer",
         "selected_one": "1 hébergement sélectionné",
         "selected_many": "{n} hébergements sélectionnés",
-        "button": "\u2696\ufe0f Comparer",
-        "clear": "\u2715 Effacer la sélection",
-        "title": "\u2696\ufe0f Comparaison des hébergements",
+        "button": "⚖️ Comparer",
+        "clear": "✕ Effacer la sélection",
+        "title": "⚖️ Comparaison des hébergements",
         "diff_only": "Afficher uniquement les différences"
     },
     "common": {
@@ -87,6 +95,7 @@
         "room_warning_badge": "Chambres",
         "rooms_stated": "indiqué, mais",
         "rooms_entries": "entrées dans la configuration des chambres",
-        "price_10_estimated": "Prix estimé pour 8 personnes – peut être plus élevé pour 10."
+        "price_10_estimated": "Prix estimé pour 8 personnes – peut être plus élevé pour 10.",
+        "persons_filter": "Pers. min."
     }
 }

@@ -470,6 +470,13 @@
             🏷️ {{ version }}
         </a>
         {%- endif %}
+        <label style="display: inline-flex; align-items: center; gap: 6px; background: #f0fff4; border: 1px solid #9ae6b4; border-radius: 8px; padding: 5px 14px; font-size: 0.82rem; color: #1a365d;">
+            👥 <span data-i18n="ui.persons_filter">{{ t.ui.persons_filter }}</span>
+            <select id="persons-filter" onchange="applyPersonsFilter(+this.value)" style="border: none; background: transparent; font-size: 0.82rem; color: #1a365d; cursor: pointer; outline: none;">
+                <option value="0">—</option>
+                {% for n in range(6, 13) %}<option value="{{ n }}">≥ {{ n }}</option>{% endfor %}
+            </select>
+        </label>
         <select id="lang-select" onchange="setLang(this.value)">
             <option value="de-DE"{% if lang == 'de-DE' %} selected{% endif %}>🇩🇪 de-DE</option>
             <option value="en-GB"{% if lang == 'en-GB' %} selected{% endif %}>🇬🇧 en-GB</option>
@@ -541,7 +548,7 @@
     {% endif %}
     {% for house in trip.houses %}
         {%- set ns.hidx = ns.hidx + 1 -%}
-        <div class="house-slide" style="width: 380px; flex-shrink: 0;">
+        <div class="house-slide" style="width: 380px; flex-shrink: 0;" data-persons="{{ house.persons if house.persons and house.persons != 'N/A' else '' }}">
         {%- set rc_len = house.room_config | length if house.room_config else 0 -%}
         {%- set has_room_warning = house.rooms and house.rooms not in ('N/A', 'Error') and rc_len > 0 and house.rooms | int != rc_len -%}
         {%- set is_unavailable = house.time == 'Unavailable' -%}
@@ -858,6 +865,20 @@
             var stored = localStorage.getItem('lang');
             if (stored && window.ALL_TRANSLATIONS[stored]) setLang(stored);
         })();
+
+        function applyPersonsFilter(minPersons) {
+            document.querySelectorAll('.house-slide').forEach(function(slide) {
+                var p = parseInt(slide.dataset.persons, 10);
+                var visible = !minPersons || isNaN(p) || p >= minPersons;
+                slide.style.display = visible ? '' : 'none';
+            });
+            // Hide trip groups where every house-slide is hidden
+            document.querySelectorAll('.trip-group').forEach(function(group) {
+                var slides = group.querySelectorAll('.house-slide');
+                var anyVisible = Array.prototype.some.call(slides, function(s) { return s.style.display !== 'none'; });
+                group.style.display = anyVisible ? '' : 'none';
+            });
+        }
 
         function scrollToTrip(id) {
             var target = document.getElementById(id);

@@ -1,5 +1,13 @@
 {
-    "weekdays": ["Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag", "Samstag", "Sonntag"],
+    "weekdays": [
+        "Montag",
+        "Dienstag",
+        "Mittwoch",
+        "Donnerstag",
+        "Freitag",
+        "Samstag",
+        "Sonntag"
+    ],
     "updated_at": "Zuletzt aktualisiert",
     "house": {
         "section_title": "Unterkunft",
@@ -70,9 +78,9 @@
         "select": "Zum Vergleich auswählen",
         "selected_one": "1 Haus ausgewählt",
         "selected_many": "{n} Häuser ausgewählt",
-        "button": "\u2696\ufe0f Vergleichen",
-        "clear": "\u2715 Auswahl löschen",
-        "title": "\u2696\ufe0f Hausvergleich",
+        "button": "⚖️ Vergleichen",
+        "clear": "✕ Auswahl löschen",
+        "title": "⚖️ Hausvergleich",
         "diff_only": "Nur Unterschiede zeigen"
     },
     "common": {
@@ -87,6 +95,7 @@
         "room_warning_badge": "Zimmer",
         "rooms_stated": "angegeben, aber",
         "rooms_entries": "Einträge in Zimmerkonfiguration",
-        "price_10_estimated": "Preis für 8 Personen ermittelt – für 10 kann er höher ausfallen."
+        "price_10_estimated": "Preis für 8 Personen ermittelt – für 10 kann er höher ausfallen.",
+        "persons_filter": "Min. Personen"
     }
 }

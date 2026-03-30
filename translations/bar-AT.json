@@ -1,5 +1,13 @@
 {
-    "weekdays": ["Monder", "Erchter", "Michor", "Pfischter", "Freitig", "Samstig", "Sunntig"],
+    "weekdays": [
+        "Monder",
+        "Erchter",
+        "Michor",
+        "Pfischter",
+        "Freitig",
+        "Samstig",
+        "Sunntig"
+    ],
     "updated_at": "Zuletzt aktualisiert",
     "house": {
         "section_title": "Unterkumft",
@@ -70,9 +78,9 @@
         "select": "Zum Vergleich aussuachn",
         "selected_one": "1 Haus ausgsuacht",
         "selected_many": "{n} Häuser ausgsuacht",
-        "button": "\u2696\ufe0f Vergleichen",
-        "clear": "\u2715 Auswahl löschen",
-        "title": "\u2696\ufe0f Hausvergleich",
+        "button": "⚖️ Vergleichen",
+        "clear": "✕ Auswahl löschen",
+        "title": "⚖️ Hausvergleich",
         "diff_only": "Nur Unterschiede zeigen"
     },
     "common": {
@@ -87,6 +95,7 @@
         "room_warning_badge": "Zimmer",
         "rooms_stated": "angegeben, oba",
         "rooms_entries": "Einträge in dr Zimmeraufteilung",
-        "price_10_estimated": "Preis für 8 Leit ermittelt – für 10 kann er höher ausfoin."
+        "price_10_estimated": "Preis für 8 Leit ermittelt – für 10 kann er höher ausfoin.",
+        "persons_filter": "Mind. Leit"
     }
 }

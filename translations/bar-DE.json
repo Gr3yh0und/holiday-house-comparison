@@ -1,5 +1,13 @@
 {
-    "weekdays": ["Monda", "Erda", "Migga", "Pfinsta", "Freida", "Sams", "Sunnda"],
+    "weekdays": [
+        "Monda",
+        "Erda",
+        "Migga",
+        "Pfinsta",
+        "Freida",
+        "Sams",
+        "Sunnda"
+    ],
     "updated_at": "Zuletzt obdatd",
     "house": {
         "section_title": "Unterkumft",
@@ -70,9 +78,9 @@
         "select": "Zum Vergleich aussuachn",
         "selected_one": "1 Haus ausgsuacht",
         "selected_many": "{n} Häuser ausgsuacht",
-        "button": "\u2696\ufe0f Vergleicha",
-        "clear": "\u2715 Auswahl löschn",
-        "title": "\u2696\ufe0f Häuservergleich",
+        "button": "⚖️ Vergleicha",
+        "clear": "✕ Auswahl löschn",
+        "title": "⚖️ Häuservergleich",
         "diff_only": "Nur Unterschied zeign"
     },
     "common": {
@@ -87,6 +95,7 @@
         "room_warning_badge": "Zimma",
         "rooms_stated": "ongegeben, oba",
         "rooms_entries": "Einträg in da Zimmaaufteilung",
-        "price_10_estimated": "Preis für 8 Leit ermittelt – für 10 kann er höher ausfoin."
+        "price_10_estimated": "Preis für 8 Leit ermittelt – für 10 kann er höher ausfoin.",
+        "persons_filter": "Mind. Leit"
     }
 }

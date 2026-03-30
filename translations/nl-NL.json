@@ -1,5 +1,13 @@
 {
-    "weekdays": ["Maandag", "Dinsdag", "Woensdag", "Donderdag", "Vrijdag", "Zaterdag", "Zondag"],
+    "weekdays": [
+        "Maandag",
+        "Dinsdag",
+        "Woensdag",
+        "Donderdag",
+        "Vrijdag",
+        "Zaterdag",
+        "Zondag"
+    ],
     "updated_at": "Laatst bijgewerkt",
     "house": {
         "section_title": "Accommodatie",
@@ -70,9 +78,9 @@
         "select": "Selecteer voor vergelijking",
         "selected_one": "1 huis geselecteerd",
         "selected_many": "{n} huizen geselecteerd",
-        "button": "\u2696\ufe0f Vergelijken",
-        "clear": "\u2715 Selectie wissen",
-        "title": "\u2696\ufe0f Huisvergelijking",
+        "button": "⚖️ Vergelijken",
+        "clear": "✕ Selectie wissen",
+        "title": "⚖️ Huisvergelijking",
         "diff_only": "Alleen verschillen tonen"
     },
     "common": {
@@ -87,6 +95,7 @@
         "room_warning_badge": "Kamers",
         "rooms_stated": "opgegeven, maar",
         "rooms_entries": "vermeldingen in kamerconfiguratie",
-        "price_10_estimated": "Prijs geschat voor 8 personen – kan hoger zijn voor 10."
+        "price_10_estimated": "Prijs geschat voor 8 personen – kan hoger zijn voor 10.",
+        "persons_filter": "Min. personen"
     }
 }

@@ -1,5 +1,13 @@
 {
-    "weekdays": ["Maandag", "Dingsdag", "Middeweek", "Dunnersdag", "Freedag", "Saterdag", "Sünndag"],
+    "weekdays": [
+        "Maandag",
+        "Dingsdag",
+        "Middeweek",
+        "Dunnersdag",
+        "Freedag",
+        "Saterdag",
+        "Sünndag"
+    ],
     "updated_at": "Toletzt opdateert",
     "house": {
         "section_title": "Unnerkumft",
@@ -70,9 +78,9 @@
         "select": "To'n Verglieken utsöken",
         "selected_one": "1 Huus utsöcht",
         "selected_many": "{n} Hüüser utsöcht",
-        "button": "\u2696\ufe0f Verglieken",
-        "clear": "\u2715 Utwahl wischen",
-        "title": "\u2696\ufe0f Hüüserverglieken",
+        "button": "⚖️ Verglieken",
+        "clear": "✕ Utwahl wischen",
+        "title": "⚖️ Hüüserverglieken",
         "diff_only": "Blots Ünnerschede wiesen"
     },
     "common": {
@@ -87,6 +95,7 @@
         "room_warning_badge": "Zimmer",
         "rooms_stated": "angeven, man",
         "rooms_entries": "Indrääg in de Zimmeraufdeilung",
-        "price_10_estimated": "Priis för 8 Lüüd errekent – för 10 kann he höger utfallen."
+        "price_10_estimated": "Priis för 8 Lüüd errekent – för 10 kann he höger utfallen.",
+        "persons_filter": "Mind. Lüüd"
     }
 }

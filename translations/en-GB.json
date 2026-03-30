@@ -1,5 +1,13 @@
 {
-    "weekdays": ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"],
+    "weekdays": [
+        "Monday",
+        "Tuesday",
+        "Wednesday",
+        "Thursday",
+        "Friday",
+        "Saturday",
+        "Sunday"
+    ],
     "updated_at": "Last updated",
     "house": {
         "section_title": "Accommodation",
@@ -70,9 +78,9 @@
         "select": "Select for comparison",
         "selected_one": "1 house selected",
         "selected_many": "{n} houses selected",
-        "button": "\u2696\ufe0f Compare",
-        "clear": "\u2715 Clear selection",
-        "title": "\u2696\ufe0f House comparison",
+        "button": "⚖️ Compare",
+        "clear": "✕ Clear selection",
+        "title": "⚖️ House comparison",
         "diff_only": "Show differences only"
     },
     "common": {
@@ -87,6 +95,7 @@
         "room_warning_badge": "Rooms",
         "rooms_stated": "stated, but",
         "rooms_entries": "entries in room configuration",
-        "price_10_estimated": "Price estimated for 8 persons – may be higher for 10."
+        "price_10_estimated": "Price estimated for 8 persons – may be higher for 10.",
+        "persons_filter": "Min. persons"
     }
 }
