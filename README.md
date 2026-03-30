@@ -138,7 +138,8 @@ Any field normally scraped from the booking page can be overridden directly in `
 | `notes` | Free-text note shown on the house card (above the booking buttons) | `"Nur per E-Mail buchbar."` |
 | `train_track` | List of `[lat, lon]` points for a train/rack-railway line shown as a red dashed overlay on maps | `[[46.598, 7.908], [46.605, 7.920]]` |
 | `loipen_radius_m` | Per-house override for the Nordic trail search radius in metres (default from `config.json`) | `15000` |
-| `disable_loipen` | Set to `true` to skip the Overpass query entirely for this house | `true` |
+| `disable_loipen` | Set to `true` to skip the Overpass auto-discovery for this house. Manually specified `loipen_urls` are still parsed. | `true` |
+| `loipen_urls` | List of rodelwelten.com or outdooractive.com URLs for specific Loipen to include manually. Merged with Overpass results and always parsed even when `disable_loipen` is set. | `["https://www.outdooractive.com/de/route/..."]` |
 
 > **Tip:** `bus_stop` is auto-calculated from a `pois` entry with `"type": "bus"` when running `app.py`. `supermarket` and `train_station` can be set the same way. All three can be overridden manually.
 

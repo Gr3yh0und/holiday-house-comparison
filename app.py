@@ -383,6 +383,7 @@ def _scrape_one_house(house, trip_checkin, trip_checkout, driver=None, force_ref
         val = float(m.group(1).replace(',', '.'))
         return val * 1000 if m.group(2).lower() == 'km' else val
     house_info['sled_runs'].sort(key=lambda r: _length_m(r['length']), reverse=True)
+    # Overpass auto-discovery (skipped when disable_loipen is true)
     if house.get('disable_loipen'):
         house_info['loipen'] = []
     elif house.get('lat') and house.get('lon'):
@@ -393,6 +394,42 @@ def _scrape_one_house(house, trip_checkin, trip_checkout, driver=None, force_ref
         )
     else:
         house_info['loipen'] = []
+
+    # Manual loipen_urls — always parsed regardless of disable_loipen
+    for loipen_url in house.get('loipen_urls', []):
+        if 'outdooractive.com' in loipen_url:
+            info = outdooractive.scrape(loipen_url, force_refresh=force_refresh)
+        else:
+            info = rodelwelten.scrape(loipen_url, force_refresh=force_refresh)
+        track = info.get('track', [])
+        length_str = info.get('length', '0')
+        length_m = re.search(r'([\d.,]+)\s*(km|m)\b', length_str, re.I)
+        if length_m:
+            length_km = float(length_m.group(1).replace(',', '.'))
+            if length_m.group(2).lower() == 'm':
+                length_km /= 1000
+        else:
+            length_km = 0.0
+        import math as _math
+        def _hav(la1, lo1, la2, lo2):
+            R = 6371.0
+            dla = _math.radians(la2-la1); dlo = _math.radians(lo2-lo1)
+            a = _math.sin(dla/2)**2 + _math.cos(_math.radians(la1))*_math.cos(_math.radians(la2))*_math.sin(dlo/2)**2
+            return R * 2 * _math.asin(_math.sqrt(a))
+        if track and house.get('lat') and house.get('lon'):
+            distance_km = round(min(_hav(p[0], p[1], house['lat'], house['lon']) for p in track), 1)
+        else:
+            distance_km = 0.0
+        house_info['loipen'].append({
+            'name': info.get('name') or loipen_url.rstrip('/').split('/')[-1].replace('-', ' ').title(),
+            'difficulty': info.get('difficulty', ''),
+            'grooming': '',
+            'length_km': round(length_km, 1),
+            'distance_km': distance_km,
+            'track': track,
+        })
+    # Re-sort combined list by distance
+    house_info['loipen'].sort(key=lambda x: x['distance_km'])
     return house_info
 
 
