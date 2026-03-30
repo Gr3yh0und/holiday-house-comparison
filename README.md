@@ -102,6 +102,8 @@ Outputs:
 }
 ```
 
+A fully-documented template entry is kept at the top of the `houses` list in `input.json` with `"template": true`. It is ignored by the scraper — copy it, remove the `template` flag, and fill in the relevant fields to add a new house.
+
 Each entry in `trips` specifies which date range the house is available for. Any scraped field (e.g. `price`, `time`) can also be set as a per-trip override directly inside the trip entry:
 
 ```json

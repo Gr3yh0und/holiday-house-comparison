@@ -447,6 +447,8 @@ def _normalize_input(data):
     trips = {}
     trip_order = []
     for house in data.get('houses', []):
+        if house.get('template'):
+            continue
         house_base = {k: v for k, v in house.items() if k != 'trips'}
         for trip_entry in house.get('trips', []):
             name = trip_entry['name']
