@@ -1,6 +1,11 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# Usage:
+#   ./deploy-test.sh                 # build + deploy public/index.html as index-test.php
+#   ./deploy-test.sh --rollback      # re-upload the previous test release's page verbatim
+#   ./deploy-test.sh --rollback 2    # go back 2 releases instead of 1
+
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 HOMELAB_ENV="/etc/homelab/holiday-house-comparison.env"
 LEGACY_CONFIG="$SCRIPT_DIR/deploy.config"
@@ -9,6 +14,44 @@ AUTH_DIR="$SCRIPT_DIR/deploy_auth"
 AUTH_STATE_FILE="$AUTH_DIR/.auth_state"
 AUTH_SECRET_PHP="$AUTH_DIR/auth_secret.php"
 AUTH_COOKIE_SECONDS=$((30 * 24 * 60 * 60))
+
+# Same rollback mechanism as deploy.sh (see there for the full explanation),
+# kept in its own "test" release line so a test rollback can never touch prod.
+RELEASES_DIR="$SCRIPT_DIR/releases/test"
+KEEP_RELEASES=5
+
+list_releases() {
+  find "$RELEASES_DIR" -mindepth 1 -maxdepth 1 -type d 2>/dev/null | sort -r
+}
+
+snapshot_release() {
+  local content_file="$1" page_name="$2"
+  mkdir -p "$RELEASES_DIR"
+  local stamp
+  stamp="$(date -u +%Y%m%dT%H%M%SZ)"
+
+  # Sequence number is the sort key, not the timestamp alone -- see deploy.sh
+  # for the full explanation of why "does this directory exist" breaks once
+  # an earlier same-second directory has been pruned away.
+  local next_seq=1 d name existing_seq
+  for d in "$RELEASES_DIR"/*/; do
+    [ -d "$d" ] || continue
+    name="$(basename "$d")"
+    existing_seq="${name%%-*}"
+    if [[ "$existing_seq" =~ ^[0-9]+$ ]] && [ "$((10#$existing_seq + 1))" -gt "$next_seq" ]; then
+      next_seq=$((10#$existing_seq + 1))
+    fi
+  done
+  local release_dir="$RELEASES_DIR/$(printf '%06d' "$next_seq")-$stamp"
+  mkdir -p "$release_dir"
+  cp "$content_file" "$release_dir/$page_name"
+
+  local releases=() i
+  while IFS= read -r d; do releases+=("$d"); done < <(list_releases)
+  for ((i = KEEP_RELEASES; i < ${#releases[@]}; i++)); do
+    rm -rf "${releases[$i]}"
+  done
+}
 
 if [ -f "$HOMELAB_ENV" ]; then
   CONFIG_FILE="$HOMELAB_ENV"
@@ -36,6 +79,35 @@ if [ "$SITE_PASSWORD" = "change-me" ]; then
   exit 1
 fi
 
+upload() {
+  local src="$1" name="$2"
+  curl --silent --show-error \
+    --ftp-create-dirs \
+    -T "$src" \
+    "ftp://$FTP_HOST$FTP_REMOTE_PATH/$name" \
+    --user "$FTP_USER:$FTP_PASS"
+}
+
+if [ "${1:-}" = "--rollback" ]; then
+  STEPS_BACK="${2:-1}"
+  readarray -t RELEASES < <(list_releases)
+  if [ "${#RELEASES[@]}" -le "$STEPS_BACK" ]; then
+    echo "Error: only ${#RELEASES[@]} release(s) saved locally under $RELEASES_DIR -- cannot go back $STEPS_BACK."
+    exit 1
+  fi
+  TARGET="${RELEASES[$STEPS_BACK]}"
+  PAGE="$TARGET/index-test.php"
+  if [ ! -f "$PAGE" ]; then
+    echo "Error: $TARGET has no saved page -- nothing to roll back to."
+    exit 1
+  fi
+  echo "Rolling back to release $(basename "$TARGET") ..."
+  upload "$PAGE" "index-test.php"
+  echo "Done. Test site now serving release $(basename "$TARGET")."
+  echo "Note: only the page is restored -- auth gate files are untouched (they don't change per-release)."
+  exit 0
+fi
+
 if [ ! -f "$LOCAL_FILE" ]; then
   echo "Error: public/index.html not found. Run 'python app.py' first."
   exit 1
@@ -52,7 +124,6 @@ else
   printf 'AUTH_SALT=%s\nAUTH_COOKIE_SECRET=%s\n' "$AUTH_SALT" "$AUTH_COOKIE_SECRET" > "$AUTH_STATE_FILE"
 fi
 
-# macOS ships `shasum`, not GNU coreutils' `sha256sum` -- try the Linux name first.
 if command -v sha256sum >/dev/null 2>&1; then
   PW_HASH="$(printf '%s%s' "$AUTH_SALT" "$SITE_PASSWORD" | sha256sum | cut -d' ' -f1)"
 else
@@ -76,19 +147,13 @@ trap 'rm -f "$GATED_PAGE"' EXIT
 
 echo "Deploying test build to ftp://$FTP_HOST$FTP_REMOTE_PATH/index-test.php ..."
 
-upload() {
-  local src="$1" name="$2"
-  curl --silent --show-error \
-    --ftp-create-dirs \
-    -T "$src" \
-    "ftp://$FTP_HOST$FTP_REMOTE_PATH/$name" \
-    --user "$FTP_USER:$FTP_PASS"
-}
-
 upload "$GATED_PAGE" "index-test.php"
 upload "$AUTH_DIR/_auth_gate.php" "_auth_gate.php"
 upload "$AUTH_SECRET_PHP" "auth_secret.php"
 upload "$AUTH_DIR/login.php" "login.php"
 upload "$AUTH_DIR/robots.txt" "robots.txt"
+
+# Snapshot the exact gated bytes just uploaded -- not public/index.html.
+snapshot_release "$GATED_PAGE" "index-test.php"
 
 echo "Done."

@@ -45,5 +45,9 @@ deploy.config
 deploy_auth/.auth_state
 deploy_auth/auth_secret.php
 
+# Release snapshots for --rollback (WEBAPP_PROJECT_STANDARD.md §14B) -- the full
+# rendered site, never commit (this repo is public, §1).
+/releases/
+
 # Release notes (local drafts)
 release/

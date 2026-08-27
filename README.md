@@ -71,6 +71,23 @@ chmod +x deploy.sh deploy-test.sh
 Requires `curl` and `openssl`, plus `sha256sum` (Linux) or `shasum` (macOS, tried as a fallback) —
 all available by default on macOS and most Linux distributions.
 
+**Rollback:** every deploy snapshots the exact gated bytes it uploads under `releases/prod/` (or
+`releases/test/` for `deploy-test.*`), keeping the last 5. FTP has no atomic flip, so a rollback
+re-uploads a known-good snapshot verbatim instead of rebuilding:
+
+```bash
+./deploy.sh --rollback        # re-publish the release before the current one
+./deploy.sh --rollback 2      # go back 2 releases instead of 1
+```
+
+```powershell
+.\deploy.ps1 -Rollback        # re-publish the release before the current one
+.\deploy.ps1 -Rollback -Steps 2
+```
+
+`deploy-test.sh`/`deploy-test.ps1` support the same flags against their own, separate release
+history — a test rollback can never touch the prod release line or vice versa.
+
 ## Usage
 
 ```
