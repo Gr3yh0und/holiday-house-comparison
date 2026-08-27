@@ -2,3 +2,11 @@ FTP_HOST=ftp.example.com
 FTP_USER=username
 FTP_PASS=password
 FTP_REMOTE_PATH=/example.com
+
+# Required. Shared passphrase for the site's PHP login gate (see deploy_auth/).
+# deploy.sh/deploy.ps1 never upload this plaintext -- it's salted + hashed
+# locally into deploy_auth/auth_secret.php (generated, gitignored) before that
+# file is deployed. Change this value any time to invalidate every saved
+# login in one shot (the next visit just needs to re-enter it). Deliberately
+# NOT shared with housebuycomparison's SITE_PASSWORD.
+SITE_PASSWORD=change-me

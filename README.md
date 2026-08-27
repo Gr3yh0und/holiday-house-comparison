@@ -20,25 +20,42 @@ instead of at the repo root (see that standard's §1b).
 
 ## Deployment
 
-Both scripts upload `public/index.html` to a remote server via FTP. Use whichever matches your OS.
+Both scripts build `public/index.html` into a **password-gated** `index.php` and upload it to a
+remote server via FTP, alongside the gate itself (`deploy_auth/`). Use whichever matches your OS.
+
+**Why gated, and why PHP:** the site republishes data scraped from commercial rental listing
+sites on a public host — the exposure is legal/ToS, not personal data (the listings themselves are
+public). The gate is not decorative: pages deploy as `.php` specifically so it runs *before* any
+content is sent, it fails closed (a missing secret file 500s rather than serving the page
+unprotected), and it uses `hash_equals`/`hash_hmac` throughout for timing-safe comparison. See
+[`compliance/holiday-house-comparison.md`](https://github.com/Gr3yh0und/infrastructure/blob/main/compliance/holiday-house-comparison.md)
+§5 for the full reasoning.
 
 **Setup (both scripts share the same config):**
 
 1. Copy `deploy.config.template` to `deploy.config` (it is gitignored).
-2. Fill in your credentials:
+2. Fill in your credentials, plus a `SITE_PASSWORD` for the gate:
 
 ```
 FTP_HOST=ftp.example.com
 FTP_USER=username
 FTP_PASS=password
 FTP_REMOTE_PATH=/example.com
+SITE_PASSWORD=change-me
 ```
+
+On the deploy server, `/etc/homelab/holiday-house-comparison.env` (same keys, see `.env.example`)
+is read in preference to `deploy.config` if present (WEBAPP_PROJECT_STANDARD.md §4).
+
+`SITE_PASSWORD` never leaves the machine running the deploy script — it's salted and hashed
+locally into `deploy_auth/auth_secret.php` (generated, gitignored) before that file is uploaded.
+Changing it invalidates every saved login at once.
 
 **Windows (PowerShell):**
 
 ```powershell
-.\deploy.ps1        # uploads as index.html
-.\deploy-test.ps1   # uploads as index-test.html (for testing)
+.\deploy.ps1        # uploads as index.php
+.\deploy-test.ps1   # uploads as index-test.php (for testing)
 ```
 
 Requires `curl.exe`, built into Windows 10+.
@@ -47,11 +64,12 @@ Requires `curl.exe`, built into Windows 10+.
 
 ```bash
 chmod +x deploy.sh deploy-test.sh
-./deploy.sh        # uploads as index.html
-./deploy-test.sh   # uploads as index-test.html (for testing)
+./deploy.sh        # uploads as index.php
+./deploy-test.sh   # uploads as index-test.php (for testing)
 ```
 
-Requires `curl`, available by default on macOS and most Linux distributions.
+Requires `curl` and `openssl`, plus `sha256sum` (Linux) or `shasum` (macOS, tried as a fallback) —
+all available by default on macOS and most Linux distributions.
 
 ## Usage
 
