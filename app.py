@@ -485,6 +485,17 @@ def _normalize_input(data):
     return {'title': data.get('title', ''), 'trips': [trips[n] for n in trip_order]}
 
 
+def _validate_scrape_output(trip_data):
+    """Return True if at least one trip has at least one house.
+
+    A full run that yields zero houses across every trip almost always means
+    every scrape failed (dead selectors, a bot-detection block) rather than a
+    genuinely empty result — publishing it would silently overwrite a working
+    site with an empty one. See WEBAPP_PROJECT_STANDARD.md §15B.
+    """
+    return any(trip.get('houses') for trip in trip_data)
+
+
 def build_trip_data(data, driver=None, force_refresh=False, broker_filter=None, limit=None,  # pylint: disable=too-many-positional-arguments
                     on_house_scraped=None):
     trips = []
@@ -721,6 +732,14 @@ if __name__ == '__main__':
 
     rodelwelten.save_cache()
     outdooractive.save_cache()
+
+    if not _validate_scrape_output(trip_data):
+        print(
+            "ERROR: scrape yielded zero houses across all trips — aborting without "
+            "overwriting public/data.json or public/index.html. The previous output "
+            "stays in place; do not deploy from this run."
+        )
+        raise SystemExit(1)
 
     updated_at = datetime.now().strftime('%Y-%m-%d %H:%M')
 
