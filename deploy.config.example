@@ -1,0 +1,23 @@
+# Per-environment /deploy config — see infrastructure/scripts/deploy-common.sh's
+# header comment for the full schema. Gitignored (WEBAPP_PROJECT_STANDARD.md §9);
+# copy this to deploy.config and edit if a value ever needs to differ locally.
+#
+# APP_NAME and PROFILE come from homelab.yml (§1a) — "holiday-house-comparison" / B —
+# and don't need to be set here; setting them here anyway would be a smell to
+# clean up, not a normal override, per WEBAPP_PROJECT_STANDARD.md §1a.
+#
+# Not yet wired to the shared deploy.sh/rollback.sh — this repo still runs its own
+# bespoke deploy.sh/deploy.ps1 (curl+FTP), a documented exception pending
+# WEBAPP_PROJECT_STANDARD.md §9's condition 1 (does it demonstrably reach a live
+# deployment?) being verified — see compliance/holiday-house-comparison.md §9 in the
+# infrastructure repo. This file exists so the eventual cutover is a switch, not a
+# rewrite; deploy.config (the bespoke script's own FTP-credentials file, see
+# deploy.config.template) is a separate, unrelated file.
+
+TEST_CMD="pytest"
+BUILD_CMD="python app.py"
+BUILD_DIR="public"
+
+# No local target: publishes only to the external FTP host today (homelab.yml
+# correctly omits `route:` for the same reason).
+TARGETS="public"

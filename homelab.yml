@@ -1,0 +1,23 @@
+# Classification metadata for this app. Schema documented in
+# infrastructure/WEBAPP_PROJECT_STANDARD.md §1a — that doc is authoritative.
+#
+# Consumers read this instead of re-deriving these facts: Homepage tile generation, the proxy's
+# personal-data gate, /deploy's profile detection (deploy-common.sh), and any future fleet
+# inventory tool.
+
+schema_version: 1
+
+app: holiday-house-comparison
+profile: B
+description: "Static comparison page for sled-trip holiday houses, scraped from rental listing sites"
+
+# No route: publishes only to an external FTP host (deploy.sh/deploy.ps1), no local/proxy target
+# exists yet (§1a: omit rather than declare an aspirational path nothing serves).
+
+# Read as "requires auth", not literally "personal data" (§1a's documented conflation) -- the
+# listing data is public (fewo-direkt/booking.com/huetten.com/interhome) and the trip notes on
+# top of it aren't sensitive. The reason is legal/ToS exposure from scraping commercial rental
+# sites and republishing the results on a public site, same shape as housebuycomparison. See
+# compliance/holiday-house-comparison.md §5 (in the infrastructure repo — this repo is public,
+# §1b) for the full reasoning.
+personal_data: true

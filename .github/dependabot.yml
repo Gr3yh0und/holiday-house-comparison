@@ -1,0 +1,22 @@
+version: 2
+updates:
+  # commit-message.prefix is "chore(deps)" on purpose, not Dependabot's
+  # default "bump ..." subject: infra's deploy.sh detect_bump_type() only
+  # bumps minor/major on a "feat:"/"!:"/BREAKING CHANGE subject, so
+  # "chore(deps): ..." always falls through to a patch bump — the last digit
+  # of VERSION is the one that moves for a dependency upgrade, never the ones
+  # that would suggest a behavior change. Same convention as network's and
+  # housebuycomparison's repos.
+  - package-ecosystem: "pip"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    commit-message:
+      prefix: "chore(deps)"
+
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    commit-message:
+      prefix: "chore(deps)"

@@ -2,6 +2,12 @@
 
 A static site generator for comparing holiday houses suitable for sledding (Rodeln) trips. Sled run data is scraped from rodelwelten.com and house data from fewo-direkt.de / booking.com, then pre-rendered into a static HTML comparison page.
 
+App classification (profile, route) lives in [`homelab.yml`](homelab.yml); status against the
+infrastructure repo's deployment standard lives in
+[`compliance/holiday-house-comparison.md`](https://github.com/Gr3yh0und/infrastructure/blob/main/compliance/holiday-house-comparison.md)
+in the (private) infrastructure repo — this repo is public, so its compliance detail lives there
+instead of at the repo root (see that standard's §1b).
+
 ## Setup
 
 1. Install dependencies: `pip install -r requirements.txt` (includes pylint)

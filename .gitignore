@@ -1,8 +1,9 @@
 # Personal data — copy input.template.json to input.json and fill in your data
 input.json
 
-# Claude Code settings (may contain API keys or personal config)
-.claude/
+# Claude Code session data — except .claude/skills/, which is committed (WEBAPP_PROJECT_STANDARD.md §9).
+.claude/*
+!.claude/skills/
 
 # Python
 .venv/
