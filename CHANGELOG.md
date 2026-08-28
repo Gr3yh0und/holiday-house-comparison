@@ -13,6 +13,13 @@ the hand-backfilled `1.0.0`–`1.5.0` tags (§2), re-created from the previously
 
 ### Added
 - Minimum-person-count filter, also applied to the compare option list.
+- Password gate (`deploy_auth/`) in front of the public FTP target — fail-closed, signed
+  expiring cookie, separate passphrase from `housebuycomparison`'s.
+- Release snapshotting and `--rollback` for the public FTP target — every deploy snapshots the
+  gated bytes it uploads, keeping the last 5.
+- Onboarded to `infrastructure/WEBAPP_PROJECT_STANDARD.md`: `homelab.yml`, `VERSION`,
+  `CHANGELOG.md`, `deploy.config.example`, shared `.claude/skills/{deploy,rollback}` wrappers,
+  Dependabot, and a pytest suite (previously no automated tests existed).
 
 ### Changed
 - Ratings normalised to a common 0–10 scale across all brokers.
@@ -21,6 +28,10 @@ the hand-backfilled `1.0.0`–`1.5.0` tags (§2), re-created from the previously
 - Fewo rating parsing and URL logging.
 - Sticky scrollbar pinned to the bottom of the viewport on desktop.
 - Lint warnings.
+- A full scrape run that yields zero houses now aborts instead of silently overwriting the
+  published site with an empty one.
+- CI now actually runs the test suite — `tests/` wasn't importable under bare `pytest` (only
+  under `python -m pytest`, which isn't what CI or `TEST_CMD` run), so 0 tests were collected.
 
 ## [1.5.0] - 2026-03-30
 
