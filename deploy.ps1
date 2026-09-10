@@ -70,7 +70,7 @@ foreach ($key in @('FTP_HOST', 'FTP_USER', 'FTP_PASS', 'FTP_REMOTE_PATH', 'SITE_
         exit 1
     }
 }
-if ($config['SITE_PASSWORD'] -eq 'change-me') {
+if ($config['SITE_PASSWORD'] -ceq 'change-me') {
     Write-Error "$ConfigFile's SITE_PASSWORD is still the template placeholder -- set a real passphrase."
     exit 1
 }
@@ -87,6 +87,17 @@ function Send-File([string]$Src, [string]$Name) {
         Write-Error "Deployment failed uploading $Name."
         exit $LASTEXITCODE
     }
+}
+
+# Best-effort delete of a stale remote file -- e.g. the unprotected index.html
+# left behind by every deploy from before the auth gate existed. Ignore
+# failures: the file may already be gone, and a missing DELE target must not
+# abort an otherwise-successful deploy.
+function Remove-RemoteFile([string]$Name) {
+    curl.exe --silent --show-error `
+        --user "$($config['FTP_USER']):$($config['FTP_PASS'])" `
+        -Q "DELE $($config['FTP_REMOTE_PATH'])/$Name" `
+        "ftp://$($config['FTP_HOST'])/" 2>$null | Out-Null
 }
 
 if ($Rollback) {
@@ -116,8 +127,10 @@ if (-not (Test-Path $LocalFile)) {
 # ── Auth gate ────────────────────────────────────────────────────────────────
 # Same mechanism as deploy.sh (see there for the full explanation): the
 # plaintext SITE_PASSWORD never leaves this process, only a salted SHA-256
-# hash is written to auth_secret.php. Salt and cookie secret persist across
-# deploys in .auth_state so re-deploying doesn't invalidate saved logins.
+# hash is written to auth_secret.php. Salt persists across deploys in
+# .auth_state so re-deploying doesn't invalidate saved logins. The cookie
+# secret also persists -- except when SITE_PASSWORD itself changed, in which
+# case it's rotated so cookies signed with the old secret stop validating.
 New-Item -ItemType Directory -Force -Path $AuthDir | Out-Null
 
 function New-RandomHex([int]$Bytes) {
@@ -132,6 +145,8 @@ function Get-Sha256Hex([string]$Text) {
     -join ($bytes | ForEach-Object { $_.ToString('x2') })
 }
 
+$pwFingerprint = Get-Sha256Hex $config['SITE_PASSWORD']
+
 if (Test-Path $AuthStateFile) {
     $authState = @{}
     Get-Content $AuthStateFile | ForEach-Object {
@@ -141,11 +156,21 @@ if (Test-Path $AuthStateFile) {
     }
     $authSalt = $authState['AUTH_SALT']
     $authCookieSecret = $authState['AUTH_COOKIE_SECRET']
+    $storedFingerprint = $authState['STORED_PW_FINGERPRINT']
 } else {
     $authSalt = New-RandomHex 16
     $authCookieSecret = New-RandomHex 32
-    "AUTH_SALT=$authSalt`nAUTH_COOKIE_SECRET=$authCookieSecret`n" | Set-Content -NoNewline $AuthStateFile
+    $storedFingerprint = ''
 }
+
+if ($storedFingerprint -cne $pwFingerprint) {
+    if ($storedFingerprint) {
+        Write-Host "SITE_PASSWORD changed -- rotating the auth cookie secret to invalidate existing logins."
+    }
+    $authCookieSecret = New-RandomHex 32
+}
+"AUTH_SALT=$authSalt`nAUTH_COOKIE_SECRET=$authCookieSecret`nSTORED_PW_FINGERPRINT=$pwFingerprint`n" |
+    Set-Content -NoNewline $AuthStateFile
 
 $pwHash = Get-Sha256Hex "$authSalt$($config['SITE_PASSWORD'])"
 
@@ -171,6 +196,12 @@ Send-File "$AuthDir\_auth_gate.php" "_auth_gate.php"
 Send-File $AuthSecretFile "auth_secret.php"
 Send-File "$AuthDir\login.php" "login.php"
 Send-File "$AuthDir\robots.txt" "robots.txt"
+
+# Remove the unprotected index.html every pre-gate deploy left on the server --
+# otherwise it keeps serving the full site with no login, and on a typical
+# Apache DirectoryIndex order it even wins over index.php for the bare domain
+# root, making the gate above a no-op.
+Remove-RemoteFile "index.html"
 
 # Snapshot the exact gated bytes just uploaded -- not public\index.html, which
 # has no auth gate and isn't what's actually live.

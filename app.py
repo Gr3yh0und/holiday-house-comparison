@@ -323,7 +323,7 @@ def _load_cached_house(name, checkin, checkout):
     return None
 
 
-def _scrape_one_house(house, trip_checkin, trip_checkout, driver=None, force_refresh=False):
+def _scrape_one_house(house, trip_checkin, trip_checkout, driver=None, force_refresh=False, stats=None):
     raw_url = house.get('house_url', '')
     house_url = (
         inject_dates(raw_url, trip_checkin, trip_checkout)
@@ -335,6 +335,8 @@ def _scrape_one_house(house, trip_checkin, trip_checkout, driver=None, force_ref
         house_info = dict(_PARSER_EMPTY, room_config=[], time='check_manually')
     else:
         print(f"Scraping house: {house['name']} ({house_url})")
+        if stats is not None:
+            stats['attempted'] += 1
         house_info = scrape_house(house_url, driver=driver)
         if house_info is None:
             cached = _load_cached_house(house['name'], trip_checkin, trip_checkout)
@@ -342,6 +344,8 @@ def _scrape_one_house(house, trip_checkin, trip_checkout, driver=None, force_ref
                 print("  -> bot/scrape failure, using cached data from public/data.json")
                 return cached
             print("  -> bot/scrape failure, no usable cache — returning empty result")
+            if stats is not None:
+                stats['failed'] += 1
             house_info = dict(_PARSER_EMPTY, room_config=[])
     house_info['name'] = house['name']
     house_info['house_url'] = house_url
@@ -485,19 +489,27 @@ def _normalize_input(data):
     return {'title': data.get('title', ''), 'trips': [trips[n] for n in trip_order]}
 
 
-def _validate_scrape_output(trip_data):
-    """Return True if at least one trip has at least one house.
+def _validate_scrape_output(trip_data, scrape_stats=None):
+    """Return True if the run produced usable house data.
 
-    A full run that yields zero houses across every trip almost always means
-    every scrape failed (dead selectors, a bot-detection block) rather than a
-    genuinely empty result — publishing it would silently overwrite a working
-    site with an empty one. See WEBAPP_PROJECT_STANDARD.md §15B.
+    Rejects two failure shapes: every trip has zero houses (e.g. an empty
+    input.json), or every house that needed a live scrape came back as a
+    cache-less failure placeholder (dead selectors, a bot-detection block
+    hitting every request) — `houses` is never actually empty in that case
+    since _scrape_one_house still appends an all-N/A placeholder per house,
+    so `scrape_stats` (attempted vs. failed scrape attempts) is what actually
+    detects it. Publishing either would silently overwrite a working site.
+    See WEBAPP_PROJECT_STANDARD.md §15B.
     """
-    return any(trip.get('houses') for trip in trip_data)
+    if not any(trip.get('houses') for trip in trip_data):
+        return False
+    if scrape_stats and scrape_stats['attempted'] and scrape_stats['failed'] == scrape_stats['attempted']:
+        return False
+    return True
 
 
 def build_trip_data(data, driver=None, force_refresh=False, broker_filter=None, limit=None,  # pylint: disable=too-many-positional-arguments
-                    on_house_scraped=None):
+                    on_house_scraped=None, scrape_stats=None):
     trips = []
     scraped = 0
     for trip in data['trips']:
@@ -518,7 +530,8 @@ def build_trip_data(data, driver=None, force_refresh=False, broker_filter=None, 
                 print(f"Skipping house: {house['name']} (not a {broker_filter} URL)")
                 continue
             houses.append(_scrape_one_house(
-                house, trip_checkin, trip_checkout, driver=driver, force_refresh=force_refresh
+                house, trip_checkin, trip_checkout, driver=driver, force_refresh=force_refresh,
+                stats=scrape_stats,
             ))
             scraped += 1
             if on_house_scraped:
@@ -720,11 +733,12 @@ if __name__ == '__main__':
             )
         print("  [cache] public/data.json updated")
 
+    scrape_stats = {'attempted': 0, 'failed': 0}
     try:
         trip_data = build_trip_data(
             data, driver=driver, force_refresh=args.force,
             broker_filter=args.broker, limit=args.limit,
-            on_house_scraped=_save_partial,
+            on_house_scraped=_save_partial, scrape_stats=scrape_stats,
         )
     finally:
         if driver:
@@ -733,7 +747,7 @@ if __name__ == '__main__':
     rodelwelten.save_cache()
     outdooractive.save_cache()
 
-    if not _validate_scrape_output(trip_data):
+    if not _validate_scrape_output(trip_data, scrape_stats):
         print(
             "ERROR: scrape yielded zero houses across all trips — aborting without "
             "overwriting public/data.json or public/index.html. The previous output "

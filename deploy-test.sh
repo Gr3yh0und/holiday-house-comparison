@@ -88,8 +88,23 @@ upload() {
     --user "$FTP_USER:$FTP_PASS"
 }
 
+# Best-effort delete of a stale remote file -- see deploy.sh for why. Ignore
+# failures: the file may already be gone, and a missing DELE target must not
+# abort an otherwise-successful deploy.
+delete_remote() {
+  local name="$1"
+  curl --silent --show-error \
+    --user "$FTP_USER:$FTP_PASS" \
+    -Q "DELE $FTP_REMOTE_PATH/$name" \
+    "ftp://$FTP_HOST/" >/dev/null 2>&1 || true
+}
+
 if [ "${1:-}" = "--rollback" ]; then
   STEPS_BACK="${2:-1}"
+  if ! [[ "$STEPS_BACK" =~ ^[0-9]+$ ]]; then
+    echo "Error: --rollback steps must be a non-negative integer, got '$STEPS_BACK'."
+    exit 1
+  fi
   readarray -t RELEASES < <(list_releases)
   if [ "${#RELEASES[@]}" -le "$STEPS_BACK" ]; then
     echo "Error: only ${#RELEASES[@]} release(s) saved locally under $RELEASES_DIR -- cannot go back $STEPS_BACK."
@@ -113,22 +128,36 @@ if [ ! -f "$LOCAL_FILE" ]; then
   exit 1
 fi
 
-# Same gate mechanism as deploy.sh -- see there for the full explanation.
+# Same gate mechanism as deploy.sh -- see there for the full explanation,
+# including why AUTH_COOKIE_SECRET rotates when SITE_PASSWORD changes.
+sha256_hex() {
+  if command -v sha256sum >/dev/null 2>&1; then
+    printf '%s' "$1" | sha256sum | cut -d' ' -f1
+  else
+    printf '%s' "$1" | shasum -a 256 | cut -d' ' -f1
+  fi
+}
+
 mkdir -p "$AUTH_DIR"
+PW_FINGERPRINT="$(sha256_hex "$SITE_PASSWORD")"
 if [ -f "$AUTH_STATE_FILE" ]; then
   # shellcheck source=/dev/null
   source "$AUTH_STATE_FILE"
 else
   AUTH_SALT="$(openssl rand -hex 16)"
   AUTH_COOKIE_SECRET="$(openssl rand -hex 32)"
-  printf 'AUTH_SALT=%s\nAUTH_COOKIE_SECRET=%s\n' "$AUTH_SALT" "$AUTH_COOKIE_SECRET" > "$AUTH_STATE_FILE"
+  STORED_PW_FINGERPRINT=""
 fi
+if [ "${STORED_PW_FINGERPRINT:-}" != "$PW_FINGERPRINT" ]; then
+  if [ -n "${STORED_PW_FINGERPRINT:-}" ]; then
+    echo "SITE_PASSWORD changed -- rotating the auth cookie secret to invalidate existing logins."
+  fi
+  AUTH_COOKIE_SECRET="$(openssl rand -hex 32)"
+fi
+printf 'AUTH_SALT=%s\nAUTH_COOKIE_SECRET=%s\nSTORED_PW_FINGERPRINT=%s\n' \
+  "$AUTH_SALT" "$AUTH_COOKIE_SECRET" "$PW_FINGERPRINT" > "$AUTH_STATE_FILE"
 
-if command -v sha256sum >/dev/null 2>&1; then
-  PW_HASH="$(printf '%s%s' "$AUTH_SALT" "$SITE_PASSWORD" | sha256sum | cut -d' ' -f1)"
-else
-  PW_HASH="$(printf '%s%s' "$AUTH_SALT" "$SITE_PASSWORD" | shasum -a 256 | cut -d' ' -f1)"
-fi
+PW_HASH="$(sha256_hex "$AUTH_SALT$SITE_PASSWORD")"
 
 cat > "$AUTH_SECRET_PHP" <<EOF
 <?php
@@ -152,6 +181,10 @@ upload "$AUTH_DIR/_auth_gate.php" "_auth_gate.php"
 upload "$AUTH_SECRET_PHP" "auth_secret.php"
 upload "$AUTH_DIR/login.php" "login.php"
 upload "$AUTH_DIR/robots.txt" "robots.txt"
+
+# Remove the unprotected index-test.html every pre-gate deploy left behind --
+# see deploy.sh for why this matters.
+delete_remote "index-test.html"
 
 # Snapshot the exact gated bytes just uploaded -- not public/index.html.
 snapshot_release "$GATED_PAGE" "index-test.php"

@@ -10,8 +10,10 @@ require __DIR__ . '/auth_secret.php';
 function hhc_safe_redirect(string $raw): string
 {
     // Only ever allow a same-site relative path -- never let ?redirect= be
-    // used as an open redirect to an external URL.
-    if ($raw === '' || $raw[0] !== '/' || (isset($raw[1]) && $raw[1] === '/')) {
+    // used as an open redirect to an external URL. Browsers that follow the
+    // WHATWG URL spec normalize a leading "/\" to "//" (protocol-relative),
+    // so both must be blocked, not just "//".
+    if ($raw === '' || $raw[0] !== '/' || (isset($raw[1]) && ($raw[1] === '/' || $raw[1] === '\\'))) {
         return '/';
     }
     return $raw;

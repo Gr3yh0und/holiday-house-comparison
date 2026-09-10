@@ -159,6 +159,30 @@ def test_prunes_to_five_releases(tmp_path):
     assert any("Version 6" in c for c in contents)
 
 
+def test_rollback_rejects_non_numeric_steps(tmp_path):
+    """A typo like `--rollback prod` must error clearly, not silently fall
+    through to `${RELEASES[$STEPS_BACK]}` arithmetic-evaluating to 0 and
+    re-uploading the newest release as if nothing were wrong.
+    """
+    repo_copy, bin_dir = _make_repo(tmp_path, "deploy.sh")
+    r1 = _deploy(repo_copy, bin_dir, "deploy.sh", "<html>Version A</html>", tmp_path / "up1")
+    assert r1.returncode == 0, r1.stdout + r1.stderr
+
+    env = dict(os.environ)
+    env["PATH"] = f"{bin_dir}:{env['PATH']}"
+    result = subprocess.run(
+        ["bash", "deploy.sh", "--rollback", "prod"],
+        cwd=repo_copy,
+        env=env,
+        capture_output=True,
+        text=True,
+        timeout=30,
+        check=False,
+    )
+    assert result.returncode != 0
+    assert "non-negative integer" in result.stdout
+
+
 def test_deploy_test_sh_rollback_is_independent_of_prod(tmp_path):
     repo_copy, bin_dir = _make_repo(tmp_path, "deploy-test.sh")
     r1 = _deploy(repo_copy, bin_dir, "deploy-test.sh", "<html>Test A</html>", tmp_path / "up1")

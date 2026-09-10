@@ -103,8 +103,24 @@ upload() {
     --user "$FTP_USER:$FTP_PASS"
 }
 
+# Best-effort delete of a stale remote file -- e.g. the unprotected index.html
+# left behind by every deploy from before the auth gate existed (§5). Ignore
+# failures: the file may already be gone, and a missing DELE target must not
+# abort an otherwise-successful deploy.
+delete_remote() {
+  local name="$1"
+  curl --silent --show-error \
+    --user "$FTP_USER:$FTP_PASS" \
+    -Q "DELE $FTP_REMOTE_PATH/$name" \
+    "ftp://$FTP_HOST/" >/dev/null 2>&1 || true
+}
+
 if [ "${1:-}" = "--rollback" ]; then
   STEPS_BACK="${2:-1}"
+  if ! [[ "$STEPS_BACK" =~ ^[0-9]+$ ]]; then
+    echo "Error: --rollback steps must be a non-negative integer, got '$STEPS_BACK'."
+    exit 1
+  fi
   readarray -t RELEASES < <(list_releases)
   if [ "${#RELEASES[@]}" -le "$STEPS_BACK" ]; then
     echo "Error: only ${#RELEASES[@]} release(s) saved locally under $RELEASES_DIR -- cannot go back $STEPS_BACK."
@@ -131,26 +147,43 @@ fi
 # ── Auth gate ────────────────────────────────────────────────────────────────
 # The plaintext SITE_PASSWORD never leaves this process -- only a salted SHA-256
 # hash is written to auth_secret.php (generated, gitignored), checked with
-# hash_equals() by deploy_auth/login.php for a timing-safe comparison. Salt and
-# cookie secret persist across deploys in .auth_state (generated, gitignored) so
-# re-deploying doesn't invalidate every saved login; only a real SITE_PASSWORD
-# change does that (deliberately -- see deploy_auth/_auth_gate.php).
+# hash_equals() by deploy_auth/login.php for a timing-safe comparison. Salt
+# persists across deploys in .auth_state (generated, gitignored) so re-deploying
+# doesn't invalidate every saved login. AUTH_COOKIE_SECRET also persists --
+# except when SITE_PASSWORD itself changed, in which case it's rotated so every
+# cookie signed with the old secret stops validating (see
+# deploy_auth/_auth_gate.php): the hash alone changing isn't enough, since
+# hhc_is_authed() never re-checks it against a live cookie.
+
+# macOS ships `shasum`, not GNU coreutils' `sha256sum` -- try the Linux name first.
+sha256_hex() {
+  if command -v sha256sum >/dev/null 2>&1; then
+    printf '%s' "$1" | sha256sum | cut -d' ' -f1
+  else
+    printf '%s' "$1" | shasum -a 256 | cut -d' ' -f1
+  fi
+}
+
 mkdir -p "$AUTH_DIR"
+PW_FINGERPRINT="$(sha256_hex "$SITE_PASSWORD")"
 if [ -f "$AUTH_STATE_FILE" ]; then
   # shellcheck source=/dev/null
   source "$AUTH_STATE_FILE"
 else
   AUTH_SALT="$(openssl rand -hex 16)"
   AUTH_COOKIE_SECRET="$(openssl rand -hex 32)"
-  printf 'AUTH_SALT=%s\nAUTH_COOKIE_SECRET=%s\n' "$AUTH_SALT" "$AUTH_COOKIE_SECRET" > "$AUTH_STATE_FILE"
+  STORED_PW_FINGERPRINT=""
 fi
+if [ "${STORED_PW_FINGERPRINT:-}" != "$PW_FINGERPRINT" ]; then
+  if [ -n "${STORED_PW_FINGERPRINT:-}" ]; then
+    echo "SITE_PASSWORD changed -- rotating the auth cookie secret to invalidate existing logins."
+  fi
+  AUTH_COOKIE_SECRET="$(openssl rand -hex 32)"
+fi
+printf 'AUTH_SALT=%s\nAUTH_COOKIE_SECRET=%s\nSTORED_PW_FINGERPRINT=%s\n' \
+  "$AUTH_SALT" "$AUTH_COOKIE_SECRET" "$PW_FINGERPRINT" > "$AUTH_STATE_FILE"
 
-# macOS ships `shasum`, not GNU coreutils' `sha256sum` -- try the Linux name first.
-if command -v sha256sum >/dev/null 2>&1; then
-  PW_HASH="$(printf '%s%s' "$AUTH_SALT" "$SITE_PASSWORD" | sha256sum | cut -d' ' -f1)"
-else
-  PW_HASH="$(printf '%s%s' "$AUTH_SALT" "$SITE_PASSWORD" | shasum -a 256 | cut -d' ' -f1)"
-fi
+PW_HASH="$(sha256_hex "$AUTH_SALT$SITE_PASSWORD")"
 
 cat > "$AUTH_SECRET_PHP" <<EOF
 <?php
@@ -177,6 +210,12 @@ upload "$AUTH_DIR/_auth_gate.php" "_auth_gate.php"
 upload "$AUTH_SECRET_PHP" "auth_secret.php"
 upload "$AUTH_DIR/login.php" "login.php"
 upload "$AUTH_DIR/robots.txt" "robots.txt"
+
+# Remove the unprotected index.html every pre-gate deploy left on the server --
+# otherwise it keeps serving the full site with no login, and on a typical
+# Apache DirectoryIndex order it even wins over index.php for the bare domain
+# root, making the gate above a no-op.
+delete_remote "index.html"
 
 # Snapshot the exact gated bytes just uploaded -- not public/index.html, which
 # has no auth gate and isn't what's actually live.
