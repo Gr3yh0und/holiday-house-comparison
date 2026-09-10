@@ -16,12 +16,13 @@ instead of at the repo root (see that standard's §1b).
 4. (Optional) Edit `config.json` to adjust global defaults (see [Configuration](#configuration)).
 5. Generate the static site: `python app.py`
 5. Open or host `public/index.html`.
-6. (Optional) Copy `deploy.config.template` to `deploy.config` and fill in your FTP credentials to enable deployment.
+6. (Optional) Copy `deploy.config.template` to `deploy.config` and fill in your credentials to enable deployment.
 
 ## Deployment
 
-Both scripts build `public/index.html` into a **password-gated** `index.php` and upload it to a
-remote server via FTP, alongside the gate itself (`deploy_auth/`). Use whichever matches your OS.
+Both scripts run `python app.py` to build `public/index.html` fresh, turn it into a
+**password-gated** `index.php`, and publish it -- to a remote server via FTP, to a local
+filesystem path, or both -- alongside the gate itself (`deploy_auth/`). Use whichever matches your OS.
 
 **Why gated, and why PHP:** the site republishes data scraped from commercial rental listing
 sites on a public host — the exposure is legal/ToS, not personal data (the listings themselves are
@@ -41,8 +42,11 @@ FTP_HOST=ftp.example.com
 FTP_USER=username
 FTP_PASS=password
 FTP_REMOTE_PATH=/example.com
+LOCAL_DEPLOY_PATH=/srv/www/holiday-house-comparison
 SITE_PASSWORD=change-me
 ```
+
+`LOCAL_DEPLOY_PATH` is only required if you deploy to the `local` or `both` target (see below).
 
 On the deploy server, `/etc/homelab/holiday-house-comparison.env` (same keys, see `.env.example`)
 is read in preference to `deploy.config` if present (WEBAPP_PROJECT_STANDARD.md §4).
@@ -51,11 +55,21 @@ is read in preference to `deploy.config` if present (WEBAPP_PROJECT_STANDARD.md 
 locally into `deploy_auth/auth_secret.php` (generated, gitignored) before that file is uploaded.
 Changing it invalidates every saved login at once.
 
+**Target:** every run builds the site first, then publishes to `--target`/`-Target` (default `ftp`):
+
+- `ftp` — upload via FTP only (default, previous behavior).
+- `local` — copy to `LOCAL_DEPLOY_PATH` only, no FTP upload (no FTP credentials required).
+- `both` — do both.
+
+Rollback (below) only supports the `ftp` target — releases are only snapshotted for FTP deploys.
+
 **Windows (PowerShell):**
 
 ```powershell
-.\deploy.ps1        # uploads as index.php
-.\deploy-test.ps1   # uploads as index-test.php (for testing)
+.\deploy.ps1                    # builds, then uploads as index.php
+.\deploy.ps1 -Target local       # builds, then copies to LOCAL_DEPLOY_PATH
+.\deploy.ps1 -Target both         # builds, then does both
+.\deploy-test.ps1                # same, but as index-test.php (for testing)
 ```
 
 Requires `curl.exe`, built into Windows 10+.
@@ -64,8 +78,10 @@ Requires `curl.exe`, built into Windows 10+.
 
 ```bash
 chmod +x deploy.sh deploy-test.sh
-./deploy.sh        # uploads as index.php
-./deploy-test.sh   # uploads as index-test.php (for testing)
+./deploy.sh                    # builds, then uploads as index.php
+./deploy.sh --target local      # builds, then copies to LOCAL_DEPLOY_PATH
+./deploy.sh --target both        # builds, then does both
+./deploy-test.sh                # same, but as index-test.php (for testing)
 ```
 
 Requires `curl` and `openssl`, plus `sha256sum` (Linux) or `shasum` (macOS, tried as a fallback) —

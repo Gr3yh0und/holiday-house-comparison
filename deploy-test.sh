@@ -2,18 +2,69 @@
 set -euo pipefail
 
 # Usage:
-#   ./deploy-test.sh                 # build + deploy public/index.html as index-test.php
-#   ./deploy-test.sh --rollback      # re-upload the previous test release's page verbatim
-#   ./deploy-test.sh --rollback 2    # go back 2 releases instead of 1
+#   ./deploy-test.sh                   # build + deploy public/index.html as index-test.php (FTP)
+#   ./deploy-test.sh --target local    # build + copy the gated page to LOCAL_DEPLOY_PATH instead
+#   ./deploy-test.sh --target both     # build + deploy to both FTP and LOCAL_DEPLOY_PATH
+#   ./deploy-test.sh --rollback        # re-upload the previous test release's page verbatim (FTP only)
+#   ./deploy-test.sh --rollback 2      # go back 2 releases instead of 1
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-HOMELAB_ENV="/etc/homelab/holiday-house-comparison.env"
+HOMELAB_ENV="${HOMELAB_ENV:-/etc/homelab/holiday-house-comparison.env}"
 LEGACY_CONFIG="$SCRIPT_DIR/deploy.config"
 LOCAL_FILE="$SCRIPT_DIR/public/index.html"
 AUTH_DIR="$SCRIPT_DIR/deploy_auth"
 AUTH_STATE_FILE="$AUTH_DIR/.auth_state"
 AUTH_SECRET_PHP="$AUTH_DIR/auth_secret.php"
 AUTH_COOKIE_SECONDS=$((30 * 24 * 60 * 60))
+
+# ── Argument parsing ─────────────────────────────────────────────────────────
+TARGET="ftp"
+DO_ROLLBACK=false
+STEPS_BACK=1
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --rollback)
+      DO_ROLLBACK=true
+      if [ $# -ge 2 ]; then
+        case "$2" in
+          --*) : ;;
+          *) STEPS_BACK="$2"; shift ;;
+        esac
+      fi
+      ;;
+    --target)
+      if [ $# -lt 2 ]; then
+        echo "Error: --target requires a value (ftp, local, or both)."
+        exit 1
+      fi
+      TARGET="$2"
+      shift
+      ;;
+    *)
+      echo "Error: unknown argument '$1'."
+      exit 1
+      ;;
+  esac
+  shift
+done
+
+case "$TARGET" in
+  ftp | local | both) ;;
+  *)
+    echo "Error: --target must be ftp, local, or both (got '$TARGET')."
+    exit 1
+    ;;
+esac
+
+if [ "$DO_ROLLBACK" = true ] && [ "$TARGET" != "ftp" ]; then
+  echo "Error: --rollback only supports --target ftp -- releases are only snapshotted for FTP deploys."
+  exit 1
+fi
+
+if ! [[ "$STEPS_BACK" =~ ^[0-9]+$ ]]; then
+  echo "Error: --rollback steps must be a non-negative integer, got '$STEPS_BACK'."
+  exit 1
+fi
 
 # Same rollback mechanism as deploy.sh (see there for the full explanation),
 # kept in its own "test" release line so a test rollback can never touch prod.
@@ -68,7 +119,14 @@ fi
 # shellcheck source=deploy.config.template
 source "$CONFIG_FILE"
 
-for key in FTP_HOST FTP_USER FTP_PASS FTP_REMOTE_PATH SITE_PASSWORD; do
+REQUIRED_KEYS=(SITE_PASSWORD)
+if [ "$TARGET" = "ftp" ] || [ "$TARGET" = "both" ]; then
+  REQUIRED_KEYS+=(FTP_HOST FTP_USER FTP_PASS FTP_REMOTE_PATH)
+fi
+if [ "$TARGET" = "local" ] || [ "$TARGET" = "both" ]; then
+  REQUIRED_KEYS+=(LOCAL_DEPLOY_PATH)
+fi
+for key in "${REQUIRED_KEYS[@]}"; do
   if [ -z "${!key:-}" ]; then
     echo "Error: $CONFIG_FILE is missing key: $key"
     exit 1
@@ -99,32 +157,48 @@ delete_remote() {
     "ftp://$FTP_HOST/" >/dev/null 2>&1 || true
 }
 
-if [ "${1:-}" = "--rollback" ]; then
-  STEPS_BACK="${2:-1}"
-  if ! [[ "$STEPS_BACK" =~ ^[0-9]+$ ]]; then
-    echo "Error: --rollback steps must be a non-negative integer, got '$STEPS_BACK'."
-    exit 1
-  fi
+deploy_local() {
+  local page_name="$1"
+  mkdir -p "$LOCAL_DEPLOY_PATH"
+  cp "$GATED_PAGE" "$LOCAL_DEPLOY_PATH/$page_name"
+  cp "$AUTH_DIR/_auth_gate.php" "$LOCAL_DEPLOY_PATH/_auth_gate.php"
+  cp "$AUTH_SECRET_PHP" "$LOCAL_DEPLOY_PATH/auth_secret.php"
+  cp "$AUTH_DIR/login.php" "$LOCAL_DEPLOY_PATH/login.php"
+  cp "$AUTH_DIR/robots.txt" "$LOCAL_DEPLOY_PATH/robots.txt"
+}
+
+if [ "$DO_ROLLBACK" = true ]; then
   readarray -t RELEASES < <(list_releases)
   if [ "${#RELEASES[@]}" -le "$STEPS_BACK" ]; then
     echo "Error: only ${#RELEASES[@]} release(s) saved locally under $RELEASES_DIR -- cannot go back $STEPS_BACK."
     exit 1
   fi
-  TARGET="${RELEASES[$STEPS_BACK]}"
-  PAGE="$TARGET/index-test.php"
+  ROLLBACK_TARGET="${RELEASES[$STEPS_BACK]}"
+  PAGE="$ROLLBACK_TARGET/index-test.php"
   if [ ! -f "$PAGE" ]; then
-    echo "Error: $TARGET has no saved page -- nothing to roll back to."
+    echo "Error: $ROLLBACK_TARGET has no saved page -- nothing to roll back to."
     exit 1
   fi
-  echo "Rolling back to release $(basename "$TARGET") ..."
+  echo "Rolling back to release $(basename "$ROLLBACK_TARGET") ..."
   upload "$PAGE" "index-test.php"
-  echo "Done. Test site now serving release $(basename "$TARGET")."
+  echo "Done. Test site now serving release $(basename "$ROLLBACK_TARGET")."
   echo "Note: only the page is restored -- auth gate files are untouched (they don't change per-release)."
   exit 0
 fi
 
+# ── Build ────────────────────────────────────────────────────────────────────
+# See deploy.sh for why this always builds fresh instead of trusting a
+# leftover public/index.html.
+PYTHON_BIN="python3"
+command -v python3 >/dev/null 2>&1 || PYTHON_BIN="python"
+echo "Building site (running $PYTHON_BIN app.py) ..."
+if ! (cd "$SCRIPT_DIR" && "$PYTHON_BIN" app.py); then
+  echo "Error: site build failed -- aborting deploy."
+  exit 1
+fi
+
 if [ ! -f "$LOCAL_FILE" ]; then
-  echo "Error: public/index.html not found. Run 'python app.py' first."
+  echo "Error: public/index.html not found after build."
   exit 1
 fi
 
@@ -174,19 +248,26 @@ GATED_PAGE="$(mktemp)"
 trap 'rm -f "$GATED_PAGE"' EXIT
 { printf "<?php require __DIR__ . '/_auth_gate.php'; ?>\n"; cat "$LOCAL_FILE"; } > "$GATED_PAGE"
 
-echo "Deploying test build to ftp://$FTP_HOST$FTP_REMOTE_PATH/index-test.php ..."
+if [ "$TARGET" = "ftp" ] || [ "$TARGET" = "both" ]; then
+  echo "Deploying test build to ftp://$FTP_HOST$FTP_REMOTE_PATH/index-test.php ..."
 
-upload "$GATED_PAGE" "index-test.php"
-upload "$AUTH_DIR/_auth_gate.php" "_auth_gate.php"
-upload "$AUTH_SECRET_PHP" "auth_secret.php"
-upload "$AUTH_DIR/login.php" "login.php"
-upload "$AUTH_DIR/robots.txt" "robots.txt"
+  upload "$GATED_PAGE" "index-test.php"
+  upload "$AUTH_DIR/_auth_gate.php" "_auth_gate.php"
+  upload "$AUTH_SECRET_PHP" "auth_secret.php"
+  upload "$AUTH_DIR/login.php" "login.php"
+  upload "$AUTH_DIR/robots.txt" "robots.txt"
 
-# Remove the unprotected index-test.html every pre-gate deploy left behind --
-# see deploy.sh for why this matters.
-delete_remote "index-test.html"
+  # Remove the unprotected index-test.html every pre-gate deploy left behind --
+  # see deploy.sh for why this matters.
+  delete_remote "index-test.html"
 
-# Snapshot the exact gated bytes just uploaded -- not public/index.html.
-snapshot_release "$GATED_PAGE" "index-test.php"
+  # Snapshot the exact gated bytes just uploaded -- not public/index.html.
+  snapshot_release "$GATED_PAGE" "index-test.php"
+fi
+
+if [ "$TARGET" = "local" ] || [ "$TARGET" = "both" ]; then
+  echo "Deploying test build to local path $LOCAL_DEPLOY_PATH ..."
+  deploy_local "index-test.php"
+fi
 
 echo "Done."

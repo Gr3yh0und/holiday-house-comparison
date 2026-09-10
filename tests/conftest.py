@@ -7,3 +7,10 @@ import os
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+# deploy.sh/deploy-test.sh check /etc/homelab/holiday-house-comparison.env
+# before the repo-local deploy.config used by the deploy-script tests. Force
+# that check to miss so the tests are isolated from whatever real config
+# happens to exist on the machine running them (HOMELAB_ENV overrides the
+# hardcoded path -- see deploy.sh/deploy-test.sh).
+os.environ["HOMELAB_ENV"] = "/nonexistent-for-tests/holiday-house-comparison.env"

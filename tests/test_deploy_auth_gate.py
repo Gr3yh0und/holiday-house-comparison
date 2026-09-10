@@ -38,11 +38,23 @@ cp "$src" "$UPLOAD_LOG/$name"
 exit 0
 """
 
+# The repo copy under test has no real app.py/dependencies, so this stands in
+# for the build step: it leaves the fixture-provided public/index.html alone
+# and just reports success (or failure, for test_build_failure_aborts_deploy).
+PYTHON_STUB_SUCCESS = """#!/usr/bin/env bash
+exit 0
+"""
 
-def _run_deploy_script(tmp_path, script_name, site_password="hunter2-test"):
-    """Run deploy.sh/deploy-test.sh from a scratch copy of the repo, with curl
-    stubbed to capture uploads locally instead of hitting a real FTP host.
-    Returns the directory of "uploaded" files.
+PYTHON_STUB_FAILURE = """#!/usr/bin/env bash
+echo "simulated build failure" >&2
+exit 1
+"""
+
+
+def _setup_repo_copy(tmp_path, script_name, site_password="hunter2-test", extra_config=""):
+    """Set up a scratch copy of the repo plus a stubbed curl/python3 (bin_dir)
+    for running deploy.sh/deploy-test.sh without a real FTP host or build.
+    Returns (repo_copy, bin_dir).
     """
     repo_copy = tmp_path / "repo"
     repo_copy.mkdir()
@@ -63,6 +75,7 @@ def _run_deploy_script(tmp_path, script_name, site_password="hunter2-test"):
         "FTP_PASS=testpass\n"
         "FTP_REMOTE_PATH=/example.com\n"
         f"SITE_PASSWORD={site_password}\n"
+        f"{extra_config}"
     )
 
     bin_dir = tmp_path / "bin"
@@ -70,6 +83,19 @@ def _run_deploy_script(tmp_path, script_name, site_password="hunter2-test"):
     curl_stub = bin_dir / "curl"
     curl_stub.write_text(CURL_STUB)
     curl_stub.chmod(curl_stub.stat().st_mode | stat.S_IEXEC)
+    python_stub = bin_dir / "python3"
+    python_stub.write_text(PYTHON_STUB_SUCCESS)
+    python_stub.chmod(python_stub.stat().st_mode | stat.S_IEXEC)
+
+    return repo_copy, bin_dir
+
+
+def _run_deploy_script(tmp_path, script_name, site_password="hunter2-test"):
+    """Run deploy.sh/deploy-test.sh from a scratch copy of the repo, with curl
+    and python3 stubbed out (no real FTP host, no real build).
+    Returns the directory of "uploaded" files.
+    """
+    repo_copy, bin_dir = _setup_repo_copy(tmp_path, script_name, site_password)
 
     uploaded = tmp_path / "uploaded"
     uploaded.mkdir()
@@ -219,6 +245,104 @@ def test_cookie_secret_rotates_when_password_changes(tmp_path):
     assert result.returncode == 0, result.stdout + result.stderr
     secret2 = _auth_cookie_secret(repo_copy)
     assert secret1 != secret2, "AUTH_COOKIE_SECRET must rotate so old logins are invalidated"
+
+
+def test_deploy_sh_builds_before_deploying(tmp_path):
+    """deploy.sh must invoke the build (python3 app.py) itself, not just
+    trust a leftover public/index.html from an earlier, unrelated run.
+    """
+    repo_copy, bin_dir = _setup_repo_copy(tmp_path, "deploy.sh")
+    uploaded = tmp_path / "uploaded"
+    uploaded.mkdir()
+    env = dict(os.environ)
+    env["PATH"] = f"{bin_dir}:{env['PATH']}"
+    env["UPLOAD_LOG"] = str(uploaded)
+    result = subprocess.run(
+        ["bash", "deploy.sh"], cwd=repo_copy, env=env,
+        capture_output=True, text=True, timeout=30, check=False,
+    )
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert "Building site" in result.stdout
+
+
+def test_deploy_sh_aborts_when_build_fails(tmp_path):
+    repo_copy, bin_dir = _setup_repo_copy(tmp_path, "deploy.sh")
+    python_stub = bin_dir / "python3"
+    python_stub.write_text(PYTHON_STUB_FAILURE)
+    python_stub.chmod(python_stub.stat().st_mode | stat.S_IEXEC)
+
+    uploaded = tmp_path / "uploaded"
+    uploaded.mkdir()
+    env = dict(os.environ)
+    env["PATH"] = f"{bin_dir}:{env['PATH']}"
+    env["UPLOAD_LOG"] = str(uploaded)
+    result = subprocess.run(
+        ["bash", "deploy.sh"], cwd=repo_copy, env=env,
+        capture_output=True, text=True, timeout=30, check=False,
+    )
+    assert result.returncode != 0
+    assert "build failed" in result.stdout
+    assert not any(uploaded.iterdir()), "a failed build must never reach the upload step"
+
+
+def test_deploy_sh_rejects_invalid_target(tmp_path):
+    repo_copy, bin_dir = _setup_repo_copy(tmp_path, "deploy.sh")
+    env = dict(os.environ)
+    env["PATH"] = f"{bin_dir}:{env['PATH']}"
+    result = subprocess.run(
+        ["bash", "deploy.sh", "--target", "bogus"], cwd=repo_copy, env=env,
+        capture_output=True, text=True, timeout=30, check=False,
+    )
+    assert result.returncode != 0
+    assert "ftp, local, or both" in result.stdout
+
+
+def test_deploy_sh_target_local_writes_files_without_ftp(tmp_path):
+    """--target local must work with no FTP credentials at all, and must not
+    touch the network (the curl stub records nothing uploaded)."""
+    local_deploy_dir = tmp_path / "local_site"
+    repo_copy, bin_dir = _setup_repo_copy(
+        tmp_path, "deploy.sh",
+        extra_config=f"LOCAL_DEPLOY_PATH={local_deploy_dir}\n",
+    )
+    # Strip FTP_* keys entirely -- local-only deploys must not require them.
+    (repo_copy / "deploy.config").write_text(
+        f"SITE_PASSWORD=hunter2-test\nLOCAL_DEPLOY_PATH={local_deploy_dir}\n"
+    )
+    uploaded = tmp_path / "uploaded"
+    uploaded.mkdir()
+    env = dict(os.environ)
+    env["PATH"] = f"{bin_dir}:{env['PATH']}"
+    env["UPLOAD_LOG"] = str(uploaded)
+    result = subprocess.run(
+        ["bash", "deploy.sh", "--target", "local"], cwd=repo_copy, env=env,
+        capture_output=True, text=True, timeout=30, check=False,
+    )
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert (local_deploy_dir / "index.php").exists()
+    for name in ("_auth_gate.php", "auth_secret.php", "login.php", "robots.txt"):
+        assert (local_deploy_dir / name).exists(), f"{name} was not copied locally"
+    assert not any(uploaded.iterdir()), "local-only target must never touch FTP"
+
+
+def test_deploy_sh_target_both_writes_ftp_and_local(tmp_path):
+    local_deploy_dir = tmp_path / "local_site"
+    repo_copy, bin_dir = _setup_repo_copy(
+        tmp_path, "deploy.sh",
+        extra_config=f"LOCAL_DEPLOY_PATH={local_deploy_dir}\n",
+    )
+    uploaded = tmp_path / "uploaded"
+    uploaded.mkdir()
+    env = dict(os.environ)
+    env["PATH"] = f"{bin_dir}:{env['PATH']}"
+    env["UPLOAD_LOG"] = str(uploaded)
+    result = subprocess.run(
+        ["bash", "deploy.sh", "--target", "both"], cwd=repo_copy, env=env,
+        capture_output=True, text=True, timeout=30, check=False,
+    )
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert (uploaded / "index.php").exists()
+    assert (local_deploy_dir / "index.php").exists()
 
 
 def test_password_hash_matches_php_hash_algorithm(tmp_path):

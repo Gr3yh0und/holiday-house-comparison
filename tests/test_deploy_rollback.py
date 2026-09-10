@@ -31,6 +31,12 @@ cp "$src" "$UPLOAD_LOG/$name"
 exit 0
 """
 
+# The repo copy under test has no real app.py/dependencies -- this stands in
+# for the build step and leaves the fixture-provided public/index.html alone.
+PYTHON_STUB = """#!/usr/bin/env bash
+exit 0
+"""
+
 
 def _make_repo(tmp_path, script_name):
     repo_copy = tmp_path / "repo"
@@ -57,6 +63,9 @@ def _make_repo(tmp_path, script_name):
     curl_stub = bin_dir / "curl"
     curl_stub.write_text(CURL_STUB)
     curl_stub.chmod(curl_stub.stat().st_mode | stat.S_IEXEC)
+    python_stub = bin_dir / "python3"
+    python_stub.write_text(PYTHON_STUB)
+    python_stub.chmod(python_stub.stat().st_mode | stat.S_IEXEC)
 
     return repo_copy, bin_dir
 
@@ -181,6 +190,29 @@ def test_rollback_rejects_non_numeric_steps(tmp_path):
     )
     assert result.returncode != 0
     assert "non-negative integer" in result.stdout
+
+
+def test_rollback_rejects_non_ftp_target(tmp_path):
+    """Releases are only ever snapshotted for FTP deploys, so a rollback
+    against --target local (or both) has nothing to restore from and must
+    error clearly instead of silently doing an FTP rollback anyway."""
+    repo_copy, bin_dir = _make_repo(tmp_path, "deploy.sh")
+    r1 = _deploy(repo_copy, bin_dir, "deploy.sh", "<html>Version A</html>", tmp_path / "up1")
+    assert r1.returncode == 0, r1.stdout + r1.stderr
+
+    env = dict(os.environ)
+    env["PATH"] = f"{bin_dir}:{env['PATH']}"
+    result = subprocess.run(
+        ["bash", "deploy.sh", "--rollback", "--target", "local"],
+        cwd=repo_copy,
+        env=env,
+        capture_output=True,
+        text=True,
+        timeout=30,
+        check=False,
+    )
+    assert result.returncode != 0
+    assert "only supports --target ftp" in result.stdout
 
 
 def test_deploy_test_sh_rollback_is_independent_of_prod(tmp_path):
