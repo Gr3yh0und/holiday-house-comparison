@@ -32,8 +32,11 @@ exit 0
 """
 
 # The repo copy under test has no real app.py/dependencies -- this stands in
-# for the build step and leaves the fixture-provided public/index.html alone.
+# for the build step, leaves the fixture-provided public/index.html alone,
+# and writes public/health.json the same way app.py's _write_health() would
+# (deploy.sh uploads it unconditionally alongside the gated page).
 PYTHON_STUB = """#!/usr/bin/env bash
+echo '{"version":"test","status":"ok","last_update":"2024-01-01 00:00","extra":{}}' > public/health.json
 exit 0
 """
 

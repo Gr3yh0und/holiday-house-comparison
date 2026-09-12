@@ -120,6 +120,21 @@ function Deploy-Local([string]$PageName) {
     Copy-Item "$AuthDir\robots.txt" (Join-Path $LocalDeployPath "robots.txt") -Force
 }
 
+# health.json (WEBAPP_PROJECT_STANDARD.md §6a) is deliberately unauthenticated
+# -- it deploys plain, never through the PHP gate.
+function Publish-HealthBestEffort {
+    $healthFile = "$PSScriptRoot\public\health.json"
+    if (-not (Test-Path $healthFile)) { return }
+    if ($Target -in @('ftp', 'both')) {
+        curl.exe --silent --show-error --ftp-create-dirs -T $healthFile `
+            "$remoteBase/health.json" --user "$($config['FTP_USER']):$($config['FTP_PASS'])" 2>$null | Out-Null
+    }
+    if ($Target -in @('local', 'both')) {
+        New-Item -ItemType Directory -Force -Path $LocalDeployPath | Out-Null
+        Copy-Item $healthFile (Join-Path $LocalDeployPath "health.json") -Force -ErrorAction SilentlyContinue
+    }
+}
+
 if ($Rollback) {
     $releases = Get-Releases
     if ($releases.Count -le $Steps) {
@@ -148,6 +163,7 @@ Write-Host "Building site (running $pythonBin app.py) ..."
 & $pythonBin app.py
 if ($LASTEXITCODE -ne 0) {
     Write-Error "Site build failed -- aborting deploy."
+    Publish-HealthBestEffort
     exit $LASTEXITCODE
 }
 
@@ -229,6 +245,7 @@ if ($Target -in @('ftp', 'both')) {
     Send-File $AuthSecretFile "auth_secret.php"
     Send-File "$AuthDir\login.php" "login.php"
     Send-File "$AuthDir\robots.txt" "robots.txt"
+    Send-File "$PSScriptRoot\public\health.json" "health.json"
 
     # Remove the unprotected index.html every pre-gate deploy left on the
     # server -- otherwise it keeps serving the full site with no login, and
@@ -244,6 +261,7 @@ if ($Target -in @('ftp', 'both')) {
 if ($Target -in @('local', 'both')) {
     Write-Host "Deploying to local path $LocalDeployPath ..."
     Deploy-Local "index.php"
+    Copy-Item "$PSScriptRoot\public\health.json" (Join-Path $LocalDeployPath "health.json") -Force
 }
 
 Remove-Item $gatedPage -ErrorAction SilentlyContinue

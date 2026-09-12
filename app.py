@@ -29,6 +29,8 @@ CHROME_BINARY_PATH = os.path.join(
     'webdriver', 'chrome-win64', 'chrome.exe'
 )
 CONFIG_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'config.json')
+VERSION_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'VERSION')
+HEALTH_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'public', 'health.json')
 
 _DEFAULTS = {
     'loipen_radius_m': 10000,
@@ -489,6 +491,41 @@ def _normalize_input(data):
     return {'title': data.get('title', ''), 'trips': [trips[n] for n in trip_order]}
 
 
+def _read_repo_version():
+    """Return this repo's VERSION file content, or 'dev' if missing."""
+    try:
+        with open(VERSION_FILE, encoding='utf-8') as f:
+            return f.read().strip()
+    except FileNotFoundError:
+        return 'dev'
+
+
+def _write_health(status):
+    """Write public/health.json (WEBAPP_PROJECT_STANDARD.md §6a).
+
+    last_update reflects the last successful scrape, not this process's own
+    runtime -- a failed run (status='down') reports that failure without
+    bumping last_update, since the data on disk didn't actually change.
+    """
+    last_update = None
+    try:
+        with open(HEALTH_FILE, encoding='utf-8') as f:
+            last_update = json.load(f).get('last_update')
+    except (FileNotFoundError, json.JSONDecodeError):
+        pass
+    if status != 'down':
+        last_update = datetime.now().strftime('%Y-%m-%d %H:%M')
+    health = {
+        'version': _read_repo_version(),
+        'status': status,
+        'last_update': last_update,
+        'extra': {},
+    }
+    os.makedirs(os.path.dirname(HEALTH_FILE), exist_ok=True)
+    with open(HEALTH_FILE, 'w', encoding='utf-8') as f:
+        json.dump(health, f, ensure_ascii=False, indent=2)
+
+
 def _validate_scrape_output(trip_data, scrape_stats=None):
     """Return True if the run produced usable house data.
 
@@ -748,12 +785,15 @@ if __name__ == '__main__':
     outdooractive.save_cache()
 
     if not _validate_scrape_output(trip_data, scrape_stats):
+        _write_health('down')
         print(
             "ERROR: scrape yielded zero houses across all trips — aborting without "
             "overwriting public/data.json or public/index.html. The previous output "
             "stays in place; do not deploy from this run."
         )
         raise SystemExit(1)
+
+    _write_health('degraded' if scrape_stats['failed'] else 'ok')
 
     updated_at = datetime.now().strftime('%Y-%m-%d %H:%M')
 

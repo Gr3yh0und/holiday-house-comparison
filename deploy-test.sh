@@ -167,6 +167,23 @@ deploy_local() {
   cp "$AUTH_DIR/robots.txt" "$LOCAL_DEPLOY_PATH/robots.txt"
 }
 
+# health-test.json (not health.json -- prod and test share the same remote
+# path/LOCAL_DEPLOY_PATH, differentiated only by filename, same as
+# index.php/index-test.php) is deliberately unauthenticated, deployed plain,
+# never through the PHP gate. See deploy.sh for the WEBAPP_PROJECT_STANDARD.md
+# §6a reference.
+publish_health_best_effort() {
+  local health_file="$SCRIPT_DIR/public/health.json"
+  [ -f "$health_file" ] || return 0
+  if [ "$TARGET" = "ftp" ] || [ "$TARGET" = "both" ]; then
+    upload "$health_file" "health-test.json" || true
+  fi
+  if [ "$TARGET" = "local" ] || [ "$TARGET" = "both" ]; then
+    mkdir -p "$LOCAL_DEPLOY_PATH"
+    cp "$health_file" "$LOCAL_DEPLOY_PATH/health-test.json" || true
+  fi
+}
+
 if [ "$DO_ROLLBACK" = true ]; then
   readarray -t RELEASES < <(list_releases)
   if [ "${#RELEASES[@]}" -le "$STEPS_BACK" ]; then
@@ -194,6 +211,7 @@ command -v python3 >/dev/null 2>&1 || PYTHON_BIN="python"
 echo "Building site (running $PYTHON_BIN app.py) ..."
 if ! (cd "$SCRIPT_DIR" && "$PYTHON_BIN" app.py); then
   echo "Error: site build failed -- aborting deploy."
+  publish_health_best_effort
   exit 1
 fi
 
@@ -256,6 +274,7 @@ if [ "$TARGET" = "ftp" ] || [ "$TARGET" = "both" ]; then
   upload "$AUTH_SECRET_PHP" "auth_secret.php"
   upload "$AUTH_DIR/login.php" "login.php"
   upload "$AUTH_DIR/robots.txt" "robots.txt"
+  upload "$SCRIPT_DIR/public/health.json" "health-test.json"
 
   # Remove the unprotected index-test.html every pre-gate deploy left behind --
   # see deploy.sh for why this matters.
@@ -268,6 +287,7 @@ fi
 if [ "$TARGET" = "local" ] || [ "$TARGET" = "both" ]; then
   echo "Deploying test build to local path $LOCAL_DEPLOY_PATH ..."
   deploy_local "index-test.php"
+  cp "$SCRIPT_DIR/public/health.json" "$LOCAL_DEPLOY_PATH/health-test.json"
 fi
 
 echo "Done."

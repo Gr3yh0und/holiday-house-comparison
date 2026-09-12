@@ -40,12 +40,15 @@ exit 0
 
 # The repo copy under test has no real app.py/dependencies, so this stands in
 # for the build step: it leaves the fixture-provided public/index.html alone
-# and just reports success (or failure, for test_build_failure_aborts_deploy).
+# and just reports success (or failure, for test_build_failure_aborts_deploy),
+# writing public/health.json the same way app.py's _write_health() would.
 PYTHON_STUB_SUCCESS = """#!/usr/bin/env bash
+echo '{"version":"test","status":"ok","last_update":"2024-01-01 00:00","extra":{}}' > public/health.json
 exit 0
 """
 
 PYTHON_STUB_FAILURE = """#!/usr/bin/env bash
+echo '{"version":"test","status":"down","last_update":null,"extra":{}}' > public/health.json
 echo "simulated build failure" >&2
 exit 1
 """
@@ -132,6 +135,15 @@ def test_deploy_sh_uploads_all_gate_files(tmp_path):
     uploaded = _run_deploy_script(tmp_path, "deploy.sh")
     for name in ("_auth_gate.php", "auth_secret.php", "login.php", "robots.txt"):
         assert (uploaded / name).exists(), f"{name} was not uploaded"
+
+
+def test_deploy_sh_uploads_health_json(tmp_path):
+    """health.json (WEBAPP_PROJECT_STANDARD.md §6a) must publish plain,
+    never through the PHP auth gate -- it's deliberately unauthenticated.
+    """
+    uploaded = _run_deploy_script(tmp_path, "deploy.sh")
+    assert (uploaded / "health.json").exists()
+    assert not (uploaded / "health.json").read_text().startswith("<?php")
 
 
 def test_deploy_sh_refuses_placeholder_password(tmp_path):
@@ -282,7 +294,13 @@ def test_deploy_sh_aborts_when_build_fails(tmp_path):
     )
     assert result.returncode != 0
     assert "build failed" in result.stdout
-    assert not any(uploaded.iterdir()), "a failed build must never reach the upload step"
+    uploaded_names = {p.name for p in uploaded.iterdir()}
+    assert uploaded_names == {"health.json"}, (
+        "a failed build must never publish the site itself, but health.json "
+        "(status=down, written by app.py before it exits) must still get "
+        "through so a monitoring consumer sees the failure"
+    )
+    assert '"status":"down"' in (uploaded / "health.json").read_text()
 
 
 def test_deploy_sh_rejects_invalid_target(tmp_path):
@@ -320,7 +338,7 @@ def test_deploy_sh_target_local_writes_files_without_ftp(tmp_path):
     )
     assert result.returncode == 0, result.stdout + result.stderr
     assert (local_deploy_dir / "index.php").exists()
-    for name in ("_auth_gate.php", "auth_secret.php", "login.php", "robots.txt"):
+    for name in ("_auth_gate.php", "auth_secret.php", "login.php", "robots.txt", "health.json"):
         assert (local_deploy_dir / name).exists(), f"{name} was not copied locally"
     assert not any(uploaded.iterdir()), "local-only target must never touch FTP"
 

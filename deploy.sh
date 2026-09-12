@@ -183,6 +183,21 @@ deploy_local() {
   cp "$AUTH_DIR/robots.txt" "$LOCAL_DEPLOY_PATH/robots.txt"
 }
 
+# health.json (WEBAPP_PROJECT_STANDARD.md §6a) is deliberately unauthenticated
+# -- it deploys plain, never through the PHP gate -- so a monitoring consumer
+# at <route>/health doesn't need a saved login.
+publish_health_best_effort() {
+  local health_file="$SCRIPT_DIR/public/health.json"
+  [ -f "$health_file" ] || return 0
+  if [ "$TARGET" = "ftp" ] || [ "$TARGET" = "both" ]; then
+    upload "$health_file" "health.json" || true
+  fi
+  if [ "$TARGET" = "local" ] || [ "$TARGET" = "both" ]; then
+    mkdir -p "$LOCAL_DEPLOY_PATH"
+    cp "$health_file" "$LOCAL_DEPLOY_PATH/health.json" || true
+  fi
+}
+
 if [ "$DO_ROLLBACK" = true ]; then
   readarray -t RELEASES < <(list_releases)
   if [ "${#RELEASES[@]}" -le "$STEPS_BACK" ]; then
@@ -210,6 +225,10 @@ command -v python3 >/dev/null 2>&1 || PYTHON_BIN="python"
 echo "Building site (running $PYTHON_BIN app.py) ..."
 if ! (cd "$SCRIPT_DIR" && "$PYTHON_BIN" app.py); then
   echo "Error: site build failed -- aborting deploy."
+  # app.py still writes public/health.json with status=down on this failure
+  # (WEBAPP_PROJECT_STANDARD.md §6a) -- publish just that so a monitoring
+  # consumer sees the failure instead of a stale "ok" from the last good run.
+  publish_health_best_effort
   exit 1
 fi
 
@@ -285,6 +304,7 @@ if [ "$TARGET" = "ftp" ] || [ "$TARGET" = "both" ]; then
   upload "$AUTH_SECRET_PHP" "auth_secret.php"
   upload "$AUTH_DIR/login.php" "login.php"
   upload "$AUTH_DIR/robots.txt" "robots.txt"
+  upload "$SCRIPT_DIR/public/health.json" "health.json"
 
   # Remove the unprotected index.html every pre-gate deploy left on the server
   # -- otherwise it keeps serving the full site with no login, and on a
@@ -300,6 +320,7 @@ fi
 if [ "$TARGET" = "local" ] || [ "$TARGET" = "both" ]; then
   echo "Deploying to local path $LOCAL_DEPLOY_PATH ..."
   deploy_local "index.php"
+  cp "$SCRIPT_DIR/public/health.json" "$LOCAL_DEPLOY_PATH/health.json"
 fi
 
 echo "Done."
