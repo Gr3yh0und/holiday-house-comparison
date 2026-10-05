@@ -11,6 +11,8 @@ the hand-backfilled `1.0.0`–`1.5.0` tags (§2), re-created from the previously
 
 ## [Unreleased]
 
+## [1.6.0] — 2026-10-05
+
 ### Added
 - Minimum-person-count filter, also applied to the compare option list.
 - Password gate (`deploy_auth/`) in front of the public FTP target — fail-closed, signed
@@ -20,10 +22,8 @@ the hand-backfilled `1.0.0`–`1.5.0` tags (§2), re-created from the previously
 - Onboarded to `infrastructure/WEBAPP_PROJECT_STANDARD.md`: `homelab.yml`, `VERSION`,
   `CHANGELOG.md`, `deploy.config.example`, shared `.claude/skills/{deploy,rollback}` wrappers,
   Dependabot, and a pytest suite (previously no automated tests existed).
-
 ### Changed
 - Ratings normalised to a common 0–10 scale across all brokers.
-
 ### Fixed
 - `--target local` now publishes the plain `index.html`, not the PHP gate. The local target is
   served by the homelab proxy's static file server, which never runs PHP — it would have served
