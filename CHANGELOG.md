@@ -11,6 +11,8 @@ the hand-backfilled `1.0.0`–`1.5.0` tags (§2), re-created from the previously
 
 ## [Unreleased]
 
+## [1.7.0] — 2026-10-05
+
 ### Changed
 - Scraping and publishing are separate steps. `app.py --scrape-only` scrapes into
   `cache/houses.json`; `app.py --from-cache` renders from it with no network. Both deploy paths
@@ -18,7 +20,6 @@ the hand-backfilled `1.0.0`–`1.5.0` tags (§2), re-created from the previously
   and both sites show the same data. Plain `app.py` still does both.
 - `public/data.json` is no longer written or published; the page never read it.
 - `health.json`'s `last_update` is now the last successful scrape, also after a render-only deploy.
-
 ### Fixed
 - A stopped or failed scrape could overwrite the good data with a partial set (progress was
   saved straight into the file the next deploy rendered from). Progress now goes to
