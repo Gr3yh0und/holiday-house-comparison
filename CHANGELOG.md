@@ -18,6 +18,9 @@ the hand-backfilled `1.0.0`–`1.5.0` tags (§2), re-created from the previously
   now stop with a pointer to `/deploy`, and `LOCAL_DEPLOY_PATH` is gone. Two tools writing
   into the same served folder would overwrite each other's releases.
 - README "Deployment" rewritten for the two targets.
+- Dependencies: Flask 3.1.3, requests 2.34.2, selenium 4.47.0, curl-cffi >=0.16.1,
+  setuptools >=84.0.0; CI actions `checkout`/`setup-python` v7 (the 7 open Dependabot PRs,
+  applied together).
 
 ## [1.6.0] — 2026-10-05
 

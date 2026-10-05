@@ -1,10 +1,10 @@
-setuptools>=68.0
-Flask==3.0.3
-requests==2.31.0
+setuptools>=84.0.0
+Flask==3.1.3
+requests==2.34.2
 beautifulsoup4==4.12.3
-selenium==4.21.0
+selenium==4.47.0
 webdriver-manager
 undetected-chromedriver==3.5.5
 websockets==16.0
-curl-cffi>=0.14.0
+curl-cffi>=0.16.1
 pylint
