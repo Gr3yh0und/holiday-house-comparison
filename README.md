@@ -42,7 +42,7 @@ FTP_HOST=ftp.example.com
 FTP_USER=username
 FTP_PASS=password
 FTP_REMOTE_PATH=/example.com
-LOCAL_DEPLOY_PATH=/srv/www/holiday-house-comparison
+LOCAL_DEPLOY_PATH=/samba/server/www/holiday-house-comparison/current
 SITE_PASSWORD=change-me
 ```
 
@@ -58,7 +58,7 @@ Changing it invalidates every saved login at once.
 **Target:** every run builds the site first, then publishes to `--target`/`-Target` (default `ftp`):
 
 - `ftp` — upload via FTP only (default, previous behavior).
-- `local` — copy to `LOCAL_DEPLOY_PATH` only, no FTP upload (no FTP credentials required).
+- `local` — copy the plain `index.html` (no PHP gate) to `LOCAL_DEPLOY_PATH` only, no FTP upload (no FTP credentials required). This target is served by the homelab proxy (Caddy, static files only, no PHP), which protects it with Authelia instead.
 - `both` — do both.
 
 Rollback (below) only supports the `ftp` target — releases are only snapshotted for FTP deploys.

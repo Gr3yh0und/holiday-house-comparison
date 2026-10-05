@@ -25,6 +25,10 @@ the hand-backfilled `1.0.0`–`1.5.0` tags (§2), re-created from the previously
 - Ratings normalised to a common 0–10 scale across all brokers.
 
 ### Fixed
+- `--target local` now publishes the plain `index.html`, not the PHP gate. The local target is
+  served by the homelab proxy's static file server, which never runs PHP — it would have served
+  `auth_secret.php` as plain text. Authelia protects that route instead. Stale PHP files left by
+  an earlier local deploy are removed.
 - Fewo rating parsing and URL logging.
 - Sticky scrollbar pinned to the bottom of the viewport on desktop.
 - Lint warnings.

@@ -101,13 +101,16 @@ function Remove-RemoteFile([string]$Name) {
         "ftp://$($config['FTP_HOST'])/" 2>$null | Out-Null
 }
 
+# The local target is served by Caddy's file_server, which never executes PHP
+# (it would stream auth_secret.php back as plain text) -- Authelia gates that
+# route instead, so it gets the plain, ungated page. See deploy.sh.
 function Deploy-Local([string]$PageName) {
     New-Item -ItemType Directory -Force -Path $LocalDeployPath | Out-Null
-    Copy-Item $gatedPage (Join-Path $LocalDeployPath $PageName) -Force
-    Copy-Item "$AuthDir\_auth_gate.php" (Join-Path $LocalDeployPath "_auth_gate.php") -Force
-    Copy-Item $AuthSecretFile (Join-Path $LocalDeployPath "auth_secret.php") -Force
-    Copy-Item "$AuthDir\login.php" (Join-Path $LocalDeployPath "login.php") -Force
+    Copy-Item $LocalFile (Join-Path $LocalDeployPath $PageName) -Force
     Copy-Item "$AuthDir\robots.txt" (Join-Path $LocalDeployPath "robots.txt") -Force
+    foreach ($stale in @('_auth_gate.php', 'auth_secret.php', 'login.php', ($PageName -replace '\.html$', '.php'))) {
+        Remove-Item (Join-Path $LocalDeployPath $stale) -Force -ErrorAction SilentlyContinue
+    }
 }
 
 # health-test.json (not health.json -- prod and test share the same remote
@@ -241,7 +244,7 @@ if ($Target -in @('ftp', 'both')) {
 
 if ($Target -in @('local', 'both')) {
     Write-Host "Deploying test build to local path $LocalDeployPath ..."
-    Deploy-Local "index-test.php"
+    Deploy-Local "index-test.html"
     Copy-Item "$PSScriptRoot\public\health.json" (Join-Path $LocalDeployPath "health-test.json") -Force
 }
 

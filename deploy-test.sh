@@ -3,7 +3,7 @@ set -euo pipefail
 
 # Usage:
 #   ./deploy-test.sh                   # build + deploy public/index.html as index-test.php (FTP)
-#   ./deploy-test.sh --target local    # build + copy the gated page to LOCAL_DEPLOY_PATH instead
+#   ./deploy-test.sh --target local    # build + copy the plain page to LOCAL_DEPLOY_PATH instead
 #   ./deploy-test.sh --target both     # build + deploy to both FTP and LOCAL_DEPLOY_PATH
 #   ./deploy-test.sh --rollback        # re-upload the previous test release's page verbatim (FTP only)
 #   ./deploy-test.sh --rollback 2      # go back 2 releases instead of 1
@@ -157,14 +157,19 @@ delete_remote() {
     "ftp://$FTP_HOST/" >/dev/null 2>&1 || true
 }
 
+# The local target is served by the homelab proxy's Caddy file_server, which
+# never executes PHP -- it streams .php files back as plain text, so copying
+# the gate there would publish auth_secret.php's hash and gate nothing. Access
+# control on that route is Authelia's forward_auth instead (homelab.yml
+# personal_data: true), so the local target gets the plain, ungated page.
+# Any PHP files an earlier version of this script left behind are removed.
 deploy_local() {
   local page_name="$1"
   mkdir -p "$LOCAL_DEPLOY_PATH"
-  cp "$GATED_PAGE" "$LOCAL_DEPLOY_PATH/$page_name"
-  cp "$AUTH_DIR/_auth_gate.php" "$LOCAL_DEPLOY_PATH/_auth_gate.php"
-  cp "$AUTH_SECRET_PHP" "$LOCAL_DEPLOY_PATH/auth_secret.php"
-  cp "$AUTH_DIR/login.php" "$LOCAL_DEPLOY_PATH/login.php"
+  cp "$LOCAL_FILE" "$LOCAL_DEPLOY_PATH/$page_name"
   cp "$AUTH_DIR/robots.txt" "$LOCAL_DEPLOY_PATH/robots.txt"
+  rm -f "$LOCAL_DEPLOY_PATH/_auth_gate.php" "$LOCAL_DEPLOY_PATH/auth_secret.php" \
+    "$LOCAL_DEPLOY_PATH/login.php" "$LOCAL_DEPLOY_PATH/${page_name%.html}.php"
 }
 
 # health-test.json (not health.json -- prod and test share the same remote
@@ -286,7 +291,7 @@ fi
 
 if [ "$TARGET" = "local" ] || [ "$TARGET" = "both" ]; then
   echo "Deploying test build to local path $LOCAL_DEPLOY_PATH ..."
-  deploy_local "index-test.php"
+  deploy_local "index-test.html"
   cp "$SCRIPT_DIR/public/health.json" "$LOCAL_DEPLOY_PATH/health-test.json"
 fi
 

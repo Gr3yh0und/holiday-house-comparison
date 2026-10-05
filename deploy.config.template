@@ -6,7 +6,7 @@ FTP_REMOTE_PATH=/example.com
 # Required only for --target local / --target both. A local filesystem path
 # the gated page + auth files get copied into instead of (or alongside) the
 # FTP upload -- e.g. a local web server's document root for testing.
-LOCAL_DEPLOY_PATH=/srv/www/holiday-house-comparison
+LOCAL_DEPLOY_PATH=/samba/server/www/holiday-house-comparison/current
 
 # Required. Shared passphrase for the site's PHP login gate (see deploy_auth/).
 # deploy.sh/deploy.ps1 never upload this plaintext -- it's salted + hashed

@@ -337,10 +337,38 @@ def test_deploy_sh_target_local_writes_files_without_ftp(tmp_path):
         capture_output=True, text=True, timeout=30, check=False,
     )
     assert result.returncode == 0, result.stdout + result.stderr
-    assert (local_deploy_dir / "index.php").exists()
-    for name in ("_auth_gate.php", "auth_secret.php", "login.php", "robots.txt", "health.json"):
+    # Caddy's file_server serves this path and never executes PHP, so the
+    # local target must publish the plain page and no PHP at all -- a .php
+    # file there is streamed back as source (auth_secret.php's hash included).
+    page = (local_deploy_dir / "index.html").read_text()
+    assert not page.startswith("<?php")
+    for name in ("robots.txt", "health.json"):
         assert (local_deploy_dir / name).exists(), f"{name} was not copied locally"
+    assert not list(local_deploy_dir.glob("*.php")), "local target must never publish PHP"
     assert not any(uploaded.iterdir()), "local-only target must never touch FTP"
+
+
+def test_deploy_sh_target_local_removes_stale_php(tmp_path):
+    """A local deploy dir left behind by the old (gated) local target must be
+    cleaned up, or Caddy keeps serving auth_secret.php as plain text."""
+    local_deploy_dir = tmp_path / "local_site"
+    local_deploy_dir.mkdir()
+    for name in ("index.php", "_auth_gate.php", "auth_secret.php", "login.php"):
+        (local_deploy_dir / name).write_text("<?php // stale")
+    repo_copy, bin_dir = _setup_repo_copy(
+        tmp_path, "deploy.sh",
+        extra_config=f"LOCAL_DEPLOY_PATH={local_deploy_dir}\n",
+    )
+    env = dict(os.environ)
+    env["PATH"] = f"{bin_dir}:{env['PATH']}"
+    env["UPLOAD_LOG"] = str(tmp_path)
+    result = subprocess.run(
+        ["bash", "deploy.sh", "--target", "local"], cwd=repo_copy, env=env,
+        capture_output=True, text=True, timeout=30, check=False,
+    )
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert (local_deploy_dir / "index.html").exists()
+    assert not list(local_deploy_dir.glob("*.php"))
 
 
 def test_deploy_sh_target_both_writes_ftp_and_local(tmp_path):
@@ -360,7 +388,8 @@ def test_deploy_sh_target_both_writes_ftp_and_local(tmp_path):
     )
     assert result.returncode == 0, result.stdout + result.stderr
     assert (uploaded / "index.php").exists()
-    assert (local_deploy_dir / "index.php").exists()
+    assert (local_deploy_dir / "index.html").exists()
+    assert not list(local_deploy_dir.glob("*.php"))
 
 
 def test_password_hash_matches_php_hash_algorithm(tmp_path):
