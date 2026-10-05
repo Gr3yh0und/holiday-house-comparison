@@ -196,8 +196,14 @@ fi
 # ── Build ────────────────────────────────────────────────────────────────────
 # The deploy always builds fresh -- a stale public/index.html from an earlier,
 # unrelated run must never get (re-)published silently.
-PYTHON_BIN="python3"
-command -v python3 >/dev/null 2>&1 || PYTHON_BIN="python"
+# The repo's .venv first: on the deploy server the system Python has none of
+# requirements.txt installed.
+if [ -x "$SCRIPT_DIR/.venv/bin/python" ]; then
+  PYTHON_BIN="$SCRIPT_DIR/.venv/bin/python"
+else
+  PYTHON_BIN="python3"
+  command -v python3 >/dev/null 2>&1 || PYTHON_BIN="python"
+fi
 echo "Building site (running $PYTHON_BIN app.py) ..."
 if ! (cd "$SCRIPT_DIR" && "$PYTHON_BIN" app.py); then
   echo "Error: site build failed -- aborting deploy."
