@@ -3,8 +3,7 @@ set -euo pipefail
 
 # Usage:
 #   ./deploy.sh                        # build + deploy public/index.html as index.php (FTP)
-#   ./deploy.sh --target local         # build + copy the plain page to LOCAL_DEPLOY_PATH instead
-#   ./deploy.sh --target both          # build + deploy to both FTP and LOCAL_DEPLOY_PATH
+#   (the homelab local target is published by /deploy local, not this script)
 #   ./deploy.sh --rollback             # re-upload the previous release's page verbatim (FTP only)
 #   ./deploy.sh --rollback 2           # go back 2 releases instead of 1
 
@@ -34,7 +33,7 @@ while [ $# -gt 0 ]; do
       ;;
     --target)
       if [ $# -lt 2 ]; then
-        echo "Error: --target requires a value (ftp, local, or both)."
+        echo "Error: --target requires a value (only 'ftp' is supported)."
         exit 1
       fi
       TARGET="$2"
@@ -49,17 +48,16 @@ while [ $# -gt 0 ]; do
 done
 
 case "$TARGET" in
-  ftp | local | both) ;;
+  ftp) ;;
+  local | both)
+    echo "Error: --target $TARGET is gone -- the homelab local target moved to the shared /deploy skill (infrastructure/scripts/deploy.sh local) -- this script only publishes to FTP."
+    exit 1
+    ;;
   *)
-    echo "Error: --target must be ftp, local, or both (got '$TARGET')."
+    echo "Error: --target must be ftp (got '$TARGET')."
     exit 1
     ;;
 esac
-
-if [ "$DO_ROLLBACK" = true ] && [ "$TARGET" != "ftp" ]; then
-  echo "Error: --rollback only supports --target ftp -- releases are only snapshotted for FTP deploys."
-  exit 1
-fi
 
 if ! [[ "$STEPS_BACK" =~ ^[0-9]+$ ]]; then
   echo "Error: --rollback steps must be a non-negative integer, got '$STEPS_BACK'."
@@ -134,13 +132,7 @@ fi
 # shellcheck source=deploy.config.template
 source "$CONFIG_FILE"
 
-REQUIRED_KEYS=(SITE_PASSWORD)
-if [ "$TARGET" = "ftp" ] || [ "$TARGET" = "both" ]; then
-  REQUIRED_KEYS+=(FTP_HOST FTP_USER FTP_PASS FTP_REMOTE_PATH)
-fi
-if [ "$TARGET" = "local" ] || [ "$TARGET" = "both" ]; then
-  REQUIRED_KEYS+=(LOCAL_DEPLOY_PATH)
-fi
+REQUIRED_KEYS=(SITE_PASSWORD FTP_HOST FTP_USER FTP_PASS FTP_REMOTE_PATH)
 for key in "${REQUIRED_KEYS[@]}"; do
   if [ -z "${!key:-}" ]; then
     echo "Error: $CONFIG_FILE is missing key: $key"
@@ -173,34 +165,13 @@ delete_remote() {
     "ftp://$FTP_HOST/" >/dev/null 2>&1 || true
 }
 
-# The local target is served by the homelab proxy's Caddy file_server, which
-# never executes PHP -- it streams .php files back as plain text, so copying
-# the gate there would publish auth_secret.php's hash and gate nothing. Access
-# control on that route is Authelia's forward_auth instead (homelab.yml
-# personal_data: true), so the local target gets the plain, ungated page.
-# Any PHP files an earlier version of this script left behind are removed.
-deploy_local() {
-  local page_name="$1"
-  mkdir -p "$LOCAL_DEPLOY_PATH"
-  cp "$LOCAL_FILE" "$LOCAL_DEPLOY_PATH/$page_name"
-  cp "$AUTH_DIR/robots.txt" "$LOCAL_DEPLOY_PATH/robots.txt"
-  rm -f "$LOCAL_DEPLOY_PATH/_auth_gate.php" "$LOCAL_DEPLOY_PATH/auth_secret.php" \
-    "$LOCAL_DEPLOY_PATH/login.php" "$LOCAL_DEPLOY_PATH/${page_name%.html}.php"
-}
-
 # health.json (WEBAPP_PROJECT_STANDARD.md §6a) is deliberately unauthenticated
 # -- it deploys plain, never through the PHP gate -- so a monitoring consumer
 # at <route>/health doesn't need a saved login.
 publish_health_best_effort() {
   local health_file="$SCRIPT_DIR/public/health.json"
   [ -f "$health_file" ] || return 0
-  if [ "$TARGET" = "ftp" ] || [ "$TARGET" = "both" ]; then
-    upload "$health_file" "health.json" || true
-  fi
-  if [ "$TARGET" = "local" ] || [ "$TARGET" = "both" ]; then
-    mkdir -p "$LOCAL_DEPLOY_PATH"
-    cp "$health_file" "$LOCAL_DEPLOY_PATH/health.json" || true
-  fi
+  upload "$health_file" "health.json" || true
 }
 
 if [ "$DO_ROLLBACK" = true ]; then
@@ -301,31 +272,23 @@ GATED_PAGE="$(mktemp)"
 trap 'rm -f "$GATED_PAGE"' EXIT
 { printf "<?php require __DIR__ . '/_auth_gate.php'; ?>\n"; cat "$LOCAL_FILE"; } > "$GATED_PAGE"
 
-if [ "$TARGET" = "ftp" ] || [ "$TARGET" = "both" ]; then
-  echo "Deploying to ftp://$FTP_HOST$FTP_REMOTE_PATH/ ..."
+echo "Deploying to ftp://$FTP_HOST$FTP_REMOTE_PATH/ ..."
 
-  upload "$GATED_PAGE" "index.php"
-  upload "$AUTH_DIR/_auth_gate.php" "_auth_gate.php"
-  upload "$AUTH_SECRET_PHP" "auth_secret.php"
-  upload "$AUTH_DIR/login.php" "login.php"
-  upload "$AUTH_DIR/robots.txt" "robots.txt"
-  upload "$SCRIPT_DIR/public/health.json" "health.json"
+upload "$GATED_PAGE" "index.php"
+upload "$AUTH_DIR/_auth_gate.php" "_auth_gate.php"
+upload "$AUTH_SECRET_PHP" "auth_secret.php"
+upload "$AUTH_DIR/login.php" "login.php"
+upload "$AUTH_DIR/robots.txt" "robots.txt"
+upload "$SCRIPT_DIR/public/health.json" "health.json"
 
-  # Remove the unprotected index.html every pre-gate deploy left on the server
-  # -- otherwise it keeps serving the full site with no login, and on a
-  # typical Apache DirectoryIndex order it even wins over index.php for the
-  # bare domain root, making the gate above a no-op.
-  delete_remote "index.html"
+# Remove the unprotected index.html every pre-gate deploy left on the server
+# -- otherwise it keeps serving the full site with no login, and on a
+# typical Apache DirectoryIndex order it even wins over index.php for the
+# bare domain root, making the gate above a no-op.
+delete_remote "index.html"
 
-  # Snapshot the exact gated bytes just uploaded -- not public/index.html,
-  # which has no auth gate and isn't what's actually live.
-  snapshot_release "$GATED_PAGE" "index.php"
-fi
-
-if [ "$TARGET" = "local" ] || [ "$TARGET" = "both" ]; then
-  echo "Deploying to local path $LOCAL_DEPLOY_PATH ..."
-  deploy_local "index.html"
-  cp "$SCRIPT_DIR/public/health.json" "$LOCAL_DEPLOY_PATH/health.json"
-fi
+# Snapshot the exact gated bytes just uploaded -- not public/index.html,
+# which has no auth gate and isn't what's actually live.
+snapshot_release "$GATED_PAGE" "index.php"
 
 echo "Done."

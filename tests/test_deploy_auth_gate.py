@@ -9,6 +9,8 @@ script still "looks" right.
 import os
 import stat
 import subprocess
+
+import pytest
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
@@ -312,84 +314,28 @@ def test_deploy_sh_rejects_invalid_target(tmp_path):
         capture_output=True, text=True, timeout=30, check=False,
     )
     assert result.returncode != 0
-    assert "ftp, local, or both" in result.stdout
+    assert "--target must be ftp" in result.stdout
 
 
-def test_deploy_sh_target_local_writes_files_without_ftp(tmp_path):
-    """--target local must work with no FTP credentials at all, and must not
-    touch the network (the curl stub records nothing uploaded)."""
-    local_deploy_dir = tmp_path / "local_site"
-    repo_copy, bin_dir = _setup_repo_copy(
-        tmp_path, "deploy.sh",
-        extra_config=f"LOCAL_DEPLOY_PATH={local_deploy_dir}\n",
-    )
-    # Strip FTP_* keys entirely -- local-only deploys must not require them.
-    (repo_copy / "deploy.config").write_text(
-        f"SITE_PASSWORD=hunter2-test\nLOCAL_DEPLOY_PATH={local_deploy_dir}\n"
-    )
+@pytest.mark.parametrize("script", ["deploy.sh", "deploy-test.sh"])
+@pytest.mark.parametrize("target", ["local", "both"])
+def test_local_targets_point_to_shared_deploy(tmp_path, script, target):
+    """The homelab local target moved to the shared /deploy skill. These
+    scripts must refuse it clearly and touch neither FTP nor the disk --
+    a second local path writing into the same served directory is a trap."""
+    repo_copy, bin_dir = _setup_repo_copy(tmp_path, script)
     uploaded = tmp_path / "uploaded"
     uploaded.mkdir()
     env = dict(os.environ)
     env["PATH"] = f"{bin_dir}:{env['PATH']}"
     env["UPLOAD_LOG"] = str(uploaded)
     result = subprocess.run(
-        ["bash", "deploy.sh", "--target", "local"], cwd=repo_copy, env=env,
+        ["bash", script, "--target", target], cwd=repo_copy, env=env,
         capture_output=True, text=True, timeout=30, check=False,
     )
-    assert result.returncode == 0, result.stdout + result.stderr
-    # Caddy's file_server serves this path and never executes PHP, so the
-    # local target must publish the plain page and no PHP at all -- a .php
-    # file there is streamed back as source (auth_secret.php's hash included).
-    page = (local_deploy_dir / "index.html").read_text()
-    assert not page.startswith("<?php")
-    for name in ("robots.txt", "health.json"):
-        assert (local_deploy_dir / name).exists(), f"{name} was not copied locally"
-    assert not list(local_deploy_dir.glob("*.php")), "local target must never publish PHP"
-    assert not any(uploaded.iterdir()), "local-only target must never touch FTP"
-
-
-def test_deploy_sh_target_local_removes_stale_php(tmp_path):
-    """A local deploy dir left behind by the old (gated) local target must be
-    cleaned up, or Caddy keeps serving auth_secret.php as plain text."""
-    local_deploy_dir = tmp_path / "local_site"
-    local_deploy_dir.mkdir()
-    for name in ("index.php", "_auth_gate.php", "auth_secret.php", "login.php"):
-        (local_deploy_dir / name).write_text("<?php // stale")
-    repo_copy, bin_dir = _setup_repo_copy(
-        tmp_path, "deploy.sh",
-        extra_config=f"LOCAL_DEPLOY_PATH={local_deploy_dir}\n",
-    )
-    env = dict(os.environ)
-    env["PATH"] = f"{bin_dir}:{env['PATH']}"
-    env["UPLOAD_LOG"] = str(tmp_path)
-    result = subprocess.run(
-        ["bash", "deploy.sh", "--target", "local"], cwd=repo_copy, env=env,
-        capture_output=True, text=True, timeout=30, check=False,
-    )
-    assert result.returncode == 0, result.stdout + result.stderr
-    assert (local_deploy_dir / "index.html").exists()
-    assert not list(local_deploy_dir.glob("*.php"))
-
-
-def test_deploy_sh_target_both_writes_ftp_and_local(tmp_path):
-    local_deploy_dir = tmp_path / "local_site"
-    repo_copy, bin_dir = _setup_repo_copy(
-        tmp_path, "deploy.sh",
-        extra_config=f"LOCAL_DEPLOY_PATH={local_deploy_dir}\n",
-    )
-    uploaded = tmp_path / "uploaded"
-    uploaded.mkdir()
-    env = dict(os.environ)
-    env["PATH"] = f"{bin_dir}:{env['PATH']}"
-    env["UPLOAD_LOG"] = str(uploaded)
-    result = subprocess.run(
-        ["bash", "deploy.sh", "--target", "both"], cwd=repo_copy, env=env,
-        capture_output=True, text=True, timeout=30, check=False,
-    )
-    assert result.returncode == 0, result.stdout + result.stderr
-    assert (uploaded / "index.php").exists()
-    assert (local_deploy_dir / "index.html").exists()
-    assert not list(local_deploy_dir.glob("*.php"))
+    assert result.returncode != 0
+    assert "/deploy" in result.stdout
+    assert not any(uploaded.iterdir())
 
 
 def test_password_hash_matches_php_hash_algorithm(tmp_path):

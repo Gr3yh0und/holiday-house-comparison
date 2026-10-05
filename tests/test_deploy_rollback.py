@@ -196,9 +196,8 @@ def test_rollback_rejects_non_numeric_steps(tmp_path):
 
 
 def test_rollback_rejects_non_ftp_target(tmp_path):
-    """Releases are only ever snapshotted for FTP deploys, so a rollback
-    against --target local (or both) has nothing to restore from and must
-    error clearly instead of silently doing an FTP rollback anyway."""
+    """--rollback --target local must error clearly instead of silently doing
+    an FTP rollback anyway -- the local target's rollback is /rollback."""
     repo_copy, bin_dir = _make_repo(tmp_path, "deploy.sh")
     r1 = _deploy(repo_copy, bin_dir, "deploy.sh", "<html>Version A</html>", tmp_path / "up1")
     assert r1.returncode == 0, r1.stdout + r1.stderr
@@ -215,7 +214,7 @@ def test_rollback_rejects_non_ftp_target(tmp_path):
         check=False,
     )
     assert result.returncode != 0
-    assert "only supports --target ftp" in result.stdout
+    assert "/deploy" in result.stdout
 
 
 def test_deploy_test_sh_rollback_is_independent_of_prod(tmp_path):

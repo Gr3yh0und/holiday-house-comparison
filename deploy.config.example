@@ -6,18 +6,17 @@
 # and don't need to be set here; setting them here anyway would be a smell to
 # clean up, not a normal override, per WEBAPP_PROJECT_STANDARD.md §1a.
 #
-# Not yet wired to the shared deploy.sh/rollback.sh — this repo still runs its own
-# bespoke deploy.sh/deploy.ps1 (curl+FTP), a documented exception pending
-# WEBAPP_PROJECT_STANDARD.md §9's condition 1 (does it demonstrably reach a live
-# deployment?) being verified — see compliance/holiday-house-comparison.md §9 in the
-# infrastructure repo. This file exists so the eventual cutover is a switch, not a
-# rewrite; deploy.config (the bespoke script's own FTP-credentials file, see
-# deploy.config.template) is a separate, unrelated file.
+# Used by the shared /deploy for the homelab (local) target. The public FTP target
+# is published by this repo's own deploy.sh/deploy.ps1 instead (README "Deployment").
+# On a machine without /etc/homelab/holiday-house-comparison.env, those scripts read
+# their FTP_*/SITE_PASSWORD keys from this same deploy.config file (deploy.config.template)
+# -- the two key sets don't overlap, so both can live here.
 
-TEST_CMD="pytest"
-BUILD_CMD="python app.py"
+# The repo's .venv, not a bare python/pytest: the deploy host's system Python
+# has none of the requirements installed.
+TEST_CMD=".venv/bin/python -m pytest -q"
+BUILD_CMD=".venv/bin/python app.py"
 BUILD_DIR="public"
 
-# No local target: publishes only to the external FTP host today (homelab.yml
-# correctly omits `route:` for the same reason).
-TARGETS="public"
+# Homelab only. "public" would rsync over ssh, which the FTP-only host can't take.
+TARGETS="local"

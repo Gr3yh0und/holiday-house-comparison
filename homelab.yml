@@ -11,9 +11,9 @@ app: holiday-house-comparison
 profile: B
 description: "Static comparison page for sled-trip holiday houses, scraped from rental listing sites"
 
-# deploy.sh/deploy.ps1 support a local target (--target local/both) that publishes to
-# LOCAL_DEPLOY_PATH (see deploy.config.template) on this host, alongside or instead of the
-# external FTP host -- this is what the proxy route below actually serves.
+# The proxy route below serves the local target, published by the shared /deploy
+# (infrastructure/scripts/deploy.sh local) into /samba/server/www/holiday-house-comparison/.
+# The external FTP host is published separately by this repo's own deploy.sh/deploy.ps1.
 route: /holiday-house-comparison
 
 # Read as "requires auth", not literally "personal data" (§1a's documented conflation) -- the

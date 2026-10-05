@@ -11,6 +11,14 @@ the hand-backfilled `1.0.0`–`1.5.0` tags (§2), re-created from the previously
 
 ## [Unreleased]
 
+### Changed
+- The homelab (local) target is now published by the shared `/deploy`
+  (`infrastructure/scripts/deploy.sh local`), with versioned releases and `/rollback`.
+  `deploy.sh`/`deploy.ps1` (and the `-test` variants) are FTP-only again: `--target local`/`both`
+  now stop with a pointer to `/deploy`, and `LOCAL_DEPLOY_PATH` is gone. Two tools writing
+  into the same served folder would overwrite each other's releases.
+- README "Deployment" rewritten for the two targets.
+
 ## [1.6.0] — 2026-10-05
 
 ### Added

@@ -16,13 +16,41 @@ instead of at the repo root (see that standard's §1b).
 4. (Optional) Edit `config.json` to adjust global defaults (see [Configuration](#configuration)).
 5. Generate the static site: `python app.py`
 5. Open or host `public/index.html`.
-6. (Optional) Copy `deploy.config.template` to `deploy.config` and fill in your credentials to enable deployment.
+6. (Optional) Set up deployment — see [Deployment](#deployment).
 
 ## Deployment
 
-Both scripts run `python app.py` to build `public/index.html` fresh, turn it into a
-**password-gated** `index.php`, and publish it -- to a remote server via FTP, to a local
-filesystem path, or both -- alongside the gate itself (`deploy_auth/`). Use whichever matches your OS.
+There are two targets, published by two different tools:
+
+| Target | Where | Access control | Tool |
+|---|---|---|---|
+| **homelab** (`local`) | `https://server.fritz.box/holiday-house-comparison/` | Authelia (proxy) | `/deploy` — the shared `infrastructure/scripts/deploy.sh` |
+| **public** (FTP) | external FTP host | PHP password gate (`deploy_auth/`) | `./deploy.sh` / `.\deploy.ps1` in this repo |
+
+### Homelab target (`/deploy`)
+
+Run `/deploy` in this repo's Claude session, or directly:
+
+```bash
+bash "${INFRA_DIR:-/samba/projects/infrastructure}"/scripts/deploy.sh --dry-run local
+bash "${INFRA_DIR:-/samba/projects/infrastructure}"/scripts/deploy.sh local
+```
+
+It runs the tests, bumps `VERSION`, updates `CHANGELOG.md`, tags and pushes, runs
+`python app.py`, then rsyncs `public/` into
+`/samba/server/www/holiday-house-comparison/releases/<version>/` and points `current` at it.
+`/rollback` points `current` back at the previous release. Settings are in `deploy.config`
+(gitignored; copy `deploy.config.example`).
+
+The proxy serves this folder as static files and never runs PHP, so the page is the plain
+`index.html` — no PHP gate here. A PHP file in that folder would be sent as plain text.
+`health.json` is served without login at `/holiday-house-comparison/health`.
+
+### Public target (FTP)
+
+`deploy.sh`/`deploy.ps1` run `python app.py` to build `public/index.html` fresh, turn it into a
+**password-gated** `index.php`, and upload it via FTP alongside the gate itself (`deploy_auth/`).
+Use whichever matches your OS.
 
 **Why gated, and why PHP:** the site republishes data scraped from commercial rental listing
 sites on a public host — the exposure is legal/ToS, not personal data (the listings themselves are
@@ -34,42 +62,28 @@ unprotected), and it uses `hash_equals`/`hash_hmac` throughout for timing-safe c
 
 **Setup (both scripts share the same config):**
 
-1. Copy `deploy.config.template` to `deploy.config` (it is gitignored).
-2. Fill in your credentials, plus a `SITE_PASSWORD` for the gate:
+On the deploy server, put the keys in `/etc/homelab/holiday-house-comparison.env` (see
+`.env.example`; owned by the deploying user, mode `0600`). Elsewhere, copy
+`deploy.config.template` to `deploy.config` (gitignored) — it's only read when the env file
+doesn't exist (WEBAPP_PROJECT_STANDARD.md §4):
 
 ```
 FTP_HOST=ftp.example.com
 FTP_USER=username
 FTP_PASS=password
 FTP_REMOTE_PATH=/example.com
-LOCAL_DEPLOY_PATH=/samba/server/www/holiday-house-comparison/current
 SITE_PASSWORD=change-me
 ```
-
-`LOCAL_DEPLOY_PATH` is only required if you deploy to the `local` or `both` target (see below).
-
-On the deploy server, `/etc/homelab/holiday-house-comparison.env` (same keys, see `.env.example`)
-is read in preference to `deploy.config` if present (WEBAPP_PROJECT_STANDARD.md §4).
 
 `SITE_PASSWORD` never leaves the machine running the deploy script — it's salted and hashed
 locally into `deploy_auth/auth_secret.php` (generated, gitignored) before that file is uploaded.
 Changing it invalidates every saved login at once.
 
-**Target:** every run builds the site first, then publishes to `--target`/`-Target` (default `ftp`):
-
-- `ftp` — upload via FTP only (default, previous behavior).
-- `local` — copy the plain `index.html` (no PHP gate) to `LOCAL_DEPLOY_PATH` only, no FTP upload (no FTP credentials required). This target is served by the homelab proxy (Caddy, static files only, no PHP), which protects it with Authelia instead.
-- `both` — do both.
-
-Rollback (below) only supports the `ftp` target — releases are only snapshotted for FTP deploys.
-
 **Windows (PowerShell):**
 
 ```powershell
 .\deploy.ps1                    # builds, then uploads as index.php
-.\deploy.ps1 -Target local       # builds, then copies to LOCAL_DEPLOY_PATH
-.\deploy.ps1 -Target both         # builds, then does both
-.\deploy-test.ps1                # same, but as index-test.php (for testing)
+.\deploy-test.ps1               # same, but as index-test.php (for testing)
 ```
 
 Requires `curl.exe`, built into Windows 10+.
@@ -79,9 +93,7 @@ Requires `curl.exe`, built into Windows 10+.
 ```bash
 chmod +x deploy.sh deploy-test.sh
 ./deploy.sh                    # builds, then uploads as index.php
-./deploy.sh --target local      # builds, then copies to LOCAL_DEPLOY_PATH
-./deploy.sh --target both        # builds, then does both
-./deploy-test.sh                # same, but as index-test.php (for testing)
+./deploy-test.sh               # same, but as index-test.php (for testing)
 ```
 
 Requires `curl` and `openssl`, plus `sha256sum` (Linux) or `shasum` (macOS, tried as a fallback) —

@@ -1,7 +1,7 @@
 param(
     [switch]$Rollback,
     [int]$Steps = 1,
-    [ValidateSet('ftp', 'local', 'both')]
+    [ValidateSet('ftp')]  # the homelab local target is published by /deploy local, not this script
     [string]$Target = 'ftp'
 )
 
@@ -11,11 +11,6 @@ $AuthDir    = "$PSScriptRoot\deploy_auth"
 $AuthStateFile  = "$AuthDir\.auth_state"
 $AuthSecretFile = "$AuthDir\auth_secret.php"
 $AuthCookieSeconds = 30 * 24 * 60 * 60
-
-if ($Rollback -and $Target -ne 'ftp') {
-    Write-Error "-Rollback only supports -Target ftp -- releases are only snapshotted for FTP deploys."
-    exit 1
-}
 
 # ── Rollback ─────────────────────────────────────────────────────────────────
 # Every deploy snapshots the exact gated bytes it uploads (the .php page after
@@ -71,9 +66,7 @@ Get-Content $ConfigFile | ForEach-Object {
     }
 }
 
-$requiredKeys = @('SITE_PASSWORD')
-if ($Target -in @('ftp', 'both')) { $requiredKeys += @('FTP_HOST', 'FTP_USER', 'FTP_PASS', 'FTP_REMOTE_PATH') }
-if ($Target -in @('local', 'both')) { $requiredKeys += 'LOCAL_DEPLOY_PATH' }
+$requiredKeys = @('SITE_PASSWORD', 'FTP_HOST', 'FTP_USER', 'FTP_PASS', 'FTP_REMOTE_PATH')
 foreach ($key in $requiredKeys) {
     if (-not $config.ContainsKey($key) -or [string]::IsNullOrWhiteSpace($config[$key])) {
         Write-Error "$ConfigFile is missing key: $key"
@@ -86,7 +79,6 @@ if ($config['SITE_PASSWORD'] -ceq 'change-me') {
 }
 
 $remoteBase = "ftp://$($config['FTP_HOST'])$($config['FTP_REMOTE_PATH'])"
-$LocalDeployPath = $config['LOCAL_DEPLOY_PATH']
 
 function Send-File([string]$Src, [string]$Name) {
     curl.exe --silent --show-error `
@@ -111,31 +103,13 @@ function Remove-RemoteFile([string]$Name) {
         "ftp://$($config['FTP_HOST'])/" 2>$null | Out-Null
 }
 
-# The local target is served by Caddy's file_server, which never executes PHP
-# (it would stream auth_secret.php back as plain text) -- Authelia gates that
-# route instead, so it gets the plain, ungated page. See deploy.sh.
-function Deploy-Local([string]$PageName) {
-    New-Item -ItemType Directory -Force -Path $LocalDeployPath | Out-Null
-    Copy-Item $LocalFile (Join-Path $LocalDeployPath $PageName) -Force
-    Copy-Item "$AuthDir\robots.txt" (Join-Path $LocalDeployPath "robots.txt") -Force
-    foreach ($stale in @('_auth_gate.php', 'auth_secret.php', 'login.php', ($PageName -replace '\.html$', '.php'))) {
-        Remove-Item (Join-Path $LocalDeployPath $stale) -Force -ErrorAction SilentlyContinue
-    }
-}
-
 # health.json (WEBAPP_PROJECT_STANDARD.md §6a) is deliberately unauthenticated
 # -- it deploys plain, never through the PHP gate.
 function Publish-HealthBestEffort {
     $healthFile = "$PSScriptRoot\public\health.json"
     if (-not (Test-Path $healthFile)) { return }
-    if ($Target -in @('ftp', 'both')) {
-        curl.exe --silent --show-error --ftp-create-dirs -T $healthFile `
-            "$remoteBase/health.json" --user "$($config['FTP_USER']):$($config['FTP_PASS'])" 2>$null | Out-Null
-    }
-    if ($Target -in @('local', 'both')) {
-        New-Item -ItemType Directory -Force -Path $LocalDeployPath | Out-Null
-        Copy-Item $healthFile (Join-Path $LocalDeployPath "health.json") -Force -ErrorAction SilentlyContinue
-    }
+    curl.exe --silent --show-error --ftp-create-dirs -T $healthFile `
+        "$remoteBase/health.json" --user "$($config['FTP_USER']):$($config['FTP_PASS'])" 2>$null | Out-Null
 }
 
 if ($Rollback) {
@@ -240,32 +214,24 @@ define('AUTH_COOKIE_SECONDS', $AuthCookieSeconds);
 $gatedPage = New-TemporaryFile
 "<?php require __DIR__ . '/_auth_gate.php'; ?>`n" + (Get-Content $LocalFile -Raw) | Set-Content -NoNewline $gatedPage
 
-if ($Target -in @('ftp', 'both')) {
-    Write-Host "Deploying to $remoteBase/ ..."
+Write-Host "Deploying to $remoteBase/ ..."
 
-    Send-File $gatedPage "index.php"
-    Send-File "$AuthDir\_auth_gate.php" "_auth_gate.php"
-    Send-File $AuthSecretFile "auth_secret.php"
-    Send-File "$AuthDir\login.php" "login.php"
-    Send-File "$AuthDir\robots.txt" "robots.txt"
-    Send-File "$PSScriptRoot\public\health.json" "health.json"
+Send-File $gatedPage "index.php"
+Send-File "$AuthDir\_auth_gate.php" "_auth_gate.php"
+Send-File $AuthSecretFile "auth_secret.php"
+Send-File "$AuthDir\login.php" "login.php"
+Send-File "$AuthDir\robots.txt" "robots.txt"
+Send-File "$PSScriptRoot\public\health.json" "health.json"
 
-    # Remove the unprotected index.html every pre-gate deploy left on the
-    # server -- otherwise it keeps serving the full site with no login, and
-    # on a typical Apache DirectoryIndex order it even wins over index.php
-    # for the bare domain root, making the gate above a no-op.
-    Remove-RemoteFile "index.html"
+# Remove the unprotected index.html every pre-gate deploy left on the
+# server -- otherwise it keeps serving the full site with no login, and
+# on a typical Apache DirectoryIndex order it even wins over index.php
+# for the bare domain root, making the gate above a no-op.
+Remove-RemoteFile "index.html"
 
-    # Snapshot the exact gated bytes just uploaded -- not public\index.html,
-    # which has no auth gate and isn't what's actually live.
-    Save-ReleaseSnapshot $gatedPage "index.php"
-}
-
-if ($Target -in @('local', 'both')) {
-    Write-Host "Deploying to local path $LocalDeployPath ..."
-    Deploy-Local "index.html"
-    Copy-Item "$PSScriptRoot\public\health.json" (Join-Path $LocalDeployPath "health.json") -Force
-}
+# Snapshot the exact gated bytes just uploaded -- not public\index.html,
+# which has no auth gate and isn't what's actually live.
+Save-ReleaseSnapshot $gatedPage "index.php"
 
 Remove-Item $gatedPage -ErrorAction SilentlyContinue
 Write-Host "Done."
