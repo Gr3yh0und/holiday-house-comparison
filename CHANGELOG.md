@@ -29,6 +29,8 @@ the hand-backfilled `1.0.0`–`1.5.0` tags (§2), re-created from the previously
   served by the homelab proxy's static file server, which never runs PHP — it would have served
   `auth_secret.php` as plain text. Authelia protects that route instead. Stale PHP files left by
   an earlier local deploy are removed.
+- A build on a fresh checkout no longer crashes when `public/` doesn't exist yet.
+- fewo parser no longer crashes on a page whose `<title>` is empty.
 - Fewo rating parsing and URL logging.
 - Sticky scrollbar pinned to the bottom of the viewport on desktop.
 - Lint warnings.

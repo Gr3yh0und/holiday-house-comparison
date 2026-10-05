@@ -149,7 +149,7 @@ def scrape(url, driver=None):
                 soup = BeautifulSoup(response.content, 'html.parser')
                 page_source = response.text
 
-        page_title = soup.title.string if soup.title else ''
+        page_title = (soup.title.string if soup.title else None) or ''
         print(f"  [fewo] page title: {page_title or 'N/A'}")
         # Detect bot/rate-limit pages — fewo-direkt uses DataDome which shows a
         # German challenge page ("Warum diese Kontrolle?") when the IP or

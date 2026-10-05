@@ -760,6 +760,9 @@ if __name__ == '__main__':
     except Exception as e:
         print(f"Selenium unavailable ({e}), falling back to requests")
 
+    # A fresh checkout (e.g. the deploy server) has no public/ yet.
+    os.makedirs('public', exist_ok=True)
+
     def _save_partial(partial_trips):
         rodelwelten.save_cache()
         outdooractive.save_cache()
