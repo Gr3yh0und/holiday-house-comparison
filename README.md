@@ -15,9 +15,27 @@ instead of at the repo root (see that standard's §1b).
 3. Copy `input.template.json` to `input.json` and fill in your trips, houses, and sled run URLs.
 4. For working maps, set a CARTO basemap key (free at [carto.com/basemaps/apikey](https://carto.com/basemaps/apikey)): `CARTO_API_KEY=...` in `/etc/homelab/holiday-house-comparison.env` on the server, or as an environment variable elsewhere. It is read at build time and is visible in the page source, so restrict it to your domains in the CARTO dashboard and never commit it. Without it every map tile shows "API KEY REQUIRED".
 4. (Optional) Edit `config.json` to adjust global defaults (see [Configuration](#configuration)).
-5. Generate the static site: `python app.py`
+5. Scrape and generate the static site: `python app.py` (see [Scrape vs. render](#scrape-vs-render))
 5. Open or host `public/index.html`.
 6. (Optional) Set up deployment — see [Deployment](#deployment).
+
+## Scrape vs. render
+
+Scraping and publishing are two separate steps:
+
+1. **Scrape** — `python app.py --scrape-only` scrapes every house (about 8 minutes) and saves the
+   result to `cache/houses.json`. Run it when you want fresh prices. The file is only replaced
+   when the run succeeds: a run in progress writes `cache/houses.partial.json`, so stopping it or
+   a failed run never loses the last good data. A run where every scrape fails keeps the old data
+   and marks it `status: down`.
+2. **Render** — `python app.py --from-cache` builds `public/index.html` and `public/health.json`
+   from `cache/houses.json` in under a second, with no network access. Both deploy paths below
+   run only this step, so a deploy never scrapes, and both sites always show the same data.
+
+Plain `python app.py` does both in one go. `health.json`'s `last_update` is the time of the last
+successful scrape, not of the deploy.
+
+Typical update: `python app.py --scrape-only`, check the result, then deploy.
 
 ## Deployment
 
@@ -38,7 +56,7 @@ bash "${INFRA_DIR:-/samba/projects/infrastructure}"/scripts/deploy.sh local
 ```
 
 It runs the tests, bumps `VERSION`, updates `CHANGELOG.md`, tags and pushes, runs
-`python app.py`, then rsyncs `public/` into
+`python app.py --from-cache` (render only, see above), then rsyncs `public/` into
 `/samba/server/www/holiday-house-comparison/releases/<version>/` and points `current` at it.
 `/rollback` points `current` back at the previous release. Settings are in `deploy.config`
 (gitignored; copy `deploy.config.example`).
@@ -49,7 +67,8 @@ The proxy serves this folder as static files and never runs PHP, so the page is 
 
 ### Public target (FTP)
 
-`deploy.sh`/`deploy.ps1` run `python app.py` to build `public/index.html` fresh, turn it into a
+`deploy.sh`/`deploy.ps1` run `python app.py --from-cache` to render `public/index.html` from the
+scraped data (no scraping, see [Scrape vs. render](#scrape-vs-render)), turn it into a
 **password-gated** `index.php`, and upload it via FTP alongside the gate itself (`deploy_auth/`).
 Use whichever matches your OS.
 
@@ -120,7 +139,7 @@ history — a test rollback can never touch the prod release line or vice versa.
 ## Usage
 
 ```
-python app.py [--force] [--broker fewo|booking|huetten|interhome] [--limit N] [--from-cache] [--house NAME] [--lang de-DE|en-GB|fr-FR|nl-NL|bar-DE|bar-AT|gsw-CH|nds-DE|pfl-DE]
+python app.py [--scrape-only | --from-cache] [--force] [--broker fewo|booking|huetten|interhome] [--limit N] [--house NAME] [--lang de-DE|en-GB|fr-FR|nl-NL|bar-DE|bar-AT|gsw-CH|nds-DE|pfl-DE]
 ```
 
 | Flag | Description |
@@ -128,13 +147,15 @@ python app.py [--force] [--broker fewo|booking|huetten|interhome] [--limit N] [-
 | `--force` | Re-fetch all sled run data, ignoring the local cache |
 | `--broker fewo\|booking\|huetten\|interhome` | Only scrape houses from this broker (skips others) |
 | `--limit N` | Stop after scraping N houses |
-| `--from-cache` | Re-render HTML from existing `public/data.json` without scraping |
-| `--house NAME` | Scrape only one house (case-insensitive substring match), patch `public/data.json`, and re-render. If the house appears in multiple trips with different dates, each trip is scraped separately. |
+| `--scrape-only` | Scrape and update `cache/houses.json`, but do not render |
+| `--from-cache` | Render from `cache/houses.json` without scraping (what deploys run) |
+| `--house NAME` | Scrape only one house (case-insensitive substring match), patch `cache/houses.json`, and re-render (with `--scrape-only`: no re-render). If the house appears in multiple trips with different dates, each trip is scraped separately. |
 | `--lang de-DE\|en-GB\|fr-FR\|nl-NL\|bar-DE\|bar-AT\|gsw-CH\|nds-DE\|pfl-DE` | Language for the rendered page (default: `bar-DE`). `bar-DE` = Bavarian, `bar-AT` = Tyrolean, `gsw-CH` = Swiss German, `nds-DE` = Hamburg (Low German), `pfl-DE` = Karlsruhe (Badisch-Pfälzisch). |
 
 Outputs:
 - `public/index.html` — the static comparison page
-- `public/data.json` — raw scraped data as JSON
+- `public/health.json` — status for monitoring (`/health`)
+- `cache/houses.json` — scraped house data, the input for every render
 - `cache/sled_runs.json` — rodelwelten.com sled run cache (TTL: 1 day)
 - `cache/outdooractive.json` — outdooractive.com sled run cache (TTL: 1 day)
 - `cache/loipen.json` — Overpass API Nordic ski trail cache (TTL: 1 day, keyed by house coordinates)
@@ -262,7 +283,7 @@ Global defaults live in `config.json` at the project root. Edit this file to tun
 |-----|---------|-------------|
 | `loipen_radius_m` | `10000` | Overpass API search radius (metres) for Nordic ski trails |
 | `loipen_cache_ttl_h` | `24` | Hours before the Loipen cache entry expires |
-| `house_cache_ttl_h` | `24` | Hours before the `public/data.json` fallback cache is considered stale |
+| `house_cache_ttl_h` | `24` | Hours before the `cache/houses.json` fallback cache is considered stale |
 | `fewo_cooldown_s` | `[20, 45]` | Random delay range (seconds) between consecutive fewo-direkt scrapes |
 
 Any key from the table above can also be added directly to a house entry in `input.json` to override the global value for that house only:
@@ -274,7 +295,7 @@ Any key from the table above can also be added directly to a house entry in `inp
 ## How It Works
 
 1. **House scraping** — four parsers are supported, selected automatically by URL:
-   - **fewo-direkt.de / booking.com** — uses headless Chrome (`undetected-chromedriver`) to bypass bot detection. For fewo-direkt, the session is warmed up by visiting the homepage first (cookie consent, human-like scrolling) before navigating to the listing, and a configurable random cooldown (`fewo_cooldown_s` in `config.json`, default 20–45 s) is applied between houses. `curl_cffi` (Chrome TLS fingerprint impersonation) is used as a first attempt without a full browser when possible. Extracts location, price, bedroom count, bed configuration, sauna availability, and more. Bed entries containing "Schlafsofa" are flagged with ⚠️ in the UI. When no structured bedroom blocks are found, falls back to parsing the free-text description (`[data-stid="content-markup"]`) using the same fluid-text parser as interhome. If fewo-direkt returns a bot/rate-limit page (DataDome challenge, "Warum diese Kontrolle?", etc.), the scrape is aborted and the previous result from `public/data.json` is used instead, provided it is less than `house_cache_ttl_h` hours old.
+   - **fewo-direkt.de / booking.com** — uses headless Chrome (`undetected-chromedriver`) to bypass bot detection. For fewo-direkt, the session is warmed up by visiting the homepage first (cookie consent, human-like scrolling) before navigating to the listing, and a configurable random cooldown (`fewo_cooldown_s` in `config.json`, default 20–45 s) is applied between houses. `curl_cffi` (Chrome TLS fingerprint impersonation) is used as a first attempt without a full browser when possible. Extracts location, price, bedroom count, bed configuration, sauna availability, and more. Bed entries containing "Schlafsofa" are flagged with ⚠️ in the UI. When no structured bedroom blocks are found, falls back to parsing the free-text description (`[data-stid="content-markup"]`) using the same fluid-text parser as interhome. If fewo-direkt returns a bot/rate-limit page (DataDome challenge, "Warum diese Kontrolle?", etc.), the scrape is aborted and the previous result from `cache/houses.json` is used instead, provided it is less than `house_cache_ttl_h` hours old.
    - **huetten.com** — uses plain `requests` (no browser needed); extracts all fields from static HTML and the JSON-LD `LodgingBusiness` block. Price is resolved from the on-page weekly price table by matching the checkin date and person count parsed from the URL fragment (`#/vsc.php?calendar_date_from=…&persons_adults=…`). Nebenkosten (additional costs) are parsed separately and folded into the displayed Gesamtpreis; Kaution is excluded. Prices for both 8 and 10 persons are looked up from the table directly.
    - **interhome.de** — uses headless Chrome (Selenium) because the site is a React SPA. Waits for the availability badge (`[data-test="available-badge"]`) to settle after the background pricing API call completes (up to 45 s), then grabs the total price directly from the live DOM element. Session/tracking parameters (`offerId`, `clickId`) are stripped from the URL before loading to prevent stale tokens from causing the pricing API to hang. Availability is detected from the badge text: "verfügbar" → `Available`, "ausgebucht" → `Unavailable`. Room count and bed configuration are parsed from the rendered description text (`[data-test="rental-description"]`) using a shared fluid-text parser that handles patterns like `"3 abgeschrägte Zimmer, jedes Zimmer mit 1 franz. Bett (160cm)"`.
 
@@ -376,7 +397,7 @@ Configuration is in `.pylintrc`. Project-specific suppressions (e.g. `too-many-l
 ## Notes
 
 - House scraping requires Chrome to be running in non-headless mode to bypass bot detection. A browser window will briefly appear off-screen during scraping.
-- If fewo-direkt returns a bot or rate-limit page, the scraper falls back to the last result in `public/data.json` (TTL: 24 hours). If no fresh cache is available the house is rendered with all fields as `N/A`.
+- If fewo-direkt returns a bot or rate-limit page, the scraper falls back to the last result in `cache/houses.json` (TTL: 24 hours). If no fresh cache is available the house is rendered with all fields as `N/A`.
 - huetten.com is scraped with plain `requests` — no browser needed.
 - Sled run map pages (e.g. `/rodelbahnen/karte`) return all `N/A` — only use `/detail/` URLs for rodelwelten.com.
 - For outdooractive.com, use route detail URLs in the form `/de/route/rodeln/.../ID/`. The URL fragment (everything after `#`) is ignored.

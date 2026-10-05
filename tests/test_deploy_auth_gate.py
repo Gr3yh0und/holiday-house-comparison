@@ -279,6 +279,29 @@ def test_deploy_sh_builds_before_deploying(tmp_path):
     assert "Building site" in result.stdout
 
 
+@pytest.mark.parametrize("script", ["deploy.sh", "deploy-test.sh"])
+def test_deploy_renders_from_cache_and_never_scrapes(tmp_path, script):
+    """Scraping is its own step (app.py --scrape-only). A deploy only renders
+    cache/houses.json -- it must call app.py --from-cache, never a bare app.py,
+    which would start a full scrape."""
+    repo_copy, bin_dir = _setup_repo_copy(tmp_path, script)
+    args_log = tmp_path / "python-args"
+    python_stub = bin_dir / "python3"
+    python_stub.write_text(f'#!/usr/bin/env bash\necho "$@" > {args_log}\n' + PYTHON_STUB_SUCCESS.split("\n", 1)[1])
+    python_stub.chmod(python_stub.stat().st_mode | stat.S_IEXEC)
+    uploaded = tmp_path / "uploaded"
+    uploaded.mkdir()
+    env = dict(os.environ)
+    env["PATH"] = f"{bin_dir}:{env['PATH']}"
+    env["UPLOAD_LOG"] = str(uploaded)
+    result = subprocess.run(
+        ["bash", script], cwd=repo_copy, env=env,
+        capture_output=True, text=True, timeout=30, check=False,
+    )
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert args_log.read_text().split() == ["app.py", "--from-cache"]
+
+
 def test_deploy_sh_aborts_when_build_fails(tmp_path):
     repo_copy, bin_dir = _setup_repo_copy(tmp_path, "deploy.sh")
     python_stub = bin_dir / "python3"

@@ -2,7 +2,7 @@
 set -euo pipefail
 
 # Usage:
-#   ./deploy-test.sh                   # build + deploy public/index.html as index-test.php (FTP)
+#   ./deploy-test.sh                   # render from cache/houses.json + deploy as index-test.php (FTP)
 #   (the homelab local target is published by /deploy local, not this script)
 #   ./deploy-test.sh --rollback        # re-upload the previous test release's page verbatim (FTP only)
 #   ./deploy-test.sh --rollback 2      # go back 2 releases instead of 1
@@ -190,8 +190,8 @@ else
   PYTHON_BIN="python3"
   command -v python3 >/dev/null 2>&1 || PYTHON_BIN="python"
 fi
-echo "Building site (running $PYTHON_BIN app.py) ..."
-if ! (cd "$SCRIPT_DIR" && "$PYTHON_BIN" app.py); then
+echo "Building site from cache/houses.json (running $PYTHON_BIN app.py --from-cache) ..."
+if ! (cd "$SCRIPT_DIR" && "$PYTHON_BIN" app.py --from-cache); then
   echo "Error: site build failed -- aborting deploy."
   publish_health_best_effort
   exit 1

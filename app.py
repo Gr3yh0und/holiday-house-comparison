@@ -18,6 +18,12 @@ app = Flask(__name__)
 CACHE_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'cache', 'sled_runs.json')
 CACHE_FILE_OA = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'cache', 'outdooractive.json')
 LOIPEN_CACHE_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'cache', 'loipen.json')
+# Scraped house data -- the hand-off between the scrape step and the render step.
+# Replaced only by a scrape that passes _validate_scrape_output(); a run in
+# progress writes HOUSES_PARTIAL_FILE instead, so a stopped or failed scrape
+# never touches the data the next deploy renders from.
+HOUSES_CACHE_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'cache', 'houses.json')
+HOUSES_PARTIAL_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'cache', 'houses.partial.json')
 TRANSLATIONS_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'translations')
 
 CHROMEDRIVER_PATH = os.path.join(
@@ -335,14 +341,31 @@ def _render_html(title, trips, updated_at, version):
     )
 
 
+def _write_json_atomic(path, payload):
+    """Write JSON via a temp file + os.replace, so a reader (or a crash mid-write)
+    never sees a half-written file."""
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    tmp_path = f'{path}.tmp'
+    with open(tmp_path, 'w', encoding='utf-8') as f:
+        json.dump(payload, f, ensure_ascii=False, indent=2)
+    os.replace(tmp_path, path)
+
+
+def _load_houses_cache():
+    """Return cache/houses.json ({updated_at, status, trips}) or None."""
+    try:
+        with open(HOUSES_CACHE_FILE, encoding='utf-8') as f:
+            return json.load(f)
+    except (FileNotFoundError, json.JSONDecodeError):
+        return None
+
+
 def _load_cached_house(name, checkin, checkout):
-    """Return a previously scraped house from public/data.json if it exists and is < 24 h old."""
-    cache_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'public', 'data.json')
-    if not os.path.exists(cache_path):
+    """Return a previously scraped house from cache/houses.json if it exists and is < 24 h old."""
+    cached = _load_houses_cache()
+    if not cached:
         return None
     try:
-        with open(cache_path, encoding='utf-8') as f:
-            cached = json.load(f)
         updated_at = datetime.strptime(cached.get('updated_at', ''), '%Y-%m-%d %H:%M')
         if (datetime.now() - updated_at).total_seconds() > _config['house_cache_ttl_h'] * 3600:
             return None
@@ -373,7 +396,7 @@ def _scrape_one_house(house, trip_checkin, trip_checkout, driver=None, force_ref
         if house_info is None:
             cached = _load_cached_house(house['name'], trip_checkin, trip_checkout)
             if cached:
-                print("  -> bot/scrape failure, using cached data from public/data.json")
+                print("  -> bot/scrape failure, using cached data from cache/houses.json")
                 return cached
             print("  -> bot/scrape failure, no usable cache — returning empty result")
             if stats is not None:
@@ -530,30 +553,61 @@ def _read_repo_version():
         return 'dev'
 
 
-def _write_health(status):
+def _write_health(status, last_update):
     """Write public/health.json (WEBAPP_PROJECT_STANDARD.md §6a).
 
-    last_update reflects the last successful scrape, not this process's own
-    runtime -- a failed run (status='down') reports that failure without
-    bumping last_update, since the data on disk didn't actually change.
+    last_update is the time of the last successful scrape (cache/houses.json's
+    updated_at), not this process's runtime -- rendering old data doesn't make
+    it fresh, and a failed scrape (status='down') didn't change the data.
     """
-    last_update = None
-    try:
-        with open(HEALTH_FILE, encoding='utf-8') as f:
-            last_update = json.load(f).get('last_update')
-    except (FileNotFoundError, json.JSONDecodeError):
-        pass
-    if status != 'down':
-        last_update = datetime.now().strftime('%Y-%m-%d %H:%M')
     health = {
         'version': _read_repo_version(),
         'status': status,
         'last_update': last_update,
         'extra': {},
     }
-    os.makedirs(os.path.dirname(HEALTH_FILE), exist_ok=True)
-    with open(HEALTH_FILE, 'w', encoding='utf-8') as f:
-        json.dump(health, f, ensure_ascii=False, indent=2)
+    _write_json_atomic(HEALTH_FILE, health)
+
+
+def _store_scrape_result(trip_data, scrape_stats):
+    """Scrape step's last act. A run that passes _validate_scrape_output()
+    replaces cache/houses.json and returns it. A failed run keeps the last
+    good data and only flags it status=down (old updated_at kept), so the
+    next render publishes the failure instead of hiding it; returns None."""
+    if not _validate_scrape_output(trip_data, scrape_stats):
+        previous = _load_houses_cache()
+        if previous:
+            previous['status'] = 'down'
+            _write_json_atomic(HOUSES_CACHE_FILE, previous)
+        _write_health('down', previous['updated_at'] if previous else None)
+        return None
+    cached = {
+        'updated_at': datetime.now().strftime('%Y-%m-%d %H:%M'),
+        'status': 'degraded' if scrape_stats and scrape_stats['failed'] else 'ok',
+        'trips': trip_data,
+    }
+    _write_json_atomic(HOUSES_CACHE_FILE, cached)
+    if os.path.exists(HOUSES_PARTIAL_FILE):
+        os.remove(HOUSES_PARTIAL_FILE)
+    return cached
+
+
+def _render_site(data, cached, version):
+    """Render step: write public/index.html and public/health.json from the
+    houses cache. Never scrapes."""
+    os.makedirs('public', exist_ok=True)
+    with app.app_context():
+        html_content = _render_html(
+            title=data.get('title', 'Ferienhaus-Vergleich für Rodeln'),
+            trips=cached['trips'], updated_at=cached['updated_at'], version=version,
+        )
+    with open('public/index.html', 'w', encoding='utf-8') as f:
+        f.write(html_content)
+    _write_health(cached.get('status', 'ok'), cached['updated_at'])
+    # Older builds wrote the raw scrape here; the page never reads it, and
+    # anything left in public/ gets published.
+    if os.path.exists('public/data.json'):
+        os.remove('public/data.json')
 
 
 def _validate_scrape_output(trip_data, scrape_stats=None):
@@ -641,13 +695,18 @@ if __name__ == '__main__':
         help='Only scrape houses from this broker',
     )
     parser.add_argument('--limit', type=int, help='Maximum number of houses to scrape')
-    parser.add_argument(
+    mode = parser.add_mutually_exclusive_group()
+    mode.add_argument(
+        '--scrape-only', action='store_true',
+        help='Scrape and update cache/houses.json, but do not render the site',
+    )
+    mode.add_argument(
         '--from-cache', action='store_true',
-        help='Re-render HTML from existing public/data.json without scraping',
+        help='Render the site from cache/houses.json without scraping (what deploys run)',
     )
     parser.add_argument(
         '--house', type=str, metavar='NAME',
-        help='Scrape only this house (substring match), patch data.json and re-render',
+        help='Scrape only this house (substring match), patch cache/houses.json and re-render',
     )
     parser.add_argument(
         '--lang', default='bar-DE',
@@ -655,6 +714,8 @@ if __name__ == '__main__':
         help='Language for the rendered page (default: bar-DE)',
     )
     args = parser.parse_args()
+    if args.house and args.from_cache:
+        parser.error('--house scrapes; it cannot be combined with --from-cache')
 
     _translations = load_translations(args.lang)
     _all_translations = load_all_translations()
@@ -663,10 +724,35 @@ if __name__ == '__main__':
     start_time = time.time()
     version = get_version()
 
+    with open('input.json', encoding='utf-8') as f:
+        data = _normalize_input(json.load(f))
+
+    if args.from_cache:
+        cached = _load_houses_cache()
+        if not cached:
+            _write_health('down', None)
+            print(
+                "ERROR: no cache/houses.json yet -- run `python app.py --scrape-only` "
+                "(or plain `python app.py`) once first."
+            )
+            raise SystemExit(1)
+        _render_site(data, cached, version)
+        print(f"HTML rendered from cache/houses.json (scraped {cached['updated_at']}, "
+              f"status {cached.get('status', 'ok')}) in {time.time() - start_time:.1f}s")
+        raise SystemExit(0)
+
+    rodelwelten.load_cache(CACHE_FILE)
+    outdooractive.load_cache(CACHE_FILE_OA)
+
+    driver = None
+    try:
+        driver = _make_driver()
+        print("Using Selenium (headless Chrome) for JS-rendered pages")
+    except Exception as e:
+        print(f"Selenium unavailable ({e}), falling back to requests")
+
     if args.house:
         needle = args.house.lower()
-        with open('input.json', encoding='utf-8') as f:
-            data = _normalize_input(json.load(f))
         # Find all matching houses across trips
         matches = [
             (trip, house)
@@ -688,13 +774,14 @@ if __name__ == '__main__':
                 print(f"  [{trip.get('name', '')}] {house['name']}")
             print("Use a more specific name.")
             raise SystemExit(1)
+        cached = _load_houses_cache()
+        if not cached:
+            print("ERROR: no cache/houses.json to patch -- run a full `python app.py --scrape-only` first.")
+            raise SystemExit(1)
 
         print(f"Matched {len(matches)} entr{'y' if len(matches)==1 else 'ies'}: {matches[0][1]['name']}")
         for trip, house in matches:
             print(f"  [{trip.get('name', '')}]")
-
-        rodelwelten.load_cache(CACHE_FILE)
-        outdooractive.load_cache(CACHE_FILE_OA)
 
         # Group matches by unique (checkin, checkout) — prices differ per date range
         date_groups = {}
@@ -702,11 +789,6 @@ if __name__ == '__main__':
             key = (trip.get('checkin', ''), trip.get('checkout', ''))
             date_groups.setdefault(key, (trip, house))
 
-        driver = None
-        try:
-            driver = _make_driver()
-        except Exception as e:
-            print(f"Selenium unavailable ({e}), falling back to requests")
         try:
             scraped = {}  # key -> fresh house data
             for key, (trip, house) in date_groups.items():
@@ -720,8 +802,6 @@ if __name__ == '__main__':
         rodelwelten.save_cache()
         outdooractive.save_cache()
 
-        with open('public/data.json', encoding='utf-8') as f:
-            cached = json.load(f)
         replaced = 0
         house_name = matches[0][1]['name']
         for t in cached['trips']:
@@ -733,7 +813,7 @@ if __name__ == '__main__':
                     t['houses'][i] = scraped[key]
                     replaced += 1
         if replaced == 0:
-            print(f"House '{house_name}' not found in public/data.json — appending to first matching trip.")
+            print(f"House '{house_name}' not found in cache/houses.json — appending to first matching trip.")
             first_trip, first_house = matches[0]
             key = (first_trip.get('checkin', ''), first_trip.get('checkout', ''))
             for t in cached['trips']:
@@ -742,66 +822,24 @@ if __name__ == '__main__':
                     replaced += 1
                     break
         if replaced == 0:
-            print("Warning: could not find matching trip in public/data.json either.")
+            print("Warning: could not find matching trip in cache/houses.json either.")
         else:
-            print(f"Patched {replaced} entr{'y' if replaced==1 else 'ies'} in public/data.json")
+            print(f"Patched {replaced} entr{'y' if replaced==1 else 'ies'} in cache/houses.json")
 
-        updated_at = datetime.now().strftime('%Y-%m-%d %H:%M')
-        cached['updated_at'] = updated_at
-        with open('public/data.json', 'w', encoding='utf-8') as f:
-            json.dump(cached, f, ensure_ascii=False, indent=2)
-        print("Updated public/data.json")
-
-        with app.app_context():
-            html_content = _render_html(
-                title=data.get('title', 'Ferienhaus-Vergleich für Rodeln'),
-                trips=cached['trips'], updated_at=updated_at, version=version,
-            )
-        with open('public/index.html', 'w', encoding='utf-8') as f:
-            f.write(html_content)
+        cached['updated_at'] = datetime.now().strftime('%Y-%m-%d %H:%M')
+        _write_json_atomic(HOUSES_CACHE_FILE, cached)
+        if not args.scrape_only:
+            _render_site(data, cached, version)
         print(f"Done in {time.time() - start_time:.1f}s")
         raise SystemExit(0)
-
-    if args.from_cache:
-        with open('public/data.json', encoding='utf-8') as f:
-            cached = json.load(f)
-        with open('input.json', encoding='utf-8') as f:
-            data = _normalize_input(json.load(f))
-        with app.app_context():
-            html_content = _render_html(
-                title=data.get('title', 'Ferienhaus-Vergleich für Rodeln'),
-                trips=cached['trips'], updated_at=cached['updated_at'], version=version,
-            )
-        with open('public/index.html', 'w', encoding='utf-8') as f:
-            f.write(html_content)
-        print(f"HTML re-rendered from cache in {time.time() - start_time:.1f}s")
-        raise SystemExit(0)
-
-    rodelwelten.load_cache(CACHE_FILE)
-    outdooractive.load_cache(CACHE_FILE_OA)
-
-    with open('input.json', encoding='utf-8') as f:
-        data = _normalize_input(json.load(f))
-
-    driver = None
-    try:
-        driver = _make_driver()
-        print("Using Selenium (headless Chrome) for JS-rendered pages")
-    except Exception as e:
-        print(f"Selenium unavailable ({e}), falling back to requests")
-
-    # A fresh checkout (e.g. the deploy server) has no public/ yet.
-    os.makedirs('public', exist_ok=True)
 
     def _save_partial(partial_trips):
         rodelwelten.save_cache()
         outdooractive.save_cache()
-        with open('public/data.json', 'w', encoding='utf-8') as f:
-            json.dump(
-                {'updated_at': datetime.now().strftime('%Y-%m-%d %H:%M'), 'trips': partial_trips},
-                f, ensure_ascii=False, indent=2,
-            )
-        print("  [cache] public/data.json updated")
+        _write_json_atomic(HOUSES_PARTIAL_FILE, {
+            'updated_at': datetime.now().strftime('%Y-%m-%d %H:%M'), 'trips': partial_trips,
+        })
+        print("  [cache] cache/houses.partial.json updated")
 
     scrape_stats = {'attempted': 0, 'failed': 0}
     try:
@@ -817,31 +855,17 @@ if __name__ == '__main__':
     rodelwelten.save_cache()
     outdooractive.save_cache()
 
-    if not _validate_scrape_output(trip_data, scrape_stats):
-        _write_health('down')
+    cached = _store_scrape_result(trip_data, scrape_stats)
+    if cached is None:
         print(
             "ERROR: scrape yielded zero houses across all trips — aborting without "
-            "overwriting public/data.json or public/index.html. The previous output "
-            "stays in place; do not deploy from this run."
+            "replacing cache/houses.json or public/index.html. The previous data "
+            "stays in place."
         )
         raise SystemExit(1)
+    print(f"Data saved to cache/houses.json (status {cached['status']})")
 
-    _write_health('degraded' if scrape_stats['failed'] else 'ok')
-
-    updated_at = datetime.now().strftime('%Y-%m-%d %H:%M')
-
-    with open('public/data.json', 'w', encoding='utf-8') as f:
-        json.dump({'updated_at': updated_at, 'trips': trip_data}, f, ensure_ascii=False, indent=2)
-    print("Data saved to public/data.json")
-
-    with app.app_context():
-        html_content = _render_html(
-            title=data.get('title', 'Ferienhaus-Vergleich für Rodeln'),
-            trips=trip_data, updated_at=updated_at, version=version,
-        )
-
-    with open('public/index.html', 'w', encoding='utf-8') as f:
-        f.write(html_content)
-
-    print("Static site generated in public/index.html")
+    if not args.scrape_only:
+        _render_site(data, cached, version)
+        print("Static site generated in public/index.html")
     print(f"Done in {time.time() - start_time:.1f}s")

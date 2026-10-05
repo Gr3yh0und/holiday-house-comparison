@@ -128,8 +128,8 @@ if ($Rollback) {
 # leftover public\index.html.
 $pythonBin = "python"
 if (-not (Get-Command $pythonBin -ErrorAction SilentlyContinue)) { $pythonBin = "python3" }
-Write-Host "Building site (running $pythonBin app.py) ..."
-& $pythonBin app.py
+Write-Host "Building site from cache\houses.json (running $pythonBin app.py --from-cache) ..."
+& $pythonBin app.py --from-cache
 if ($LASTEXITCODE -ne 0) {
     Write-Error "Site build failed -- aborting deploy."
     Publish-HealthBestEffort

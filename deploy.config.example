@@ -15,7 +15,7 @@
 # The repo's .venv, not a bare python/pytest: the deploy host's system Python
 # has none of the requirements installed.
 TEST_CMD=".venv/bin/python -m pytest -q"
-BUILD_CMD=".venv/bin/python app.py"
+BUILD_CMD=".venv/bin/python app.py --from-cache"
 BUILD_DIR="public"
 
 # Homelab only. "public" would rsync over ssh, which the FTP-only host can't take.
