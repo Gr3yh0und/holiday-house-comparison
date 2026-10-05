@@ -13,6 +13,7 @@ __pycache__/
 # Generated output
 public/index.html
 public/data.json
+public/health.json
 
 # Scraped cache
 cache/
