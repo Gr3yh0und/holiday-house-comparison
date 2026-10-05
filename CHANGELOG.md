@@ -11,6 +11,11 @@ the hand-backfilled `1.0.0`–`1.5.0` tags (§2), re-created from the previously
 
 ## [Unreleased]
 
+### Fixed
+- Maps showed "API KEY REQUIRED" on every tile: CARTO basemaps now need a key. `app.py` reads
+  `CARTO_API_KEY` (environment, else `/etc/homelab/holiday-house-comparison.env`) and puts it in
+  the tile URL. All three map kinds share one `addBaseLayer()` helper in the template.
+
 ### Changed
 - The homelab (local) target is now published by the shared `/deploy`
   (`infrastructure/scripts/deploy.sh local`), with versioned releases and `/rollback`.

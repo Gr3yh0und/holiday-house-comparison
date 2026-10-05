@@ -824,6 +824,16 @@
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script>
+        // CARTO basemap; the URL carries the API key when the build had one (app.py _tile_url).
+        var TILE_URL = {{ tile_url|tojson }};
+        function addBaseLayer(map) {
+            L.tileLayer(TILE_URL, {
+                attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors © <a href="https://carto.com/">CARTO</a>',
+                subdomains: 'abcd',
+                maxZoom: 19
+            }).addTo(map);
+        }
+
         function formatDate(dateStr, lang) {
             var t = window.ALL_TRANSLATIONS[lang] || window.ALL_TRANSLATIONS['de-DE'];
             var d = new Date(dateStr + 'T00:00:00');
@@ -1006,10 +1016,7 @@
 
             var map = L.map('overview-map');
             addGestureHint(document.getElementById('overview-map'));
-            L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
-                attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors © <a href="https://carto.com/">CARTO</a>',
-                subdomains: 'abcd', maxZoom: 19
-            }).addTo(map);
+            addBaseLayer(map);
 
             var bounds = L.latLngBounds();
             var hasMarkers = false;
@@ -1117,11 +1124,7 @@
             var lon = parseFloat(el.dataset.lon);
             var map = L.map(el).setView([lat, lon], 13);
             addGestureHint(el);
-            L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
-                attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors © <a href="https://carto.com/">CARTO</a>',
-                subdomains: 'abcd',
-                maxZoom: 19
-            }).addTo(map);
+            addBaseLayer(map);
             var bounds = L.latLngBounds([[lat, lon]]);
             L.marker([lat, lon], {icon: poiIcon('house')})
                 .addTo(map)
@@ -1365,11 +1368,7 @@
                 var track = JSON.parse(mapEl.dataset.track);
                 var map = L.map(mapEl);
                 addGestureHint(mapEl);
-                L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
-                    attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors © <a href="https://carto.com/">CARTO</a>',
-                    subdomains: 'abcd',
-                    maxZoom: 19
-                }).addTo(map);
+                addBaseLayer(map);
                 var trackColor = el.classList.contains('loipe-run') ? '#38a169' : '#2b6cb0';
                 var line = L.polyline(track, {color: trackColor, weight: 3, dashArray: el.classList.contains('loipe-run') ? '6 4' : null}).addTo(map);
                 var bounds = line.getBounds();

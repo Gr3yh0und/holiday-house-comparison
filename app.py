@@ -31,6 +31,8 @@ CHROME_BINARY_PATH = os.path.join(
 CONFIG_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'config.json')
 VERSION_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'VERSION')
 HEALTH_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'public', 'health.json')
+HOMELAB_ENV = os.environ.get('HOMELAB_ENV', '/etc/homelab/holiday-house-comparison.env')
+CARTO_TILE_URL = 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png'
 
 _DEFAULTS = {
     'loipen_radius_m': 10000,
@@ -297,11 +299,39 @@ def inject_dates(url, checkin, checkout):
     return urlunparse(parsed._replace(query=urlencode(params, doseq=True)))
 
 
+def _carto_api_key():
+    """CARTO basemap key: CARTO_API_KEY from the environment, else from the
+    homelab env file (WEBAPP_PROJECT_STANDARD.md §4). It ends up in the
+    rendered page (the browser sends it with every tile request), but never
+    in this repo -- the repo is public."""
+    key = os.environ.get('CARTO_API_KEY', '').strip()
+    if key:
+        return key
+    try:
+        with open(HOMELAB_ENV, encoding='utf-8') as f:
+            for line in f:
+                name, sep, value = line.strip().partition('=')
+                if sep and name.strip() == 'CARTO_API_KEY':
+                    return value.strip().strip('"\'')
+    except OSError:
+        pass
+    return ''
+
+
+def _tile_url():
+    key = _carto_api_key()
+    if not key:
+        print('  [map] no CARTO_API_KEY set -- map tiles will show "API KEY REQUIRED"')
+        return CARTO_TILE_URL
+    return f"{CARTO_TILE_URL}?{urlencode({'key': key})}"
+
+
 def _render_html(title, trips, updated_at, version):
     return render_template(
         'index.html',
         t=_translations, all_translations=_all_translations, lang=_lang,
         title=title, trips=trips, updated_at=updated_at, version=version,
+        tile_url=_tile_url(),
     )
 
 

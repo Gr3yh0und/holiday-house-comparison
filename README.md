@@ -13,6 +13,7 @@ instead of at the repo root (see that standard's §1b).
 1. Install dependencies: `pip install -r requirements.txt` (includes pylint)
 2. Place the ChromeDriver binary in `webdriver/chromedriver-win64/chromedriver.exe` (used for JS-rendered house pages).
 3. Copy `input.template.json` to `input.json` and fill in your trips, houses, and sled run URLs.
+4. For working maps, set a CARTO basemap key (free at [carto.com/basemaps/apikey](https://carto.com/basemaps/apikey)): `CARTO_API_KEY=...` in `/etc/homelab/holiday-house-comparison.env` on the server, or as an environment variable elsewhere. It is read at build time and is visible in the page source, so restrict it to your domains in the CARTO dashboard and never commit it. Without it every map tile shows "API KEY REQUIRED".
 4. (Optional) Edit `config.json` to adjust global defaults (see [Configuration](#configuration)).
 5. Generate the static site: `python app.py`
 5. Open or host `public/index.html`.
