@@ -11,6 +11,8 @@ the hand-backfilled `1.0.0`–`1.5.0` tags (§2), re-created from the previously
 
 ## [Unreleased]
 
+## [1.9.0] — 2026-10-06
+
 ### Added
 - Every house parser scrapes the listing's main photo. A hand-typed `image_url` in `input.json`
   still wins, but is checked first: a dead one (Chalet Almrausch's booking.com photo returned 404)
