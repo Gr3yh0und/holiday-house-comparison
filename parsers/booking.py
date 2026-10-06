@@ -61,6 +61,10 @@ def scrape(url, driver=None):
             )
             result['location'] = loc.text.strip() if loc else 'N/A'
 
+        og_image = soup.find('meta', attrs={'property': 'og:image'})
+        if og_image and og_image.get('content'):
+            result['image_url'] = og_image['content']
+
         # DOM fallback for rating
         if result['rating'] == 'N/A':
             score_el = soup.find(attrs={'data-review-score': True})

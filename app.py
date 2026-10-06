@@ -378,6 +378,23 @@ def _load_cached_house(name, checkin, checkout):
     return None
 
 
+_image_checks = {}
+
+
+def _image_ok(url):
+    """True if url answers 200 with an image (checked once per run)."""
+    if url not in _image_checks:
+        try:
+            resp = requests.get(url, timeout=15, stream=True,
+                                headers={'User-Agent': 'Mozilla/5.0', 'Accept': 'image/*'})
+            _image_checks[url] = (resp.status_code == 200
+                                  and resp.headers.get('content-type', '').startswith('image/'))
+            resp.close()
+        except requests.RequestException:
+            _image_checks[url] = False
+    return _image_checks[url]
+
+
 def _scrape_one_house(house, trip_checkin, trip_checkout, driver=None, force_refresh=False, stats=None):
     raw_url = house.get('house_url', '')
     house_url = (
@@ -419,8 +436,15 @@ def _scrape_one_house(house, trip_checkin, trip_checkout, driver=None, force_ref
                   'supermarket', 'train_station', 'bus_stop', 'sauna', 'nearest_sled_run', 'notes'):
         if house.get(field):
             house_info[field] = house[field]
-    if 'image_url' in house:
+    # Prefer the hand-picked photo from input.json, but listing photos get deleted
+    # (booking.com 404s them) -- then fall back to the photo the parser scraped.
+    scraped_image = house_info.pop('image_url', None)
+    if house.get('image_url') and (not scraped_image or _image_ok(house['image_url'])):
         house_info['image_url'] = house['image_url']
+    elif scraped_image:
+        if house.get('image_url'):
+            print(f"  -> image_url in input.json is dead, using the listing photo: {scraped_image}")
+        house_info['image_url'] = scraped_image
     if 'lat' in house and 'lon' in house:
         house_info['lat'] = house['lat']
         house_info['lon'] = house['lon']

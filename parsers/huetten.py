@@ -26,6 +26,11 @@ def scrape(url, _driver=None):
 
         ld = _parse_json_ld_common(soup, 'LodgingBusiness')
 
+        image = ld.get('image')
+        image = image[0] if isinstance(image, list) and image else image
+        if isinstance(image, str) and image.startswith('http'):
+            result['image_url'] = image
+
         # Name / location
         h1 = soup.find('h1')
         result['location'] = h1.get_text(strip=True) if h1 else ld.get('name', 'N/A')

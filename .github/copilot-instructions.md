@@ -10,7 +10,7 @@
 - `parsers/fewo.py` — fewo-direkt.de (Chrome required; DataDome bot detection)
 - `parsers/booking.py` — booking.com (Chrome required)
 - `parsers/huetten.py` — huetten.com (plain `requests`)
-- `parsers/interhome.py` — interhome.de (Chrome; React SPA)
+- `parsers/interhome.py` — interhome.de (Chrome; React SPA, now HomeToGo). Data from the `rentalOfferDetails` state JSON (first page snapshot — the page removes it later); URL cut down to dates and guests (stale search params show free houses as booked out)
 - `parsers/rodelwelten.py`, `parsers/outdooractive.py` — sled runs, 1-day file caches in `cache/`
 - `parsers/loipen.py` — Overpass query for `piste:type=nordic`, cached in `cache/loipen.json`
 - `parsers/common.py` — shared helpers (`EMPTY` result, country/rating normalisation, bed/room-config parsing)
@@ -34,6 +34,7 @@
 - Never override the browser's user-agent in the Chrome path: a user-agent that does not match the real OS/browser makes DataDome show a captcha on every fewo-direkt page.
 - A parser returns `None` for a bot/rate-limit page, a dict full of `'Error'` on a crash, else a dict based on `parsers.common.EMPTY`. `_scrape_one_house` treats `None` and an all-empty result (no location, address, rooms or price) as a failed scrape: cached fallback, counted in `scrape_stats`, run status `degraded`.
 - Availability (`time`): `Available` (free, with price), `Unavailable` (booked out, **no** price), `check_manually` (no `house_url`), `N/A` (unknown). Never take a price from a booked-out page — booking.com then lists offers for other dates and other houses.
+- Parsers also return `image_url` (the listing's main photo). `input.json`'s `image_url` wins only while `_image_ok()` confirms it is a live image; otherwise the scraped photo is used.
 - House fields: `location`, `address`, `rooms`, `persons`, `sqm`, `bathrooms`, `room_config`, `price`, `time`, `rating`, `supermarket`, `train_station`, `bus_stop`, `sauna`; `N/A` is the fallback.
 - Any house field can be overridden in `input.json` (house or per-trip entry); the override applies only when truthy (`house.get(field)`) and wins over scraped data — also over a scraped `Unavailable`.
 - `nearest_sled_run` is input-only (not scraped); rendered only when present and non-empty.

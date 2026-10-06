@@ -1,3 +1,4 @@
+import json
 import re
 from urllib.parse import urlparse, parse_qs, urlencode
 
@@ -9,13 +10,18 @@ from parsers.common import (
 )
 
 
+# Only these query parameters reach interhome. A link copied from a search carries
+# offer context (pCon, sd, searchId, offerId, clickId, ...) that pins the page to
+# that old search: with it, a house that is free showed "Für deine Daten leider
+# ausgebucht", or the pricing API hung.
+_KEEP_PARAMS = ('arrival', 'duration', 'adults', 'persons', 'children')
+
+
 def _clean_url(url):
-    """Strip tracking/session params that can cause the pricing API to hang when stale."""
+    """Keep only dates and guests; drop stale search/offer/tracking context."""
     parsed = urlparse(url)
     params = parse_qs(parsed.query, keep_blank_values=True)
-    for key in ('offerId', 'clickId'):
-        params.pop(key, None)
-    clean_query = urlencode({k: v[0] for k, v in params.items()})
+    clean_query = urlencode({k: params[k][0] for k in _KEEP_PARAMS if k in params})
     return parsed._replace(query=clean_query).geturl()
 
 
@@ -27,6 +33,9 @@ def scrape(url, driver=None):
     try:
         if driver:
             driver.get(_clean_url(url))
+            # The state JSON (rentalOfferDetails) is in the server-rendered page but
+            # gets removed after hydration -- keep this first snapshot for it.
+            first_soup = BeautifulSoup(driver.page_source, 'html.parser')
             from selenium.webdriver.support.ui import WebDriverWait
             from selenium.webdriver.support import expected_conditions as EC
             from selenium.webdriver.common.by import By
@@ -43,6 +52,15 @@ def scrape(url, driver=None):
                 WebDriverWait(driver, 45).until(_badge_settled)
             except TimeoutException:
                 print(f"  [interhome] pricing API timed out for {url}")
+            # The page can first render "leider ausgebucht" and flip to
+            # "Deine Daten sind verfügbar" once the pricing call returns.
+            def _available(d):
+                return any('verfügbar' in e.text and 'ausgebucht' not in e.text
+                           for e in d.find_elements(By.CSS_SELECTOR, '[data-test="available-badge"]'))
+            try:
+                WebDriverWait(driver, 20).until(_available)
+            except TimeoutException:
+                pass
             badge_els = driver.find_elements(By.CSS_SELECTOR, '[data-test="available-badge"]')
             badge_text = badge_els[0].text if badge_els else ''
             # If available, wait for price and grab it directly from Selenium
@@ -60,11 +78,13 @@ def scrape(url, driver=None):
         else:
             resp = requests.get(url, timeout=15, headers=_HEADERS)
             soup = BeautifulSoup(resp.content, 'html.parser')
+            first_soup = soup
 
         ld = parse_json_ld(soup, 'Product')
+        offer = _offer_details(soup) or _offer_details(first_soup)
 
         # Name
-        result['location'] = ld.get('name', 'N/A')
+        result['location'] = offer.get('generalTitle') or ld.get('name', 'N/A')
 
         # Address from location breadcrumb (country, ..., city, property-code)
         crumbs = soup.select('[data-test="location-breadcrumb"] li')
@@ -73,13 +93,21 @@ def scrape(url, driver=None):
             country_raw = crumbs[0].get_text(strip=True)
             country = normalize_country(country_raw)
             result['address'] = f"{city}, {country}"
+        loc = offer.get('location') or {}
+        if result['address'] == 'N/A' and offer.get('locationLowestLevel') and loc.get('level1'):
+            city = offer['locationLowestLevel'].removeprefix('Gemeinde ').strip()
+            result['address'] = f"{city}, {normalize_country(loc['level1'])}"
 
         # Persons
         result['persons'] = str(persons) if persons else 'N/A'
 
         # Rating (x / 5 scale)
         agg = ld.get('aggregateRating', {})
-        if agg.get('ratingValue'):
+        ratings = offer.get('ratings') or {}
+        if ratings.get('value') and ratings.get('reviewCount'):
+            # value is on a 0-10 scale ("10,0"); starValue is the same on 0-5
+            result['rating'] = normalize_rating(ratings['value'], 10, ratings['reviewCount'])
+        elif agg.get('ratingValue'):
             result['rating'] = normalize_rating(
                 agg['ratingValue'], agg.get('bestRating', 5), agg.get('reviewCount')
             )
@@ -100,11 +128,33 @@ def scrape(url, driver=None):
         room_config = parse_room_config(desc)
         result['room_config'] = room_config
         result['rooms'] = str(len(room_config)) if room_config else 'N/A'
+        # Current layout (HomeToGo): structured counts in the offer JSON
+        if offer.get('bedrooms'):
+            result['rooms'] = str(offer['bedrooms'])
+        if offer.get('bathrooms'):
+            result['bathrooms'] = str(offer['bathrooms'])
+        if offer.get('persons'):
+            result['persons'] = str(offer['persons'])
+        if result['sqm'] == 'N/A' and offer.get('squareMeter'):
+            result['sqm'] = offer['squareMeter']
+        images = offer.get('images') or []
+        if images and images[0].get('large'):
+            src = images[0]['large']
+            result['image_url'] = f'https:{src}' if src.startswith('//') else src
 
         # Sauna — check amenities section and description
         amenities_el = soup.find(attrs={'data-test': 'amenities'})
         amenities_text = amenities_el.get_text(' ', strip=True) if amenities_el else ''
-        result['sauna'] = 'Ja' if re.search(r'\bSauna\b', amenities_text + ' ' + desc, re.I) else 'Nein'
+        amenity_labels = ' '.join(
+            item.get('label', '')
+            for group in (offer.get('categorizedAmenities') or {}).get('groups', [])
+            if group.get('type') != 'not_included'
+            for item in group.get('items', [])
+        )
+        # The description also lists the village ("Im Ort: Hallenbad, Sauna, ..."), so
+        # it is only a fallback when the page has no amenity list at all.
+        sauna_source = (amenities_text + ' ' + amenity_labels).strip() or desc
+        result['sauna'] = 'Ja' if re.search(r'\bSauna\b', sauna_source, re.I) else 'Nein'
 
         # Price — interhome uses English number format: 6,501.00 (comma = thousands, dot = decimal)
         # Require at least one comma-separated thousands group to avoid matching "7" in "7 Nächte"
@@ -134,6 +184,17 @@ def scrape(url, driver=None):
         return {k: 'Error' for k in result}
 
     return result
+
+
+def _offer_details(soup):
+    """The rental's data as the page's own state JSON
+    (<script data-rtk-endpoint="rentalOfferDetails">), or {}."""
+    tag = soup.find('script', attrs={'data-rtk-endpoint': 'rentalOfferDetails'})
+    try:
+        data = json.loads(tag.string or '') if tag else {}
+    except json.JSONDecodeError:
+        return {}
+    return data if isinstance(data, dict) else {}
 
 
 def _parse_url_params(url):

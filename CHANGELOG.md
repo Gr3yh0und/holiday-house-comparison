@@ -11,6 +11,19 @@ the hand-backfilled `1.0.0`–`1.5.0` tags (§2), re-created from the previously
 
 ## [Unreleased]
 
+### Added
+- Every house parser scrapes the listing's main photo. A hand-typed `image_url` in `input.json`
+  still wins, but is checked first: a dead one (Chalet Almrausch's booking.com photo returned 404)
+  falls back to the scraped photo. Houses without `image_url` get the listing photo.
+### Fixed
+- interhome.de: the parser found no name, address, rooms or rating on the new (HomeToGo) layout.
+  It now reads them, plus bathrooms, persons, m² and the photo, from the page's state JSON.
+- interhome.de: a free house showed as booked out. A link copied from a search carries offer
+  context (`pCon`, `sd`, `searchId`, ...) that pins the page to that search; the URL is now cut
+  down to dates and guests, and the parser waits for a first "ausgebucht" to flip to "verfügbar".
+- interhome.de: "Sauna: Ja" came from the village description ("Im Ort: ... Sauna"); it is now
+  read from the house's amenity list.
+
 ## [1.8.0] — 2026-10-06
 
 ### Added

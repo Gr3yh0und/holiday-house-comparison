@@ -1,10 +1,12 @@
 """Tests for the booking.com and fewo-direkt.de house parsers on trimmed-down
 copies of their current (2026-10) page layouts."""
+import json
 from unittest import mock
 
 import pytest
+from selenium.common.exceptions import NoSuchElementException, TimeoutException
 
-from parsers import booking, fewo
+from parsers import booking, fewo, interhome
 
 
 class _FakeDriver:
@@ -109,3 +111,82 @@ def test_fewo_current_layout(html, price, time):
     assert r['rating'] == '9.4 (32 Bewertungen)'
     assert r['room_config'] == ['1 King-Bett']
     assert (r['rooms'], r['bathrooms'], r['persons']) == ('4', '3', '10')
+
+
+def test_booking_and_fewo_scrape_the_listing_photo():
+    booking_html = BOOKING_FREE.replace(
+        '</head>', '<meta property="og:image" content="https://cf.bstatic.com/x/1.jpg"></head>')
+    fewo_html = FEWO_FREE.replace(
+        '<div itemprop="address">',
+        '<meta itemprop="image" content="https://media.vrbo.com/2.jpg"><div itemprop="address">')
+    assert _scrape(booking, booking_html)['image_url'] == 'https://cf.bstatic.com/x/1.jpg'
+    assert _scrape(fewo, fewo_html)['image_url'] == 'https://media.vrbo.com/2.jpg'
+
+
+def test_interhome_clean_url_keeps_only_dates_and_guests():
+    url = ('https://www.interhome.de/rental/fa4a?duration=7&location=56a7&arrival=2027-02-20&persons=8'
+           '&adults=8&sd=5460&pCon=6842%7CEUR%7C2027-02-20&clickId=ZW&searchId=7348&priceRate=refund')
+    # pCon/sd/searchId pinned the page to an old search and showed a free house as booked out
+    assert interhome._clean_url(url) == (  # pylint: disable=protected-access
+        'https://www.interhome.de/rental/fa4a?arrival=2027-02-20&duration=7&adults=8&persons=8')
+
+
+_INTERHOME_OFFER = {
+    'generalTitle': 'Ferienwohnung Josefa am Buchhammerhof',
+    'location': {'level1': 'Österreich', 'level4': 'Gemeinde Kaunderberg'},
+    'locationLowestLevel': 'Gemeinde Kaunderberg',
+    'bedrooms': 4, 'bathrooms': 1, 'persons': 8, 'squareMeter': '120 m²',
+    'ratings': {'value': '10,0', 'starValue': '5,0', 'reviewCount': 8},
+    'images': [{'large': '//cdn.hometogo.net/large/v2/898/3c9/abc.webp'}],
+    'categorizedAmenities': {'groups': [
+        {'id': 'top', 'type': 'top', 'items': [{'label': 'WLAN'}]},
+        {'id': 'not_included', 'type': 'not_included', 'items': [{'label': 'Sauna'}]},
+    ]},
+}
+
+
+class _InterhomeDriver(_FakeDriver):
+    def __init__(self, html, badge, price=''):
+        super().__init__(html)
+        self._texts = {'[data-test="available-badge"]': badge, '[data-test="total-price"]': price}
+
+    def find_element(self, *args):
+        css = args[-1]
+        if not self._texts.get(css):
+            raise NoSuchElementException(css)
+        return mock.Mock(text=self._texts[css])
+
+    def find_elements(self, _by, css):
+        return [mock.Mock(text=self._texts[css])] if self._texts.get(css) else []
+
+
+@pytest.mark.parametrize('badge, price, want_price, want_time', [
+    ('Deine Daten sind verfügbar', 'Gesamtpreis für 7 Nächte €6,842.00', '6842 €', 'Available'),
+    ('Für deine Daten leider ausgebucht', '', 'N/A', 'Unavailable'),
+])
+def test_interhome_current_layout(badge, price, want_price, want_time):
+    html = ('<html><body><script type="application/json" data-rtk-endpoint="rentalOfferDetails">'
+            + json.dumps(_INTERHOME_OFFER) + '</script>'
+            '<div data-test="rental-description">5-Zimmer-Wohnung 120 m². 4 Doppelzimmer. Bad/Dusche/WC. '
+            'Im Ort: Hallenbad, Sauna, Solarium.</div>'
+            '</body></html>')
+    driver = _InterhomeDriver(html, badge, price)
+
+    # The fake page never changes, so don't sit out the real timeouts.
+    class _OneShotWait:  # pylint: disable=too-few-public-methods
+        def __init__(self, drv, _timeout):
+            self.drv = drv
+
+        def until(self, condition):
+            if not condition(self.drv):
+                raise TimeoutException()
+
+    with mock.patch('time.sleep'), mock.patch('selenium.webdriver.support.ui.WebDriverWait', _OneShotWait):
+        r = interhome.scrape('https://www.interhome.de/rental/x?arrival=2027-02-20&duration=7&adults=8', driver)
+    assert r['location'] == 'Ferienwohnung Josefa am Buchhammerhof'
+    assert r['address'] == 'Kaunderberg, Österreich'
+    assert (r['rooms'], r['bathrooms'], r['persons'], r['sqm']) == ('4', '1', '8', '120 m²')
+    assert r['rating'] == '10.0 (8 Bewertungen)'
+    assert r['image_url'] == 'https://cdn.hometogo.net/large/v2/898/3c9/abc.webp'
+    assert (r['price'], r['time']) == (want_price, want_time)
+    assert r['sauna'] == 'Nein', "a sauna in the village or under 'Nicht enthalten' is not the house's"

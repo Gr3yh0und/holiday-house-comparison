@@ -203,6 +203,10 @@ def scrape(url, driver=None):
             result['address'] = addr_text or 'N/A'
         print(f"  [fewo] address: {result['address']}")
 
+        image_el = soup.find('meta', attrs={'itemprop': 'image'})
+        if image_el and image_el.get('content'):
+            result['image_url'] = image_el['content']
+
         # Rooms, bathrooms, persons, sqm — all in rendered summary text
         rooms_m = re.search(r'(\d+)\s*Schlafzimmer', text, re.I)
         result['rooms'] = rooms_m.group(1) if rooms_m else 'N/A'

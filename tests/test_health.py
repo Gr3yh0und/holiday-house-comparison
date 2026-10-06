@@ -155,3 +155,28 @@ def test_partial_scrape_is_merged_into_the_previous_cache():
         ("C", [("H4", "new")]),
     ]
     assert app_module._merge_into_cache(fresh, None) is fresh
+
+
+def _scrape_with(monkeypatch, scraped, image_ok):
+    monkeypatch.setattr(app_module, "scrape_house", lambda url, driver=None: dict(scraped))
+    monkeypatch.setattr(app_module, "_image_ok", lambda url: image_ok)
+    monkeypatch.setattr(app_module, "_fetch_loipen", lambda *a, **k: [])
+    house = {"name": "H", "house_url": "https://www.booking.com/x", "image_url": "https://typed/1.jpg"}
+    return app_module._scrape_one_house(house, "2027-02-13", "2027-02-20")
+
+
+_SCRAPED = dict(app_module._PARSER_EMPTY, room_config=[], location="H", price="€ 1",
+                image_url="https://listing/2.jpg")
+
+
+def test_typed_image_wins_while_it_works(monkeypatch):
+    assert _scrape_with(monkeypatch, _SCRAPED, image_ok=True)["image_url"] == "https://typed/1.jpg"
+
+
+def test_dead_typed_image_falls_back_to_listing_photo(monkeypatch):
+    assert _scrape_with(monkeypatch, _SCRAPED, image_ok=False)["image_url"] == "https://listing/2.jpg"
+
+
+def test_typed_image_kept_when_nothing_was_scraped(monkeypatch):
+    no_image = {k: v for k, v in _SCRAPED.items() if k != "image_url"}
+    assert _scrape_with(monkeypatch, no_image, image_ok=False)["image_url"] == "https://typed/1.jpg"
