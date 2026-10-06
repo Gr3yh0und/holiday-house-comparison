@@ -11,10 +11,11 @@ the hand-backfilled `1.0.0`–`1.5.0` tags (§2), re-created from the previously
 
 ## [Unreleased]
 
+## [1.8.0] — 2026-10-06
+
 ### Added
 - `/scrape` skill: starts `app.py --scrape-only` in the background and reports progress at
   25/50/75/100 %. The scraper prints a `[progress] 5/18 houses (27%)` line after each house.
-
 ### Fixed
 - Scraping on Linux used no browser at all: the bundled Chrome/chromedriver paths were
   Windows-only, so every house fell back to plain HTTP and came back mostly empty. `app.py`
