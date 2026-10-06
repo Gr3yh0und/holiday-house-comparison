@@ -93,7 +93,9 @@ def scrape(url, _driver=None):
             result['total_costs'] = _sum_prices(result['price'], result['extra_costs'])
             result['total_costs_10'] = _sum_prices(result['price_10'], result['extra_costs_10'])
 
-        result['time'] = 'Available'
+        # The price table is the season list, not the booking calendar (that loads
+        # later via JS): it says nothing about whether the dates are still free.
+        result['time'] = 'check_manually'
         print(f"  [huetten] {result['location']} | {result['address']} | "
               f"{result['persons']} Pers. | {result['rooms']} Zimmer | "
               f"{result['sqm']} | {result['price']} | {result['rating']}")

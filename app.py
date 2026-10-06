@@ -439,6 +439,8 @@ def _scrape_one_house(house, trip_checkin, trip_checkout, driver=None, force_ref
     # Prefer the hand-picked photo from input.json, but listing photos get deleted
     # (booking.com 404s them) -- then fall back to the photo the parser scraped.
     scraped_image = house_info.pop('image_url', None)
+    if not (isinstance(scraped_image, str) and scraped_image.startswith(('https://', 'http://'))):
+        scraped_image = None  # scraped content is untrusted: only plain web URLs into <img src>
     if house.get('image_url') and (not scraped_image or _image_ok(house['image_url'])):
         house_info['image_url'] = house['image_url']
     elif scraped_image:

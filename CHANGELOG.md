@@ -11,6 +11,14 @@ the hand-backfilled `1.0.0`–`1.5.0` tags (§2), re-created from the previously
 
 ## [Unreleased]
 
+### Fixed
+- huetten.com houses always showed "Available" (green "Frei"): the parser reads the season price
+  list, not the booking calendar, so it cannot know. They now show "check manually".
+- A scraped photo URL is only used if it starts with `http://` or `https://` — scraped content is
+  untrusted and ends up in `<img src>`.
+### Changed
+- README: interhome bed/room source, rating scales, availability states, test coverage.
+
 ## [1.9.0] — 2026-10-06
 
 ### Added

@@ -180,3 +180,11 @@ def test_dead_typed_image_falls_back_to_listing_photo(monkeypatch):
 def test_typed_image_kept_when_nothing_was_scraped(monkeypatch):
     no_image = {k: v for k, v in _SCRAPED.items() if k != "image_url"}
     assert _scrape_with(monkeypatch, no_image, image_ok=False)["image_url"] == "https://typed/1.jpg"
+
+
+def test_scraped_image_must_be_a_web_url(monkeypatch):
+    bad = dict(_SCRAPED, image_url="javascript:alert(1)")
+    monkeypatch.setattr(app_module, "scrape_house", lambda url, driver=None: dict(bad))
+    monkeypatch.setattr(app_module, "_fetch_loipen", lambda *a, **k: [])
+    house = {"name": "H", "house_url": "https://www.booking.com/x"}
+    assert "image_url" not in app_module._scrape_one_house(house, "2027-02-13", "2027-02-20")

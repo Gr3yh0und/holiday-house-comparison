@@ -82,7 +82,8 @@ EOF
 ```
 
 Report 100 %, the status (`ok`, or `degraded` = some houses failed), how many houses are
-`Available` with a price vs. `Unavailable` (booked out), and any house with no data.
+`Available` with a price vs. `Unavailable` (booked out) vs. `check_manually` (huetten.com and
+houses without `house_url` — no availability data), and any house with no data.
 The log line `booked out, but input.json sets price` names houses where an old hand-typed
 `price` in `input.json` overrides the scrape — list them, the user may want to delete those lines. Then:
 the site is not updated yet — `/deploy` publishes it.

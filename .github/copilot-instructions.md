@@ -33,8 +33,8 @@
 
 - Never override the browser's user-agent in the Chrome path: a user-agent that does not match the real OS/browser makes DataDome show a captcha on every fewo-direkt page.
 - A parser returns `None` for a bot/rate-limit page, a dict full of `'Error'` on a crash, else a dict based on `parsers.common.EMPTY`. `_scrape_one_house` treats `None` and an all-empty result (no location, address, rooms or price) as a failed scrape: cached fallback, counted in `scrape_stats`, run status `degraded`.
-- Availability (`time`): `Available` (free, with price), `Unavailable` (booked out, **no** price), `check_manually` (no `house_url`), `N/A` (unknown). Never take a price from a booked-out page — booking.com then lists offers for other dates and other houses.
-- Parsers also return `image_url` (the listing's main photo). `input.json`'s `image_url` wins only while `_image_ok()` confirms it is a live image; otherwise the scraped photo is used.
+- Availability (`time`): `Available` (free, with price), `Unavailable` (booked out, **no** price), `check_manually` (no `house_url`, or huetten.com — its price table is the season list, not the booking calendar), `N/A` (unknown). Never take a price from a booked-out page — booking.com then lists offers for other dates and other houses.
+- Parsers also return `image_url` (the listing's main photo). `input.json`'s `image_url` wins only while `_image_ok()` confirms it is a live image; otherwise the scraped photo is used. Scraped photo URLs must start with `http(s)://` — scraped content is untrusted.
 - House fields: `location`, `address`, `rooms`, `persons`, `sqm`, `bathrooms`, `room_config`, `price`, `time`, `rating`, `supermarket`, `train_station`, `bus_stop`, `sauna`; `N/A` is the fallback.
 - Any house field can be overridden in `input.json` (house or per-trip entry); the override applies only when truthy (`house.get(field)`) and wins over scraped data — also over a scraped `Unavailable`.
 - `nearest_sled_run` is input-only (not scraped); rendered only when present and non-empty.
@@ -50,4 +50,4 @@
 
 - `.venv/bin/python -m pytest -q` (CI: `.github/workflows/tests.yml`; same command as `TEST_CMD`).
 - `pylint app.py parsers/` (CI: `.github/workflows/lint.yml`, fail under 7.0).
-- Parser tests in `tests/test_parsers_house_pages.py` use trimmed copies of the live page layouts — update them together with the parser when a site changes its markup.
+- Parser tests in `tests/test_parsers_house_pages.py` use trimmed copies of the live fewo-direkt.de, booking.com and interhome.de layouts — update them together with the parser when a site changes its markup.
