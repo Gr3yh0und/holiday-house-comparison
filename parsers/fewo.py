@@ -8,6 +8,7 @@ from bs4 import BeautifulSoup
 from parsers.common import (
     EMPTY, random_headers, random_user_agent,
     parse_room_config as _parse_room_config, clean_bed_desc, normalize_rating,
+    normalize_country,
 )
 
 _FEWO_HOME = 'https://www.fewo-direkt.de'
@@ -102,9 +103,9 @@ def scrape(url, driver=None):
 
     try:
         if driver:
-            ua = random_user_agent()
-            driver.execute_cdp_cmd('Network.setUserAgentOverride', {'userAgent': ua})
-            print(f"  [fewo] user-agent: {ua[:60]}...")
+            # Keep the browser's real user-agent: overriding it (e.g. a Windows UA on
+            # Linux Chrome) contradicts navigator.platform and the client hints, and
+            # DataDome answers with a slider captcha on every page.
             _warm_up_session(driver)
             driver.get(url)
             # Let the React SPA hydrate; add some human-like interaction
@@ -183,7 +184,14 @@ def scrape(url, driver=None):
         # Address: content-hotel-address renders "Town, Region" — convert to "Town, Country"
         addr_el = soup.find(attrs={'data-stid': 'content-hotel-address'})
         addr_text = addr_el.get_text(strip=True) if addr_el else ''
-        if ',' in addr_text:
+        # Current layout: no visible address element, only schema.org microdata
+        # (addressLocality "Wengen", addressCountry "CHE").
+        locality = soup.find('meta', attrs={'itemprop': 'addressLocality'})
+        country_el = soup.find('meta', attrs={'itemprop': 'addressCountry'})
+        if not addr_text and locality and locality.get('content'):
+            country = normalize_country(country_el.get('content', '')) if country_el else ''
+            result['address'] = f"{locality['content']}, {country}" if country else locality['content']
+        elif ',' in addr_text:
             city_raw, region = addr_text.rsplit(',', 1)
             region = region.strip()
             # Swiss format: "Wengen BE, BE" — strip canton code suffix from city
@@ -223,7 +231,8 @@ def scrape(url, driver=None):
             bed_re = r'\d?\s*(?:(?:King|Queen|Doppel|Einzel|Etagen|Stock|Schlaf|Franz|Kinder)[- ]?[Bb]ett|Schlafsofa)'
             if re.search(bed_re, item_text, re.I):
                 bedroom_n += 1
-                bed_text = clean_bed_desc(item_text[len(h4.get_text(strip=True)):].strip())
+                # Some items carry a label before the h4 ("Zimmer Schlafzimmer 1 ...").
+                bed_text = clean_bed_desc(item_text.split(h4.get_text(' ', strip=True), 1)[-1].strip())
                 result['room_config'].append(bed_text)
 
         # Fallback: fluid text in data-stid="content-markup" (e.g. Interhome-style descriptions)
@@ -253,6 +262,12 @@ def scrape(url, driver=None):
         print(f"  [fewo] price: {result['price']}")
 
         # Rating: VRBO/Expedia platform shows score in reviews section
+        # Current layout: rating-tile-view = "9,4 | Außergewöhnlich | 32 Bewertungen".
+        # Check it first -- the old regexes on the glued page text pick up
+        # sub-scores ("Kommunikation 9,8 von 10") or merged digits ("9,69,6").
+        tile_el = soup.find(attrs={'data-stid': 'rating-tile-view'})
+        tile_m = re.match(r'\s*(\d+[.,]\d+)', tile_el.get_text(' ', strip=True)) if tile_el else None
+        overall_m = re.search(r'wurde mit (\d+[.,]\d+) von 10 bewertet', soup.get_text(' ', strip=True))
         rating_el = (
             soup.find(attrs={'data-stid': 'content-hotel-reviews'}) or
             soup.find(attrs={'data-stid': 'reviews-summary'}) or
@@ -276,6 +291,9 @@ def scrape(url, driver=None):
                 re.search(r'Sehr gut\s+(\d+[.,]\d+)', text, re.I)
             )
             src = text
+        if tile_m or overall_m:
+            score_m = tile_m or overall_m
+            src = tile_el.get_text(' ', strip=True) if tile_el else soup.get_text(' ', strip=True)
         count_m = re.search(r'(\d+)\s*Bewertung', src, re.I)
         if score_m:
             result['rating'] = normalize_rating(
@@ -283,7 +301,15 @@ def scrape(url, driver=None):
             )
         print(f"  [fewo] rating: {result['rating']}")
 
-        result['time'] = 'Available'
+        # property-offers says "Deine Daten sind verfügbar" or, when booked out,
+        # "Für deinen Reisezeitraum ist diese Unterkunft ... leider nicht verfügbar".
+        offers_el = soup.find(attrs={'data-stid': 'property-offers'})
+        offers_text = offers_el.get_text(' ', strip=True) if offers_el else text
+        if re.search(r'leider nicht verfügbar', offers_text, re.I):
+            result['time'] = 'Unavailable'
+        elif re.search(r'Daten sind verfügbar', offers_text, re.I) or result['price'] != 'N/A':
+            result['time'] = 'Available'
+        print(f"  [fewo] availability: {result['time']}")
         if re.search(r'Bahnhof|train station', text, re.I):
             result['train_station'] = 'Nearby'
         if re.search(r'Supermarkt|supermarket', text, re.I):

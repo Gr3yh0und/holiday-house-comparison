@@ -6,6 +6,7 @@ requirements.txt (including Flask/Selenium) isn't installed. CI installs
 requirements-dev.txt, so it runs there.
 """
 import json
+import time
 
 import pytest
 
@@ -26,6 +27,16 @@ def test_read_repo_version_falls_back_to_dev_when_missing(tmp_path, monkeypatch)
     assert app_module._read_repo_version() == "dev"
 
 
+@pytest.fixture(autouse=True)
+def _berlin_time(monkeypatch):
+    """cache/houses.json holds server-local time; pin it so the UTC conversion is checkable."""
+    monkeypatch.setenv("TZ", "Europe/Berlin")
+    time.tzset()
+    yield
+    monkeypatch.undo()
+    time.tzset()
+
+
 def test_write_health_writes_given_status_and_last_update(tmp_path, monkeypatch):
     version_file = tmp_path / "VERSION"
     version_file.write_text("1.5.0")
@@ -38,7 +49,7 @@ def test_write_health_writes_given_status_and_last_update(tmp_path, monkeypatch)
     assert health == {
         "version": "1.5.0",
         "status": "ok",
-        "last_update": "2026-10-05 12:00",
+        "last_update": "2026-10-05T10:00:00Z",  # §6a: ISO 8601 UTC (Berlin is UTC+2 in October)
         "extra": {},
     }
 
@@ -91,7 +102,7 @@ def test_failed_scrape_keeps_last_good_data_and_flags_down(paths):
     assert after["status"] == "down"
     health = json.loads((paths / "public" / "health.json").read_text())
     assert health["status"] == "down"
-    assert health["last_update"] == good["updated_at"]
+    assert health["last_update"] == app_module._iso_utc(good["updated_at"])
 
 
 def test_failed_scrape_with_no_prior_cache_writes_nothing_but_health(paths):
@@ -113,5 +124,34 @@ def test_render_site_uses_cache_and_never_publishes_raw_data(paths):
     assert "Rendered House" in html
     health = json.loads((paths / "public" / "health.json").read_text())
     assert health["status"] == "degraded"
-    assert health["last_update"] == "2026-10-01 08:00", "render must not make old data look fresh"
+    assert health["last_update"] == "2026-10-01T06:00:00Z", "render must not make old data look fresh"
     assert not (paths / "public" / "data.json").exists()
+
+
+def test_iso_utc_handles_winter_time_and_missing_values():
+    assert app_module._iso_utc("2027-02-13 09:30") == "2027-02-13T08:30:00Z"
+    assert app_module._iso_utc(None) is None
+    assert app_module._iso_utc("not a date") == "not a date"
+
+
+def _house(name, price):
+    return {"name": name, "price": price}
+
+
+def test_partial_scrape_is_merged_into_the_previous_cache():
+    """--broker/--limit must not replace the full cache with the few houses it scraped."""
+    previous = {"trips": [
+        {"name": "A", "houses": [_house("H1", "old"), _house("H2", "old")]},
+        {"name": "B", "houses": [_house("H1", "old")]},
+    ]}
+    fresh = [
+        {"name": "A", "houses": [_house("H2", "new"), _house("H3", "new")]},
+        {"name": "C", "houses": [_house("H4", "new")]},
+    ]
+    merged = app_module._merge_into_cache(fresh, previous)
+    assert [(t["name"], [(h["name"], h["price"]) for h in t["houses"]]) for t in merged] == [
+        ("A", [("H1", "old"), ("H2", "new"), ("H3", "new")]),
+        ("B", [("H1", "old")]),
+        ("C", [("H4", "new")]),
+    ]
+    assert app_module._merge_into_cache(fresh, None) is fresh

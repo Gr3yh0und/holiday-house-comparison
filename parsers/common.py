@@ -62,6 +62,8 @@ _COUNTRY_NAMES = {
     # ISO codes
     'AT': 'Österreich', 'DE': 'Deutschland', 'CH': 'Schweiz',
     'IT': 'Italien', 'FR': 'Frankreich',
+    'AUT': 'Österreich', 'DEU': 'Deutschland', 'CHE': 'Schweiz',
+    'ITA': 'Italien', 'FRA': 'Frankreich',
     # English names
     'Austria': 'Österreich', 'Germany': 'Deutschland', 'Switzerland': 'Schweiz',
     'Italy': 'Italien', 'France': 'Frankreich',

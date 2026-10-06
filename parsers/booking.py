@@ -70,9 +70,27 @@ def scrape(url, driver=None):
         rooms_m = re.search(r'(\d+)\s*(Schlafzimmer|Bedroom)', text, re.I)
         result['rooms'] = rooms_m.group(1) if rooms_m else 'N/A'
 
+        # Booked out: the room table row says "An Ihren Reisedaten auf unserer
+        # Seite nicht verfügbar". The page then lists "Ab € ..." offers for other
+        # dates and other houses, so never take a price from the free text.
+        # (The same phrase also sits in an i18n <script> on every page, so only
+        # look at the visible room rows.)
+        unavailable = any(
+            'nicht verfügbar' in row.get_text(' ', strip=True)
+            for row in (rt.find_parent('tr') for rt in soup.find_all(attrs={'data-testid': 'rt-name-link'}))
+            if row
+        ) and not soup.find('div', class_='bui-price-display__value')
         price_el = soup.find(attrs={'data-testid': 'price-and-discounts-price'})
-        if price_el:
+        if unavailable:
+            result['price'] = 'N/A'
+        elif price_el:
             result['price'] = price_el.text.strip()
+        elif _rate_rows(soup):
+            # One row per rate and group size: take the cheapest rate for the
+            # largest group (the rows also offer smaller groups for less).
+            rows = _rate_rows(soup)
+            top = max(p for p, _, _ in rows)
+            result['price'] = min((v, t) for p, v, t in rows if p == top)[1]
         else:
             # Prefer the discounted total from bui-price-display__value; the first
             # regex match would otherwise land on the strikethrough original price.
@@ -80,29 +98,37 @@ def scrape(url, driver=None):
             if val_el:
                 span = val_el.find('span', class_='prco-valign-middle-helper')
                 result['price'] = (span or val_el).get_text(strip=True)
-            else:
-                price_m = re.search(r'(?:EUR|€)\s*[\s\u00a0]*([\d.,]+)', text)
-                result['price'] = f'€ {price_m.group(1)}' if price_m else 'N/A'
-
         # get_text() may concatenate "Bahn" + station name without space,
         # then newline before distance: "BahnLengdorf\n650 m"
         train_m = re.search(r'Bahn\s*([A-Za-zÄÖÜäöüß][^\n\d]*?)\s*\n\s*([\d,.]+\s*m)\b', text)
         if train_m:
             result['train_station'] = f'{train_m.group(1).strip()} {train_m.group(2)}'
 
-        avail_m = re.search(r'"b_has_available_rooms"\s*:\s*(true|false)', text)
-        if avail_m:
-            result['time'] = 'Available' if avail_m.group(1) == 'true' else 'Unavailable'
+        if unavailable:
+            result['time'] = 'Unavailable'
+        elif result['price'] != 'N/A':
+            result['time'] = 'Available'
 
         # m²: facility badge with data-name-en="room size"
-        size_el = soup.find('div', attrs={'data-name-en': 'room size'})
+        size_el = (soup.find('div', attrs={'data-name-en': 'room size'})
+                   or soup.find(attrs={'data-testid': 'property-highlights'}))
         if size_el:
             sqm_m = re.search(r'(\d+)\s*m²', size_el.get_text())
             result['sqm'] = f'{sqm_m.group(1)} m²' if sqm_m else 'N/A'
 
+        # Free dates: the hprt room table, "Schlafzimmer 1: 1 Doppelbett ... Badezimmer: 2"
+        bed_el = soup.find(class_='hprt-roomtype-bed')
+        bed_text = re.sub(r'\s+', ' ', bed_el.get_text(' ', strip=True)) if bed_el else ''
+        bed_re = r'Schlafzimmer\s*\d+\s*:\s*(.+?)(?=\s*(?:Schlafzimmer\s*\d+|Wohnzimmer|Badezimmer)\s*:|$)'
+        for m in re.finditer(bed_re, bed_text):
+            result['room_config'].append(m.group(1).strip())
+
         # Bathrooms: <li class="bathrooms-nr"><span>3</span>
         bath_li = soup.find('li', class_='bathrooms-nr')
-        if bath_li:
+        bath_m = re.search(r'Badezimmer\s*:\s*(\d+)', bed_text)
+        if bath_m:
+            result['bathrooms'] = bath_m.group(1)
+        elif bath_li:
             bath_span = bath_li.find('span')
             result['bathrooms'] = bath_span.text.strip() if bath_span else 'N/A'
         else:
@@ -112,6 +138,16 @@ def scrape(url, driver=None):
         persons_el = soup.find('span', class_='c-occupancy-icons__multiplier-number')
         if persons_el:
             result['persons'] = persons_el.text.strip()
+        else:
+            # "max. Personenzahl: 8" per rate row (free dates), or the bare
+            # "× 8" next to the room name (booked out) -- take the largest.
+            caps = [int(n) for n in re.findall(r'max\. Personenzahl:\s*(\d+)', text)]
+            for rt in soup.find_all(attrs={'data-testid': 'rt-name-link'}):
+                row = rt.find_parent('tr')
+                if row:
+                    caps += [int(n) for n in re.findall(r'×\s*(\d+)', row.get_text(' ', strip=True))]
+            if caps:
+                result['persons'] = str(max(caps))
 
         # Room config: first .m-rs-bed-display container → one entry per bedroom block
         bed_display = soup.find('div', class_='m-rs-bed-display')
@@ -127,7 +163,6 @@ def scrape(url, driver=None):
         if result['room_config']:
             result['rooms'] = str(len(result['room_config']))
 
-        result['time'] = 'Available'
         if re.search(r'Bahnhof|train station', text, re.I):
             result['train_station'] = 'Nearby'
         if re.search(r'Supermarkt|supermarket', text, re.I):
@@ -144,6 +179,23 @@ def scrape(url, driver=None):
         return {k: 'Error' for k in result}
 
     return result
+
+
+def _rate_rows(soup):
+    """Return (persons, price value, price text) per priced row of the hprt room table."""
+    rows = []
+    for tr in soup.select('table.hprt-table tr.js-rt-block-row'):
+        occ = tr.find(class_='hprt-occupancy-occupancy-info')
+        price = tr.find(class_='bui-price-display__value')
+        persons_m = re.search(r'Personenzahl:\s*(\d+)', occ.get_text(' ', strip=True)) if occ else None
+        if not (persons_m and price):
+            continue
+        text = re.sub(r'\s+', ' ', price.get_text(' ', strip=True))
+        value_m = re.search(r'[\d.]+(?:,\d+)?', text)
+        if value_m:
+            value = float(value_m.group(0).replace('.', '').replace(',', '.'))
+            rows.append((int(persons_m.group(1)), value, text))
+    return rows
 
 
 def _headers():

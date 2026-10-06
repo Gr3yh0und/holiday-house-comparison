@@ -4,7 +4,7 @@ import os
 import random
 import re
 import time
-from datetime import datetime
+from datetime import datetime, timezone
 from urllib.parse import urlparse, parse_qs, urlencode, urlunparse
 
 import requests
@@ -26,14 +26,14 @@ HOUSES_CACHE_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'ca
 HOUSES_PARTIAL_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'cache', 'houses.partial.json')
 TRANSLATIONS_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'translations')
 
-CHROMEDRIVER_PATH = os.path.join(
-    os.path.dirname(os.path.abspath(__file__)),
-    'webdriver', 'chromedriver-win64', 'chromedriver.exe'
-)
-CHROME_BINARY_PATH = os.path.join(
-    os.path.dirname(os.path.abspath(__file__)),
-    'webdriver', 'chrome-win64', 'chrome.exe'
-)
+# Bundled Chrome for Testing + matching chromedriver under webdriver/ (see README).
+_WEBDRIVER_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'webdriver')
+if os.name == 'nt':
+    CHROMEDRIVER_PATH = os.path.join(_WEBDRIVER_DIR, 'chromedriver-win64', 'chromedriver.exe')
+    CHROME_BINARY_PATH = os.path.join(_WEBDRIVER_DIR, 'chrome-win64', 'chrome.exe')
+else:
+    CHROMEDRIVER_PATH = os.path.join(_WEBDRIVER_DIR, 'chromedriver-linux64', 'chromedriver')
+    CHROME_BINARY_PATH = os.path.join(_WEBDRIVER_DIR, 'chrome-linux64', 'chrome')
 CONFIG_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'config.json')
 VERSION_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'VERSION')
 HEALTH_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'public', 'health.json')
@@ -393,6 +393,13 @@ def _scrape_one_house(house, trip_checkin, trip_checkout, driver=None, force_ref
         if stats is not None:
             stats['attempted'] += 1
         house_info = scrape_house(house_url, driver=driver)
+        if house_info is not None and all(
+            house_info.get(k) in (None, 'N/A', 'Error') for k in ('location', 'address', 'rooms', 'price')
+        ):
+            # A parser that crashed ('Error' everywhere) or found nothing at all
+            # (blocked page, changed layout) is a failure, not a booked-out house.
+            print("  -> scrape returned no data")
+            house_info = None
         if house_info is None:
             cached = _load_cached_house(house['name'], trip_checkin, trip_checkout)
             if cached:
@@ -404,6 +411,9 @@ def _scrape_one_house(house, trip_checkin, trip_checkout, driver=None, force_ref
             house_info = dict(_PARSER_EMPTY, room_config=[])
     house_info['name'] = house['name']
     house_info['house_url'] = house_url
+    if house_info.get('time') == 'Unavailable' and house.get('price') and not house.get('time'):
+        print(f"  -> booked out, but input.json sets price {house['price']!r}: "
+              "the page shows that old price -- remove it from input.json")
     for field in ('address', 'rooms', 'persons', 'sqm', 'bathrooms',
                   'room_config', 'price', 'time', 'rating',
                   'supermarket', 'train_station', 'bus_stop', 'sauna', 'nearest_sled_run', 'notes'):
@@ -553,6 +563,18 @@ def _read_repo_version():
         return 'dev'
 
 
+def _iso_utc(updated_at):
+    """'2026-10-06 12:44' (cache/houses.json, server local time) -> '2026-10-06T10:44:00Z'.
+    §6a wants ISO 8601 UTC in health.json; the page itself keeps showing local time."""
+    if not updated_at:
+        return updated_at
+    try:
+        local = datetime.strptime(updated_at, '%Y-%m-%d %H:%M').astimezone()
+    except ValueError:
+        return updated_at
+    return local.astimezone(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')
+
+
 def _write_health(status, last_update):
     """Write public/health.json (WEBAPP_PROJECT_STANDARD.md §6a).
 
@@ -563,10 +585,33 @@ def _write_health(status, last_update):
     health = {
         'version': _read_repo_version(),
         'status': status,
-        'last_update': last_update,
+        'last_update': _iso_utc(last_update),
         'extra': {},
     }
     _write_json_atomic(HEALTH_FILE, health)
+
+
+def _merge_into_cache(trip_data, previous):
+    """--broker/--limit scrape only some houses. Put those into the previous
+    cache's trips (matched by trip and house name) instead of replacing the
+    whole cache with the subset; houses not scraped this run keep their data."""
+    if not previous:
+        return trip_data
+    fresh = {(t['name'], h['name']): h for t in trip_data for h in t['houses']}
+    merged = []
+    for trip in previous.get('trips', []):
+        houses = [fresh.pop((trip['name'], h['name']), h) for h in trip['houses']]
+        merged.append(dict(trip, houses=houses))
+    for trip in trip_data:  # houses new since the last full scrape
+        extra = [h for h in trip['houses'] if (trip['name'], h['name']) in fresh]
+        if not extra:
+            continue
+        target = next((t for t in merged if t['name'] == trip['name']), None)
+        if target is None:
+            merged.append(dict(trip, houses=extra))
+        else:
+            target['houses'].extend(extra)
+    return merged
 
 
 def _store_scrape_result(trip_data, scrape_stats):
@@ -633,6 +678,13 @@ def build_trip_data(data, driver=None, force_refresh=False, broker_filter=None, 
                     on_house_scraped=None, scrape_stats=None):
     trips = []
     scraped = 0
+    total = sum(
+        1 for trip in data['trips'] for house in trip['houses']
+        if not broker_filter or BROKER_DOMAINS.get(broker_filter) in house.get('house_url', '')
+    )
+    if limit is not None:
+        total = min(total, limit)
+    print(f"[progress] 0/{total} houses (0%)", flush=True)
     for trip in data['trips']:
         trip_checkin = trip.get('checkin', '')
         trip_checkout = trip.get('checkout', '')
@@ -655,6 +707,8 @@ def build_trip_data(data, driver=None, force_refresh=False, broker_filter=None, 
                 stats=scrape_stats,
             ))
             scraped += 1
+            # Machine-readable progress for the /scrape skill: "[progress] 5/18 houses (27%)"
+            print(f"[progress] {scraped}/{total} houses ({scraped * 100 // max(total, 1)}%)", flush=True)
             if on_house_scraped:
                 current_trip = {
                     'name': trip.get('name', ''), 'checkin': trip_checkin,
@@ -855,6 +909,8 @@ if __name__ == '__main__':
     rodelwelten.save_cache()
     outdooractive.save_cache()
 
+    if args.broker or args.limit is not None:
+        trip_data = _merge_into_cache(trip_data, _load_houses_cache())
     cached = _store_scrape_result(trip_data, scrape_stats)
     if cached is None:
         print(

@@ -11,6 +11,35 @@ the hand-backfilled `1.0.0`–`1.5.0` tags (§2), re-created from the previously
 
 ## [Unreleased]
 
+### Added
+- `/scrape` skill: starts `app.py --scrape-only` in the background and reports progress at
+  25/50/75/100 %. The scraper prints a `[progress] 5/18 houses (27%)` line after each house.
+
+### Fixed
+- Scraping on Linux used no browser at all: the bundled Chrome/chromedriver paths were
+  Windows-only, so every house fell back to plain HTTP and came back mostly empty. `app.py`
+  now picks `webdriver/chrome-linux64` + `chromedriver-linux64` on Linux.
+- fewo-direkt.de: every page was a DataDome slider captcha, because the scraper faked a Windows
+  user-agent on a Linux browser. It now keeps the real one. Also reads the address from the
+  page's schema.org data again, takes the overall rating (not a sub-score or glued digits), and
+  marks booked-out houses `Unavailable`.
+- booking.com: a booked-out house got the price of a different date or house from the
+  "other dates" list. Booked-out houses are now `Unavailable` with no price. Free houses get the
+  cheapest rate for the full group. Persons, m² and the bed list are read from the current
+  layout again, and availability is no longer always overwritten with `Available`.
+- A scrape that returns no data at all (crash or empty page) now counts as failed, so
+  `health.json` says `degraded` instead of `ok`.
+- `--broker`/`--limit` scrapes replaced the whole `cache/houses.json` with only the houses they
+  scraped. Their results are now merged into the existing cache.
+- `health.json`'s `last_update` is ISO 8601 UTC (`2026-10-06T12:44:00Z`), as
+  WEBAPP_PROJECT_STANDARD.md §6a requires; it was the local `2026-10-06 12:44`.
+### Changed
+- The scraper warns when a booked-out house still has a hand-typed `price` in `input.json` (that
+  old price wins and shows next to "Unavailable").
+- README and `.github/copilot-instructions.md` updated: scrape vs. render, `/scrape`, `xvfb-run`,
+  availability rules, current parser behaviour, tests section. The copilot file still described
+  `public/data.json`, Windows-only driver paths and two brokers.
+
 ## [1.7.0] — 2026-10-05
 
 ### Changed
@@ -31,6 +60,11 @@ the hand-backfilled `1.0.0`–`1.5.0` tags (§2), re-created from the previously
 - Maps showed "API KEY REQUIRED" on every tile: CARTO basemaps now need a key. `app.py` reads
   `CARTO_API_KEY` (environment, else `/etc/homelab/holiday-house-comparison.env`) and puts it in
   the tile URL. All three map kinds share one `addBaseLayer()` helper in the template.
+- The FTP `deploy.sh` build step failed on the deploy server: it used the system `python3`, which
+  has none of the requirements. It now uses the repo's `.venv` when it exists.
+- `deploy.sh`/`deploy-test.sh` are executable, so `./deploy.sh` works as the README says.
+- `public/health.json` is no longer tracked in git; every build rewrote it and left the tree dirty,
+  which would block the next `/deploy`.
 ### Changed
 - The homelab (local) target is now published by the shared `/deploy`
   (`infrastructure/scripts/deploy.sh local`), with versioned releases and `/rollback`.
