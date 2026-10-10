@@ -23,3 +23,9 @@ route: /holiday-house-comparison
 # compliance/holiday-house-comparison.md §5 (in the infrastructure repo — this repo is public,
 # §1b) for the full reasoning.
 personal_data: true
+
+# Releases (owner, 2026-10-10): only the owner decides when a new version is made. /deploy
+# refuses without --owner-release; every release gets a git tag on the release commit and a
+# GitHub release (infrastructure scripts/deploy.sh).
+release_by: owner
+github_release: true
