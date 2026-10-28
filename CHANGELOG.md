@@ -11,6 +11,11 @@ the hand-backfilled `1.0.0`–`1.5.0` tags (§2), re-created from the previously
 
 ## [Unreleased]
 
+### Fixed
+- Review 2026-10-28, `app.py`: the `--house` patch no longer re-stamps `updated_at` when every scrape fell back to cache; a malformed loipen cache entry or unreadable houses cache is a cache miss; a missing house name in `input.json` gives a pointed error.
+- Page: map tooltips escape their text (stored XSS from scraped names); outbound links must be `http(s)`; every distinct train track is drawn; the house map needs numeric coordinates; "None km" shows "N/A"; one shared trip colour palette.
+- Parsers: the empty-result template is no longer shared between houses; caches hand out copies; a stray price no longer flips a booked-out Booking.com page to available; Interhome "nicht verfügbar" is unavailable; German numbers with dot thousands parse correctly; one bad altitude no longer drops the whole result.
+
 ## [1.10.0] — 2026-10-24
 
 ### Added
