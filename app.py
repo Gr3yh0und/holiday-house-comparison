@@ -3,6 +3,7 @@ import json
 import os
 import random
 import re
+import tempfile
 import time
 from datetime import datetime, timezone
 from urllib.parse import urlparse, parse_qs, urlencode, urlunparse
@@ -134,10 +135,9 @@ _BROKER_NAMES = {
 
 @app.template_filter('broker_name')
 def broker_name(url):
-    for domain, name in _BROKER_NAMES.items():
-        if domain in url:
-            return name
-    return ''
+    # Host only: a broker domain in the path/query (redirect params) must not match.
+    host = urlparse(url).netloc
+    return next((n for d, n in _BROKER_NAMES.items() if host.endswith(d)), '')
 
 
 @app.template_filter('price_inflate')
@@ -211,12 +211,16 @@ def _fetch_loipen(lat, lon, radius_m=None, force_refresh=False):
         cache = _read_cache()
         entry = cache.get(cache_key)
         if entry:
-            age = (datetime.now() - datetime.strptime(
-                entry['fetched_at'], '%Y-%m-%d %H:%M'
-            )).total_seconds()
-            if age < ttl_s:
-                print(f'  [loipen] cache hit for {cache_key} ({len(entry["loipen"])} trails)')
-                return entry['loipen']
+            try:
+                age = (datetime.now() - datetime.strptime(
+                    entry['fetched_at'], '%Y-%m-%d %H:%M'
+                )).total_seconds()
+                if age < ttl_s:
+                    print(f'  [loipen] cache hit for {cache_key} ({len(entry["loipen"])} trails)')
+                    return entry['loipen']
+            except (KeyError, TypeError, ValueError):
+                # Malformed entry (missing/garbage fetched_at or loipen) — cache miss, refetch.
+                print(f'  [loipen] malformed cache entry for {cache_key}, refetching')
     print(f'  [loipen] fetching Overpass for {cache_key} (radius {radius_m} m) ...')
     trails = loipen_parser.fetch(lat, lon, radius_m=radius_m)
     if trails is None:
@@ -344,11 +348,19 @@ def _render_html(title, trips, updated_at, version):
 def _write_json_atomic(path, payload):
     """Write JSON via a temp file + os.replace, so a reader (or a crash mid-write)
     never sees a half-written file."""
-    os.makedirs(os.path.dirname(path), exist_ok=True)
-    tmp_path = f'{path}.tmp'
-    with open(tmp_path, 'w', encoding='utf-8') as f:
-        json.dump(payload, f, ensure_ascii=False, indent=2)
-    os.replace(tmp_path, path)
+    directory = os.path.dirname(path)
+    os.makedirs(directory, exist_ok=True)
+    # mkstemp, not a fixed f'{path}.tmp': concurrent runs must not clobber each other's temp file.
+    fd, tmp_path = tempfile.mkstemp(dir=directory, suffix='.tmp')
+    try:
+        with os.fdopen(fd, 'w', encoding='utf-8') as f:
+            json.dump(payload, f, ensure_ascii=False, indent=2)
+            f.flush()
+            os.fsync(f.fileno())
+        os.replace(tmp_path, path)
+    except BaseException:
+        os.unlink(tmp_path)
+        raise
 
 
 def _load_houses_cache():
@@ -356,7 +368,8 @@ def _load_houses_cache():
     try:
         with open(HOUSES_CACHE_FILE, encoding='utf-8') as f:
             return json.load(f)
-    except (FileNotFoundError, json.JSONDecodeError):
+    except (OSError, ValueError):
+        # Anything unreadable (missing, half-written, non-UTF-8, a directory) is "no cache".
         return None
 
 
@@ -421,6 +434,10 @@ def _scrape_one_house(house, trip_checkin, trip_checkout, driver=None, force_ref
             cached = _load_cached_house(house['name'], trip_checkin, trip_checkout)
             if cached:
                 print("  -> bot/scrape failure, using cached data from cache/houses.json")
+                if stats is not None:
+                    # Not 'failed' (a placeholder was not returned), but callers
+                    # must see this house is not fresh data before re-stamping updated_at.
+                    stats['cached'] = stats.get('cached', 0) + 1
                 return cached
             print("  -> bot/scrape failure, no usable cache — returning empty result")
             if stats is not None:
@@ -469,7 +486,8 @@ def _scrape_one_house(house, trip_checkin, trip_checkout, driver=None, force_ref
                 if poi.get('type') == 'bus' and poi.get('lat') and poi.get('lon'):
                     d = _hdist(house['lat'], house['lon'], poi['lat'], poi['lon'])
                     mins = round(d / 5 * 60) if d < 1.5 else round(d / 40 * 60)
-                    house_info['bus_stop'] = f"{poi['label']} ({d:.1f}".replace('.', ',') + f" km · {mins} min)"
+                    # Only the number gets the German decimal comma — not the POI label.
+                    house_info['bus_stop'] = f"{poi['label']} ({format(d, '.1f').replace('.', ',')} km · {mins} min)"
                     break
     if 'train_track' in house:
         house_info['train_track'] = house['train_track']
@@ -547,6 +565,15 @@ def _scrape_one_house(house, trip_checkin, trip_checkout, driver=None, force_ref
     return house_info
 
 
+def _require_name(entry, context):
+    """Return entry['name'] or abort with a pointed error — a missing name in the
+    hand-edited input.json must not surface as a raw KeyError traceback."""
+    if not entry.get('name'):
+        raise SystemExit(
+            f'input.json: {context} missing "name": {json.dumps(entry, ensure_ascii=False)[:120]}')
+    return entry['name']
+
+
 def _normalize_input(data):
     """Convert house-centric input format to trip-centric format if needed.
 
@@ -555,15 +582,19 @@ def _normalize_input(data):
     This is converted to the canonical trip-centric format used throughout the app.
     """
     if 'trips' in data:
+        for trip in data['trips']:
+            for house in trip.get('houses', []):
+                _require_name(house, f'trip "{trip.get("name", "")}"')
         return data
     trips = {}
     trip_order = []
     for house in data.get('houses', []):
         if house.get('template'):
             continue
+        house_name = _require_name(house, 'house')
         house_base = {k: v for k, v in house.items() if k != 'trips'}
         for trip_entry in house.get('trips', []):
-            name = trip_entry['name']
+            name = _require_name(trip_entry, f'trip of house "{house_name}"')
             if name not in trips:
                 trips[name] = {
                     'name': name,
@@ -640,6 +671,14 @@ def _merge_into_cache(trip_data, previous):
     return merged
 
 
+def _house_patch_is_fresh(house_stats, date_group_count):
+    """--house path: did at least one date group produce data fresher than the cache?
+    updated_at feeds the 24 h TTL in _load_cached_house(), so a run where every scrape
+    fell back to cached data or failed outright (placeholder) must not re-stamp it."""
+    stale = house_stats.get('cached', 0) + house_stats.get('failed', 0)
+    return stale < date_group_count
+
+
 def _store_scrape_result(trip_data, scrape_stats):
     """Scrape step's last act. A run that passes _validate_scrape_output()
     replaces cache/houses.json and returns it. A failed run keeps the last
@@ -650,7 +689,7 @@ def _store_scrape_result(trip_data, scrape_stats):
         if previous:
             previous['status'] = 'down'
             _write_json_atomic(HOUSES_CACHE_FILE, previous)
-        _write_health('down', previous['updated_at'] if previous else None)
+        _write_health('down', previous.get('updated_at') if previous else None)
         return None
     cached = {
         'updated_at': datetime.now().strftime('%Y-%m-%d %H:%M'),
@@ -871,10 +910,12 @@ if __name__ == '__main__':
 
         try:
             scraped = {}  # key -> fresh house data
+            house_stats = {'attempted': 0, 'failed': 0, 'cached': 0}
             for key, (trip, house) in date_groups.items():
                 checkin, checkout = key
                 print(f"Scraping for dates {checkin} → {checkout}")
-                scraped[key] = _scrape_one_house(house, checkin, checkout, driver=driver, force_refresh=args.force)
+                scraped[key] = _scrape_one_house(house, checkin, checkout, driver=driver,
+                                                 force_refresh=args.force, stats=house_stats)
         finally:
             if driver:
                 driver.quit()
@@ -906,7 +947,13 @@ if __name__ == '__main__':
         else:
             print(f"Patched {replaced} entr{'y' if replaced==1 else 'ies'} in cache/houses.json")
 
-        cached['updated_at'] = datetime.now().strftime('%Y-%m-%d %H:%M')
+        # Only re-stamp updated_at when at least one date group produced fresh data
+        # (see _house_patch_is_fresh); the patch itself is written either way.
+        if _house_patch_is_fresh(house_stats, len(date_groups)):
+            cached['updated_at'] = datetime.now().strftime('%Y-%m-%d %H:%M')
+        else:
+            print('Warning: every scrape fell back to cached data -- '
+                  'updated_at in cache/houses.json kept as-is')
         _write_json_atomic(HOUSES_CACHE_FILE, cached)
         if not args.scrape_only:
             _render_site(data, cached, version)
