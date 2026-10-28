@@ -1,9 +1,12 @@
+import copy
 import json
 import re
 from datetime import datetime, timedelta
 
 import requests
 from bs4 import BeautifulSoup
+
+from parsers.common import parse_de_number
 
 CACHE_TTL = timedelta(days=1)
 
@@ -14,7 +17,9 @@ def _normalize_length(raw):
     m = re.search(r'([\d.,]+)\s*(km|m)\b', raw, re.IGNORECASE)
     if not m:
         return raw
-    val = float(m.group(1).replace(',', '.'))
+    val = parse_de_number(m.group(1))
+    if val is None:
+        return raw
     if m.group(2).lower() == 'm':
         val = val / 1000
     return f"{val:.1f} km"
@@ -31,6 +36,16 @@ EMPTY['track'] = []
 EMPTY['huts'] = []
 
 
+def _empty_result():
+    """Fresh EMPTY — dict(EMPTY) is shallow and would share the track/huts lists."""
+    return copy.deepcopy(EMPTY)
+
+
+def _copy_entry(data):
+    # Deep: track holds nested point lists a caller could mutate in place.
+    return copy.deepcopy(data)
+
+
 def load_cache(path):
     global _cache, _cache_file
     _cache_file = path
@@ -41,6 +56,8 @@ def load_cache(path):
 
 
 def save_cache():
+    if not _cache_file:
+        raise RuntimeError('load_cache() must be called before save_cache()')
     import os
     os.makedirs(os.path.dirname(_cache_file), exist_ok=True)
     with open(_cache_file, 'w', encoding='utf-8') as f:
@@ -49,14 +66,18 @@ def save_cache():
 
 def scrape(url, force_refresh=False):
     if 'rodelwelten.com' not in url:
-        return dict(EMPTY, track=[])
+        return _empty_result()
 
     if not force_refresh and url in _cache:
-        entry = _cache[url]
-        age = datetime.now() - datetime.fromisoformat(entry['fetched_at'])
-        if age < CACHE_TTL:
-            print(f"  [cache] {url}")
-            return entry['data']
+        try:
+            entry = _cache[url]
+            age = datetime.now() - datetime.fromisoformat(entry['fetched_at'])
+            if age < CACHE_TTL:
+                print(f"  [cache] {url}")
+                # Copy: a caller mutating the result must not pollute the cache.
+                return _copy_entry(entry['data'])
+        except (KeyError, ValueError, TypeError):
+            pass  # malformed cache entry -> re-scrape
 
     try:
         response = requests.get(url, timeout=15)

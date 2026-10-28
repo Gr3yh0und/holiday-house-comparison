@@ -1,4 +1,5 @@
 """Shared utilities for all house parsers."""
+import copy
 import json
 import random
 import re
@@ -20,6 +21,43 @@ EMPTY = {
     'persons': 'N/A',
     'sauna': 'N/A',
 }
+
+
+def empty_result(**overrides):
+    """Return a fresh result dict.
+
+    dict(EMPTY) is only a shallow copy: every caller that forgets to overwrite
+    room_config would append to the module-level list and leak it into every
+    later house, so always go through here.
+    """
+    result = copy.deepcopy(EMPTY)
+    result.update(overrides)
+    return result
+
+
+def parse_de_number(value):
+    """Parse a German-formatted number into a float, or None.
+
+    '1.200' -> 1200.0 (dot = thousands), '80,5' -> 80.5 (comma = decimal),
+    '1.200,5' -> 1200.5. Anything not numeric returns None.
+    """
+    if isinstance(value, (int, float)):
+        return float(value)
+    if not isinstance(value, str):
+        return None
+    m = re.search(r'-?\d[\d.]*' if ',' not in value else r'-?\d[\d.]*,\d+', value)
+    if not m:
+        return None
+    s = m.group(0)
+    if ',' in s:
+        s = s.replace('.', '').replace(',', '.')
+    elif re.fullmatch(r'\d{1,3}(?:\.\d{3})+', s):
+        s = s.replace('.', '')
+    try:
+        return float(s)
+    except ValueError:
+        return None
+
 
 _USER_AGENTS = [
     'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
@@ -71,7 +109,8 @@ _COUNTRY_NAMES = {
 
 
 def normalize_country(s):
-    return _COUNTRY_NAMES.get(s.strip(), s.strip())
+    s = (s or '').strip()
+    return _COUNTRY_NAMES.get(s, s)
 
 
 def normalize_rating(value, best=10, count=None):

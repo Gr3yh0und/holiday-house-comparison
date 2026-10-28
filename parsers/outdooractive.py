@@ -1,3 +1,4 @@
+import copy
 import json
 import re
 import xml.etree.ElementTree as ET
@@ -5,6 +6,8 @@ from datetime import datetime, timedelta
 
 import requests
 from bs4 import BeautifulSoup
+
+from parsers.common import parse_de_number
 
 CACHE_TTL = timedelta(days=1)
 
@@ -20,6 +23,16 @@ EMPTY['track'] = []
 EMPTY['huts'] = []
 
 
+def _empty_result():
+    """Fresh EMPTY — dict(EMPTY) is shallow and would share the track/huts lists."""
+    return copy.deepcopy(EMPTY)
+
+
+def _copy_entry(data):
+    # Deep: track holds nested point lists a caller could mutate in place.
+    return copy.deepcopy(data)
+
+
 def load_cache(path):
     global _cache, _cache_file
     _cache_file = path
@@ -30,6 +43,8 @@ def load_cache(path):
 
 
 def save_cache():
+    if not _cache_file:
+        raise RuntimeError('load_cache() must be called before save_cache()')
     import os
     os.makedirs(os.path.dirname(_cache_file), exist_ok=True)
     with open(_cache_file, 'w', encoding='utf-8') as f:
@@ -38,22 +53,26 @@ def save_cache():
 
 def scrape(url, force_refresh=False):
     if 'outdooractive.com' not in url:
-        return dict(EMPTY)
+        return _empty_result()
 
     # Normalise URL: strip fragment so cache key is stable
     cache_key = url.split('#')[0].rstrip('/')
 
     if not force_refresh and cache_key in _cache:
-        entry = _cache[cache_key]
-        age = datetime.now() - datetime.fromisoformat(entry['fetched_at'])
-        if age < CACHE_TTL:
-            print(f"  [cache] {cache_key}")
-            return entry['data']
+        try:
+            entry = _cache[cache_key]
+            age = datetime.now() - datetime.fromisoformat(entry['fetched_at'])
+            if age < CACHE_TTL:
+                print(f"  [cache] {cache_key}")
+                # Copy: a caller mutating the result must not pollute the cache.
+                return _copy_entry(entry['data'])
+        except (KeyError, ValueError, TypeError):
+            pass  # malformed cache entry -> re-scrape
 
     route_id = _extract_id(url)
     if not route_id:
         print(f"  [outdooractive] could not extract route ID from {url}")
-        return dict(EMPTY)
+        return _empty_result()
 
     try:
         response = requests.get(cache_key, timeout=15)
@@ -67,17 +86,16 @@ def scrape(url, force_refresh=False):
         # Length
         dist_obj = ld.get('potentialAction', {}).get('distance', '')
         if isinstance(dist_obj, dict):
-            dist_val = dist_obj.get('value')
+            dist_val = parse_de_number(dist_obj.get('value'))
         elif isinstance(dist_obj, (int, float)):
             dist_val = float(dist_obj)
         else:
-            m = re.search(r'\d[\d.]*', str(dist_obj))
-            dist_val = float(m.group()) if m else None
+            dist_val = parse_de_number(dist_obj)
         length = f"{dist_val / 1000:.1f} km" if dist_val is not None else 'N/A'
 
         # Altitudes
-        alt_top = amenities.get('altitude_to')
-        alt_bottom = amenities.get('altitude_from')
+        alt_top = parse_de_number(amenities.get('altitude_to'))
+        alt_bottom = parse_de_number(amenities.get('altitude_from'))
         height_top = f"{int(alt_top)} m" if alt_top is not None else 'N/A'
         height_bottom = f"{int(alt_bottom)} m" if alt_bottom is not None else 'N/A'
 
@@ -145,7 +163,7 @@ def scrape(url, force_refresh=False):
 
     except Exception as e:
         print(f"  [outdooractive] error scraping {url}: {e}")
-        return dict(EMPTY)
+        return _empty_result()
 
 
 def _extract_id(url):

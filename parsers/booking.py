@@ -4,11 +4,11 @@ import re
 import requests
 from bs4 import BeautifulSoup
 
-from parsers.common import EMPTY, normalize_country as _normalize_country, normalize_rating
+from parsers.common import empty_result, normalize_country as _normalize_country, normalize_rating
 
 
 def scrape(url, driver=None):
-    result = dict(EMPTY, room_config=[])
+    result = empty_result(room_config=[])
 
     try:
         if driver:
@@ -78,12 +78,16 @@ def scrape(url, driver=None):
         # Seite nicht verfügbar". The page then lists "Ab € ..." offers for other
         # dates and other houses, so never take a price from the free text.
         # (The same phrase also sits in an i18n <script> on every page, so only
-        # look at the visible room rows.)
-        unavailable = any(
-            'nicht verfügbar' in row.get_text(' ', strip=True)
-            for row in (rt.find_parent('tr') for rt in soup.find_all(attrs={'data-testid': 'rt-name-link'}))
-            if row
-        ) and not soup.find('div', class_='bui-price-display__value')
+        # look at the visible room rows, and only accept a price displayed in
+        # those same rows — a bui-price-display__value in a recommendation
+        # widget must not flip the verdict to Available.)
+        room_rows = [row for row in
+                     (rt.find_parent('tr') for rt in soup.find_all(attrs={'data-testid': 'rt-name-link'}))
+                     if row]
+        unavailable = (
+            any('nicht verfügbar' in row.get_text(' ', strip=True) for row in room_rows)
+            and not any(row.find('div', class_='bui-price-display__value') for row in room_rows)
+        )
         price_el = soup.find(attrs={'data-testid': 'price-and-discounts-price'})
         if unavailable:
             result['price'] = 'N/A'
@@ -103,8 +107,10 @@ def scrape(url, driver=None):
                 span = val_el.find('span', class_='prco-valign-middle-helper')
                 result['price'] = (span or val_el).get_text(strip=True)
         # get_text() may concatenate "Bahn" + station name without space,
-        # then newline before distance: "BahnLengdorf\n650 m"
-        train_m = re.search(r'Bahn\s*([A-Za-zÄÖÜäöüß][^\n\d]*?)\s*\n\s*([\d,.]+\s*m)\b', text)
+        # then newline before distance: "BahnLengdorf\n650 m". Use a newline
+        # separator so inline elements (span/span/div) stay separated.
+        train_m = re.search(r'Bahn\s*([A-Za-zÄÖÜäöüß][^\n\d]*?)\s*\n\s*([\d,.]+\s*m)\b',
+                            soup.get_text('\n'))
         if train_m:
             result['train_station'] = f'{train_m.group(1).strip()} {train_m.group(2)}'
 

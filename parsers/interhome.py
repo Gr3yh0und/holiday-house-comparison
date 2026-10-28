@@ -6,7 +6,7 @@ import requests
 from bs4 import BeautifulSoup
 
 from parsers.common import (
-    EMPTY, HEADERS as _HEADERS, normalize_country, normalize_rating, parse_json_ld, parse_room_config,
+    empty_result, HEADERS as _HEADERS, normalize_country, normalize_rating, parse_json_ld, parse_room_config,
 )
 
 
@@ -26,7 +26,7 @@ def _clean_url(url):
 
 
 def scrape(url, driver=None):
-    result = dict(EMPTY, room_config=[])
+    result = empty_result(room_config=[])
     persons, _, _ = _parse_url_params(url)
 
     selenium_price_text = ''
@@ -170,7 +170,13 @@ def scrape(url, driver=None):
         if not driver:
             available_badge = soup.find(attrs={'data-test': 'available-badge'})
             badge_text = available_badge.get_text(strip=True) if available_badge else ''
-        result['time'] = 'Available' if 'verfügbar' in badge_text else 'Unavailable'
+        # 'verfügbar' is a substring of 'nicht verfügbar', so a negated badge must
+        # not count as available (same rule as _available() above).
+        result['time'] = (
+            'Available' if 'verfügbar' in badge_text
+            and 'ausgebucht' not in badge_text and 'nicht' not in badge_text
+            else 'Unavailable'
+        )
         print(
             f"  [interhome] {result['location']} | {result['address']} | "
             f"{result['persons']} Pers. | {result['rooms']} Zimmer | "

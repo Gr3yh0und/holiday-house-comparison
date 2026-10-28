@@ -15,8 +15,30 @@ _HEADERS = {
 # Circuit breaker: after this many consecutive all-endpoint failures, stop
 # trying for the remainder of the process.
 _FAILURE_THRESHOLD = 2
-_consecutive_failures = 0  # pylint: disable=invalid-name
-_circuit_open = False      # pylint: disable=invalid-name
+
+
+class _CircuitBreaker:
+    """Counts consecutive all-endpoint network failures; trips at the threshold."""
+
+    def __init__(self, threshold):
+        self.threshold = threshold
+        self.consecutive_failures = 0
+        self.open = False
+
+    def reset(self):
+        self.consecutive_failures = 0
+        self.open = False
+
+    def record_success(self):
+        self.consecutive_failures = 0
+
+    def record_failure(self):
+        self.consecutive_failures += 1
+        if self.consecutive_failures >= self.threshold:
+            self.open = True
+
+
+_breaker = _CircuitBreaker(_FAILURE_THRESHOLD)
 
 
 def fetch(lat, lon, radius_m=10000):
@@ -25,11 +47,11 @@ def fetch(lat, lon, radius_m=10000):
     Returns None on network/server error so callers can distinguish a failed
     fetch from a location that genuinely has no trails (empty list).
     After _FAILURE_THRESHOLD consecutive failures across all endpoints the
-    circuit breaker trips and all further calls return None immediately.
+    circuit breaker trips and all further calls return None immediately;
+    _breaker.reset() re-arms it for a retry pass. Parse errors are data
+    problems, not outages, and never count toward the breaker.
     """
-    global _consecutive_failures, _circuit_open  # pylint: disable=global-statement
-
-    if _circuit_open:
+    if _breaker.open:
         print('  [loipen] circuit breaker open — skipping Overpass query')
         return None
 
@@ -39,30 +61,37 @@ def fetch(lat, lon, radius_m=10000):
         f'relation["piste:type"="nordic"](around:{radius_m},{lat},{lon}););'
         f'out body geom;'
     )
+    data = None
     for url in _OVERPASS_URLS:
         try:
             resp = requests.post(url, data={'data': query}, timeout=45, headers=_HEADERS)
             resp.raise_for_status()
             resp.encoding = 'utf-8'  # Overpass always returns UTF-8; prevent misdetection
             data = resp.json()
-            _consecutive_failures = 0  # reset on success
-            return _parse(data, lat, lon)
+            break
         except Exception as e:  # pylint: disable=broad-except
             print(f'  [loipen] Overpass error ({url}): {e}')
 
-    _consecutive_failures += 1
-    if _consecutive_failures >= _FAILURE_THRESHOLD:
-        _circuit_open = True
-        print(
-            f'  [loipen] {_consecutive_failures} consecutive failures — '
-            'circuit breaker tripped, skipping remaining Overpass queries this run'
-        )
-    else:
-        print(
-            f'  [loipen] all endpoints failed ({_consecutive_failures}/{_FAILURE_THRESHOLD} '
-            'before circuit breaker trips)'
-        )
-    return None
+    if data is None:
+        _breaker.record_failure()
+        if _breaker.open:
+            print(
+                f'  [loipen] {_breaker.consecutive_failures} consecutive failures — '
+                'circuit breaker tripped, skipping remaining Overpass queries this run'
+            )
+        else:
+            print(
+                f'  [loipen] all endpoints failed ({_breaker.consecutive_failures}/{_FAILURE_THRESHOLD} '
+                'before circuit breaker trips)'
+            )
+        return None
+
+    _breaker.record_success()
+    try:
+        return _parse(data, lat, lon)
+    except Exception as e:  # pylint: disable=broad-except
+        print(f'  [loipen] could not parse Overpass response: {e}')
+        return None
 
 
 def _parse(data, house_lat, house_lon):

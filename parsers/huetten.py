@@ -6,15 +6,16 @@ import requests
 from bs4 import BeautifulSoup
 
 from parsers.common import (
-    EMPTY, HEADERS as _HEADERS,
+    empty_result, HEADERS as _HEADERS,
     normalize_country as _normalize_country,
     normalize_rating,
+    parse_de_number,
     parse_json_ld as _parse_json_ld_common,
 )
 
 
 def scrape(url, _driver=None):
-    result = dict(EMPTY, room_config=[])
+    result = empty_result(room_config=[])
 
     checkin_date, persons, nights = _parse_url_params(url)
     base_url = url.split('#')[0]
@@ -39,7 +40,11 @@ def scrape(url, _driver=None):
         addr = ld.get('address', {})
         city = addr.get('addressLocality', '')
         country = _normalize_country(addr.get('addressCountry', ''))
-        result['address'] = f"{city}, {country}" if city else 'N/A'
+        if city:
+            result['address'] = f"{city}, {country}" if country not in ('', 'N/A') else city
+        else:
+            # Country alone is still informative; app.py only checks for 'N/A'.
+            result['address'] = country or 'N/A'
 
         # Persons
         capacity = ld.get('maximumAttendeeCapacity')
@@ -90,8 +95,10 @@ def scrape(url, _driver=None):
         if nk_div and checkin_date:
             result['extra_costs'] = _extra_costs_for_persons(nk_div, checkin_date, nights or 7, persons or 8)
             result['extra_costs_10'] = _extra_costs_for_persons(nk_div, checkin_date, nights or 7, 10)
-            result['total_costs'] = _sum_prices(result['price'], result['extra_costs'])
-            result['total_costs_10'] = _sum_prices(result['price_10'], result['extra_costs_10'])
+            # price/price_10 are only set when a price section existed; do not
+            # KeyError when the Nebenkosten block exists without one.
+            result['total_costs'] = _sum_prices(result.get('price', 'N/A'), result['extra_costs'])
+            result['total_costs_10'] = _sum_prices(result.get('price_10', 'N/A'), result['extra_costs_10'])
 
         # The price table is the season list, not the booking calendar (that loads
         # later via JS): it says nothing about whether the dates are still free.
@@ -201,10 +208,14 @@ def _extra_costs_for_persons(nk_div, checkin_date, nights, persons):
             if checkin_date < cutoff:
                 continue
 
-        amount_m = re.search(r'[€\u20ac]\s*([\d.]+(?:,\d+)?)', text)
+        # The euro sign may precede ("€ 80") or follow ("80,-- €") the amount;
+        # strip the ',--' cents placeholder like the price table does.
+        amount_m = re.search(r'(?:€\s*([\d.,]+)|([\d.,]+)\s*€)', text.replace(',--', ''))
         if not amount_m:
             continue
-        amount = float(amount_m.group(1).replace('.', '').replace(',', '.'))
+        amount = parse_de_number(amount_m.group(1) or amount_m.group(2))
+        if amount is None:
+            continue
 
         if re.search(r'pro\s+Person\b.{0,20}\bAufenthalt|pro\s+Person/Aufenthalt', text, re.I):
             total += amount * persons
