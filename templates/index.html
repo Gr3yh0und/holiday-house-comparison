@@ -460,6 +460,8 @@
     <script>
         window.ALL_TRANSLATIONS = {{ all_translations | tojson }};
         window.CURRENT_LANG = {{ lang | tojson }};
+        {%- set trip_colors = ['#2b6cb0','#276749','#c05621','#553c9a','#c53030','#744210','#086f83','#702459'] %}
+        window.TRIP_COLORS = {{ trip_colors | tojson }};
     </script>
     <h1>{{ title }}</h1>
     <p style="text-align: center; margin: -8px 0 24px; display: flex; flex-wrap: wrap; justify-content: center; gap: 8px;">
@@ -467,7 +469,7 @@
             🕐 <span data-i18n="updated_at">{{ t.updated_at }}</span>: <strong>{{ updated_at }}</strong>
         </span>
         {%- if version %}
-        <a href="https://github.com/Gr3yh0und/holiday-house-comparison/releases" target="_blank" style="display: inline-block; background: #edf2ff; border: 1px solid #c3cfe8; border-radius: 8px; padding: 5px 14px; font-size: 0.82rem; color: #2a3f7a; text-decoration: none;">
+        <a href="https://github.com/Gr3yh0und/holiday-house-comparison/releases" target="_blank" rel="noopener noreferrer" style="display: inline-block; background: #edf2ff; border: 1px solid #c3cfe8; border-radius: 8px; padding: 5px 14px; font-size: 0.82rem; color: #2a3f7a; text-decoration: none;">
             🏷️ {{ version }}
         </a>
         {%- endif %}
@@ -512,7 +514,6 @@
     </div>
     {%- endif %}
 
-    {% set trip_colors = ['#2563eb','#16a34a','#d97706','#7c3aed','#dc2626','#0891b2','#db2777','#65a30d'] %}
     <div class="overview-section">
         {% if trips | length > 1 %}
         <div class="trip-list-card">
@@ -667,18 +668,18 @@
                 {% if house.notes %}
                 <div style="background:#fffbeb; border-left:3px solid #d69e2e; border-radius:4px; padding:7px 10px; margin-top:16px; margin-bottom:12px; font-size:0.83rem; color:#7d5a00;">📝 {{ house.notes }}</div>
                 {% endif %}
-                {% if house.house_url is defined and house.house_url %}
+                {% if house.house_url is defined and house.house_url and house.house_url.startswith(('http://', 'https://')) %}
                 {% set broker = house.house_url | broker_name %}
-                <a href="{{ house.house_url }}" target="_blank" class="direct-link"><span data-i18n="house.booking_link">{{ t.house.booking_link }}</span>{% if broker %} {{ broker }}{% endif %} ↗</a>
+                <a href="{{ house.house_url }}" target="_blank" rel="noopener noreferrer" class="direct-link"><span data-i18n="house.booking_link">{{ t.house.booking_link }}</span>{% if broker %} {{ broker }}{% endif %} ↗</a>
                 {% endif %}
-                {% if house.direct_url is defined and house.direct_url %}
-                <a href="{{ house.direct_url }}" target="_blank" class="direct-link" data-i18n="house.direct_link">{{ t.house.direct_link }}</a>
+                {% if house.direct_url is defined and house.direct_url and house.direct_url.startswith(('http://', 'https://')) %}
+                <a href="{{ house.direct_url }}" target="_blank" rel="noopener noreferrer" class="direct-link" data-i18n="house.direct_link">{{ t.house.direct_link }}</a>
                 {% endif %}
 
-                {% if house.lat is defined and house.lon is defined %}
-                <a href="https://www.google.com/maps?q={{ house.lat }},{{ house.lon }}" target="_blank" class="direct-link" data-i18n="house.maps_link">{{ t.house.maps_link }}</a>
+                {% if house.lat is number and house.lon is number %}
+                <a href="https://www.google.com/maps?q={{ house.lat }},{{ house.lon }}" target="_blank" rel="noopener noreferrer" class="direct-link" data-i18n="house.maps_link">{{ t.house.maps_link }}</a>
                 {% endif %}
-                {% if house.lat is defined and house.lon is defined %}
+                {% if house.lat is number and house.lon is number %}
                 <div class="house-map"
                      data-lat="{{ house.lat }}"
                      data-lon="{{ house.lon }}"
@@ -738,11 +739,11 @@
                         <li style="flex-direction: column; align-items: flex-start; gap: 4px;">
                             <span class="label" data-i18n="sled_runs.huts">{{ t.sled_runs.huts }}</span>
                             {% for hut in sled_run.huts %}
-                            <span class="value" style="font-size: 0.82rem;">🍺 {{ hut.name }}{% if hut.url %} <a href="{{ hut.url }}" target="_blank" class="sled-run-link">↗</a>{% endif %}</span>
+                            <span class="value" style="font-size: 0.82rem;">🍺 {{ hut.name }}{% if hut.url and hut.url.startswith(('http://', 'https://')) %} <a href="{{ hut.url }}" target="_blank" rel="noopener noreferrer" class="sled-run-link">↗</a>{% endif %}</span>
                             {% endfor %}
                         </li>
                         {% endif %}
-                        <li><span class="label">Rodelwelten</span><span class="value"><a class="sled-run-link" href="{{ sled_run.url }}" target="_blank" data-i18n="sled_runs.link_label">{{ t.sled_runs.link_label }}</a></span></li>
+                        <li><span class="label">Rodelwelten</span><span class="value">{% if sled_run.url and sled_run.url.startswith(('http://', 'https://')) %}<a class="sled-run-link" href="{{ sled_run.url }}" target="_blank" rel="noopener noreferrer" data-i18n="sled_runs.link_label">{{ t.sled_runs.link_label }}</a>{% endif %}</span></li>
                     </ul>
                     </div>
                 </details>
@@ -772,7 +773,7 @@
                         <li><span class="label" data-i18n="loipen.length">{{ t.loipen.length }}</span><span class="value{% if not loipe.length_km %} na{% endif %}">{{ loipe.length_km ~ ' km' if loipe.length_km else 'N/A' }}</span></li>
                         <li><span class="label" data-i18n="loipen.difficulty">{{ t.loipen.difficulty }}</span><span class="value{% if not loipe.difficulty %} na{% endif %}">{{ t.loipen[diff_key] if diff_key in t.loipen else loipe.difficulty or 'N/A' }}</span></li>
                         <li><span class="label" data-i18n="loipen.grooming">{{ t.loipen.grooming }}</span><span class="value{% if not loipe.grooming %} na{% endif %}">{{ loipe.grooming or 'N/A' }}</span></li>
-                        <li><span class="label" data-i18n="loipen.distance">{{ t.loipen.distance }}</span><span class="value">{{ loipe.distance_km }} km</span></li>
+                        <li><span class="label" data-i18n="loipen.distance">{{ t.loipen.distance }}</span><span class="value{% if loipe.distance_km is none %} na{% endif %}">{{ loipe.distance_km ~ ' km' if loipe.distance_km is not none else 'N/A' }}</span></li>
                     </ul>
                     </div>
                 </details>
@@ -796,7 +797,7 @@
     </div>
     </div>
     <p style="text-align: center; margin-top: 28px; font-size: 0.8rem; color: #999;">
-        <a href="https://github.com/Gr3yh0und/holiday-house-comparison" target="_blank" style="color: #999;">GitHub repository</a>{% if version %} &mdash; {{ version }}{% endif %}
+        <a href="https://github.com/Gr3yh0und/holiday-house-comparison" target="_blank" rel="noopener noreferrer" style="color: #999;">GitHub repository</a>{% if version %} &mdash; {{ version }}{% endif %}
     </p>
     <!-- Compare bar -->
     <div class="compare-bar" id="compare-bar">
@@ -838,6 +839,7 @@
         function formatDate(dateStr, lang) {
             var t = window.ALL_TRANSLATIONS[lang] || window.ALL_TRANSLATIONS['de-DE'];
             var d = new Date(dateStr + 'T00:00:00');
+            if (!dateStr || isNaN(d.getTime())) return dateStr || '';
             var weekdays = t.weekdays || [];
             // JS getDay(): 0=Sun..6=Sat  →  Python weekday(): 0=Mon..6=Sun
             var pyDay = (d.getDay() + 6) % 7;
@@ -848,7 +850,7 @@
         }
 
         function T(path) {
-            var t = window.ALL_TRANSLATIONS[window.CURRENT_LANG] || window.ALL_TRANSLATIONS['de'];
+            var t = window.ALL_TRANSLATIONS[window.CURRENT_LANG] || window.ALL_TRANSLATIONS['de-DE'];
             return path.split('.').reduce(function(o, k) { return o && o[k]; }, t) || path;
         }
 
@@ -987,7 +989,7 @@
 
         // Overview map
         (function() {
-            var TRIP_COLORS = ['#2b6cb0','#276749','#c05621','#553c9a','#c53030','#744210','#086f83','#702459'];
+            var TRIP_COLORS = window.TRIP_COLORS;
             var overviewData = [
                 {% for trip in trips %}
                 {
@@ -995,7 +997,7 @@
                     color: TRIP_COLORS[{{ loop.index0 }} % TRIP_COLORS.length],
                     houses: [
                         {% for house in trip.houses %}
-                        {% if house.lat is defined and house.lon is defined and house.lat and house.lon %}
+                        {% if house.lat is number and house.lon is number %}
                         {
                             name: {{ house.name | tojson }},
                             lat: {{ house.lat }},
@@ -1054,10 +1056,10 @@
                 var tooltipHtml = '';
                 loc.entries.forEach(function(e) {
                     tooltipHtml += (tooltipHtml ? '<hr style="margin:3px 0;border-color:#ddd;">' : '')
-                        + '<b>' + e.houseName + '</b>'
+                        + '<b>' + escHtml(e.houseName) + '</b>'
                         + '<br><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:' + e.color + ';margin-right:4px;"></span>'
-                        + '<span style="color:#444;font-size:0.85em;">' + e.tripName + '</span>'
-                        + (e.price && e.price !== 'N/A' ? '<span style="color:#666;font-size:0.85em;"> — ' + e.price + '</span>' : '');
+                        + '<span style="color:#444;font-size:0.85em;">' + escHtml(e.tripName) + '</span>'
+                        + (e.price && e.price !== 'N/A' ? '<span style="color:#666;font-size:0.85em;"> — ' + escHtml(e.price) + '</span>' : '');
                 });
                 L.marker([loc.lat, loc.lon], { icon: icon })
                     .addTo(map)
@@ -1081,16 +1083,17 @@
                 var latlngs = run.track.map(function(pt) { return [pt[0], pt[1]]; });
                 L.polyline(latlngs, { color: run.color, weight: 2.5, opacity: 0.75 })
                     .addTo(map)
-                    .bindTooltip('🛷 ' + run.name, { sticky: true });
+                    .bindTooltip('🛷 ' + escHtml(run.name), { sticky: true });
             });
 
             // Draw train tracks (e.g. Wengernalpbahn) — deduplicated, red dashed
-            var trainTrackSeen = false;
+            var trainTrackSeen = {};
             overviewData.forEach(function(trip) {
                 trip.houses.forEach(function(house) {
                     if (!house.trainTrack || !house.trainTrack.length) return;
-                    if (trainTrackSeen) return;
-                    trainTrackSeen = true;
+                    var trackKey = JSON.stringify(house.trainTrack);
+                    if (trainTrackSeen[trackKey]) return;
+                    trainTrackSeen[trackKey] = true;
                     var latlngs = house.trainTrack.map(function(pt) { return [pt[0], pt[1]]; });
                     L.polyline(latlngs, { color: '#c53030', weight: 3, opacity: 0.85, dashArray: '8 6' })
                         .addTo(map)
@@ -1129,13 +1132,13 @@
             var bounds = L.latLngBounds([[lat, lon]]);
             L.marker([lat, lon], {icon: poiIcon('house')})
                 .addTo(map)
-                .bindTooltip(el.dataset.name || T('poi.house_label'), {direction: 'top', offset: [0, -14]});
+                .bindTooltip(escHtml(el.dataset.name || T('poi.house_label')), {direction: 'top', offset: [0, -14]});
             var pois = JSON.parse(el.dataset.pois || '[]');
             pois.forEach(function(poi) {
                 if (!poi.lat || !poi.lon) return;
                 L.marker([poi.lat, poi.lon], {icon: poiIcon(poi.type || 'default')})
                     .addTo(map)
-                    .bindTooltip(poi.label || poi.type || 'POI', {direction: 'top', offset: [0, -14]});
+                    .bindTooltip(escHtml(poi.label || poi.type || 'POI'), {direction: 'top', offset: [0, -14]});
                 bounds.extend([poi.lat, poi.lon]);
             });
             var sledRuns = JSON.parse(el.dataset.sledRuns || '[]');
@@ -1144,7 +1147,7 @@
                 var latlngs = run.track.map(function(pt) { return [pt[0], pt[1]]; });
                 L.polyline(latlngs, {color: '#2b6cb0', weight: 2.5, opacity: 0.75})
                     .addTo(map)
-                    .bindTooltip('🛷 ' + run.name, {sticky: true});
+                    .bindTooltip('🛷 ' + escHtml(run.name), {sticky: true});
                 latlngs.forEach(function(pt) { bounds.extend(pt); });
             });
             var loipen = JSON.parse(el.dataset.loipen || '[]');
@@ -1153,7 +1156,7 @@
                 var latlngs = loipe.track.map(function(pt) { return [pt[0], pt[1]]; });
                 L.polyline(latlngs, {color: '#38a169', weight: 2.5, opacity: 0.75, dashArray: '6 4'})
                     .addTo(map)
-                    .bindTooltip('⛷️ ' + loipe.name, {sticky: true});
+                    .bindTooltip('⛷️ ' + escHtml(loipe.name), {sticky: true});
                 latlngs.forEach(function(pt) { bounds.extend(pt); });
             });
             var trainTrack = JSON.parse(el.dataset.trainTrack || '[]');
@@ -1169,7 +1172,7 @@
                 var latlngs = busTrack.points.map(function(pt) { return [pt[0], pt[1]]; });
                 L.polyline(latlngs, {color: '#c53030', weight: 3, opacity: 0.85, dashArray: '8 6'})
                     .addTo(map)
-                    .bindTooltip('🚌 ' + (busTrack.label || 'Bus'), {sticky: true});
+                    .bindTooltip('🚌 ' + escHtml(busTrack.label || 'Bus'), {sticky: true});
                 latlngs.forEach(function(pt) { bounds.extend(pt); });
             }
             if (pois.length > 0 || sledRuns.length > 0 || loipen.length > 0 || trainTrack.length || (busTrack && busTrack.points && busTrack.points.length)) {
@@ -1380,7 +1383,7 @@
                     var houseLon = parseFloat(houseMapEl.dataset.lon);
                     L.marker([houseLat, houseLon], {icon: poiIcon('house')})
                         .addTo(map)
-                        .bindTooltip(houseMapEl.dataset.name || '{{ t.poi.house_label }}', {direction: 'top', offset: [0, -14]});
+                        .bindTooltip(escHtml(houseMapEl.dataset.name || {{ t.poi.house_label | tojson }}), {direction: 'top', offset: [0, -14]});
                     bounds.extend([houseLat, houseLon]);
                 }
                 map.fitBounds(bounds, {padding: [20, 20]});
