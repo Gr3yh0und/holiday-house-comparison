@@ -6,5 +6,5 @@ selenium==4.51.0
 webdriver-manager
 undetected-chromedriver==3.5.5
 websockets==17.2
-curl-cffi>=0.16.3
+curl-cffi>=0.17.0
 pylint
