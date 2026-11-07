@@ -11,6 +11,8 @@ the hand-backfilled `1.0.0`–`1.5.0` tags (§2), re-created from the previously
 
 ## [Unreleased]
 
+## [1.10.1] — 2026-11-07
+
 ### Fixed
 - Review 2026-10-28, `app.py`: the `--house` patch no longer re-stamps `updated_at` when every scrape fell back to cache; a malformed loipen cache entry or unreadable houses cache is a cache miss; a missing house name in `input.json` gives a pointed error.
 - Page: map tooltips escape their text (stored XSS from scraped names); outbound links must be `http(s)`; every distinct train track is drawn; the house map needs numeric coordinates; "None km" shows "N/A"; one shared trip colour palette.
