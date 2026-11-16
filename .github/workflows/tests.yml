@@ -7,14 +7,11 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        python-version: ["3.11", "3.12", "3.13"]
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-python@v7
         with:
-          python-version: ${{ matrix.python-version }}
+          python-version: "3.14"   # = cave-server, where the build runs (one version only, owner 2026-11-16)
           cache: pip
       - run: pip install -r requirements-dev.txt
       # Must stay byte-identical to deploy.config.example's TEST_CMD (§7): CI that runs a
